@@ -52,7 +52,6 @@ h1,h2,h3{text-wrap:balance}
 .center{min-height:100%;display:grid;place-items:center;padding:24px;color:var(--muted)}
 
 /* ---------- LOGIN ---------- */
-<<<<<<< HEAD
 .login{min-height:100%;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;padding:32px max(16px,env(safe-area-inset-left,0px));position:relative;overflow:hidden;
   background:radial-gradient(70% 55% at 50% -10%,rgba(233,197,62,.22),transparent 65%),radial-gradient(40% 30% at 85% 90%,rgba(233,197,62,.07),transparent 60%),var(--bg)}
 .login::after{content:"";position:absolute;left:50%;top:0;width:1px;height:38%;background:linear-gradient(180deg,rgba(233,197,62,.6),transparent);transform:translateX(-50%);opacity:.5}
@@ -63,16 +62,6 @@ h1,h2,h3{text-wrap:balance}
 .logo b{font-family:var(--font-display);font-size:15px;font-weight:800;letter-spacing:.6px;white-space:nowrap}
 .card h1{font-family:var(--font-display);font-size:26px;line-height:1.15;margin:6px 0 0;letter-spacing:-.4px}
 .card p{margin:0;color:var(--muted);font-size:13.5px}
-=======
-.login{min-height:100%;display:grid;place-items:center;padding:32px max(16px,env(safe-area-inset-left,0px));
-  background:radial-gradient(60% 50% at 50% 0%,rgba(233,197,62,.14),transparent 70%),var(--bg)}
-.card{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
-.logo{display:flex;align-items:center;gap:10px;color:var(--fg)}
-.logo svg{flex:none}
-.logo b{font-family:var(--font-display);font-size:15px;font-weight:800;letter-spacing:.6px;white-space:nowrap}
-.card h1{font-family:var(--font-display);font-size:22px;margin:0;text-wrap:balance}
-.card p{margin:0;color:var(--muted);font-size:13px}
->>>>>>> main
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
 .field input{width:100%}
