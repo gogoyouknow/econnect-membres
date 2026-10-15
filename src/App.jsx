@@ -13,6 +13,8 @@ import Moderation from './views/Moderation'
 import Admin from './views/Admin'
 import Side from './views/Side'
 import Logo from './lib/Logo'
+import Onboarding from './views/Onboarding'
+import Profile from './views/Profile'
 
 const VIEWS = [
   { id: 'general', k: '💬', label: 'Chat général', group: 'Espaces' },
@@ -23,6 +25,7 @@ const VIEWS = [
   { id: 'acceleration', k: '⚡', label: 'Accélération', group: 'Groupes', tier: 2 },
   { id: 'members', k: '👥', label: 'Membres', group: 'Communauté' },
   { id: 'notifs', k: '🔔', label: 'Notifications', group: 'Communauté' },
+  { id: 'profile', k: '👤', label: 'Mon profil', group: 'Communauté' },
   { id: 'moderation', k: '🛡️', label: 'Modération', group: 'Gestion', staff: true },
   { id: 'admin', k: '⚙️', label: 'Administration', group: 'Gestion', admin: true },
 ]
@@ -73,6 +76,7 @@ export default function App() {
   if (!session) return <Login />
   if (!me || !settings) return <div className="center">Chargement de ton espace…</div>
   if (!me.active) return <section className="login"><div className="card"><Logo size={34} /><h1>Ton accès est en pause</h1><p>Ton abonnement n'est plus actif. Relance-le pour retrouver le groupe, ou écris-nous à contact@theambitiousman.fr.</p><button className="btn ghost" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div></section>
+  if (!me.onboarded) return <Onboarding me={me} toast={toast} onDone={refresh} />
 
   const isStaff = me.role !== 'member', isAdmin = me.role === 'admin'
   const ctx = { me, profiles, settings, isStaff, isAdmin, refresh, go: setView, toast }
@@ -90,6 +94,7 @@ export default function App() {
   else if (view === 'wins') main = <Feed key="wins" space="wins" {...ctx} />
   else if (view === 'lives') main = <Lives {...ctx} />
   else if (view === 'members') main = <Members {...ctx} />
+  else if (view === 'profile') main = <Profile {...ctx} />
   else if (view === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
   else if (view === 'moderation' && isStaff) main = <Moderation {...ctx} />
   else if (view === 'admin' && isAdmin) main = <Admin {...ctx} />
@@ -102,7 +107,7 @@ export default function App() {
         <Logo size={26} />
         <div className="sp" />
         <button className="ic" aria-label="Notifications" onClick={() => go('notifs')}>🔔{unread > 0 && <span className="n">{unread}</span>}</button>
-        <div className="me"><Avatar p={me} /><div><b>{me.name}</b><small>{ROLE_LABEL[me.role]}</small></div></div>
+        <div className="me" style={{ cursor: 'pointer' }} onClick={() => go('profile')}><Avatar p={me} /><div><b>{me.name}</b><small>{ROLE_LABEL[me.role]}</small></div></div>
         <button className="ic" aria-label="Se déconnecter" title="Se déconnecter" onClick={() => supabase.auth.signOut()}>⎋</button>
       </header>
 
