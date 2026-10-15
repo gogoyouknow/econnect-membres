@@ -18,7 +18,7 @@ export const ago = (d) => {
   return `il y a ${Math.floor(s / 86400)} j`
 }
 
-export function Avatar({ p, className = '' }) {
+export function Avatar({ p, className = "" }) {
   const member = !p || p.role === 'member'
   return <div className={`av ${member ? 'm' : ''} ${className}`}>{p?.avatar_url ? <img src={p.avatar_url} alt="" /> : initials(p?.name)}</div>
 }
