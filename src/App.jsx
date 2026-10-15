@@ -12,6 +12,7 @@ import Notifs from './views/Notifs'
 import Moderation from './views/Moderation'
 import Admin from './views/Admin'
 import Side from './views/Side'
+import Logo from './lib/Logo'
 
 const VIEWS = [
   { id: 'general', k: '💬', label: 'Chat général', group: 'Espaces' },
@@ -71,7 +72,7 @@ export default function App() {
   if (session === undefined) return <div className="center">Chargement…</div>
   if (!session) return <Login />
   if (!me || !settings) return <div className="center">Chargement de ton espace…</div>
-  if (!me.active) return <section className="login"><div className="card"><div className="logo"><i>E</i><b>Groupe <span>E-Connect</span></b></div><h1>Ton accès est en pause</h1><p>Ton abonnement n'est plus actif. Relance-le pour retrouver le groupe, ou écris-nous à contact@theambitiousman.fr.</p><button className="btn ghost" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div></section>
+  if (!me.active) return <section className="login"><div className="card"><Logo size={34} /><h1>Ton accès est en pause</h1><p>Ton abonnement n'est plus actif. Relance-le pour retrouver le groupe, ou écris-nous à contact@theambitiousman.fr.</p><button className="btn ghost" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div></section>
 
   const isStaff = me.role !== 'member', isAdmin = me.role === 'admin'
   const ctx = { me, profiles, settings, isStaff, isAdmin, refresh, go: setView, toast }
@@ -98,7 +99,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <button className="ic" aria-label="Menu" onClick={() => setRail(r => !r)}>☰</button>
-        <div className="logo"><i>E</i><b>{settings.school_name?.replace(/E-Connect/i, '') || 'Groupe '}<span>E-Connect</span></b></div>
+        <Logo size={26} />
         <div className="sp" />
         <button className="ic" aria-label="Notifications" onClick={() => go('notifs')}>🔔{unread > 0 && <span className="n">{unread}</span>}</button>
         <div className="me"><Avatar p={me} /><div><b>{me.name}</b><small>{ROLE_LABEL[me.role]}</small></div></div>

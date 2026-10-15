@@ -46,7 +46,7 @@ on conflict (id) do nothing;
 -- ---------- Réglages (une seule ligne) ----------
 create table if not exists public.settings (
   id int primary key default 1 check (id = 1),
-  school_name text default 'Groupe E-Connect',
+  school_name text default 'L''Accélérateur',
   slow_mode int default 0,                    -- messages / membre / minute, 0 = off
   chat_open boolean default true,
   live_only boolean default false,            -- coachs seulement pendant les lives

@@ -13,9 +13,9 @@ export default defineConfig({
       filename: 'sw.js',
       includeAssets: ['icon-180.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'Groupe E-Connect',
-        short_name: 'E-Connect',
-        description: 'La communauté des membres E-Connect',
+        name: "L'Accélérateur",
+        short_name: "L'Accélérateur",
+        description: "L'espace des membres de L'Accélérateur",
         lang: 'fr',
         start_url: '/',
         scope: '/',

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase, configured } from '../lib/supabase'
 import { friendlyError } from '../lib/data'
+import Logo from '../lib/Logo'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -45,9 +46,9 @@ export default function Login() {
   return (
     <section className="login">
       <form className="card" onSubmit={submit}>
-        <div className="logo"><i>E</i><b>Groupe <span>E-Connect</span></b></div>
+        <Logo size={34} />
         <h1>{mode === 'login' ? 'Connecte-toi à ton espace' : 'Crée ton accès'}</h1>
-        <p>Réservé aux membres de la school. Ton accès s'active dès ton paiement.</p>
+        <p>Réservé aux membres de L'Accélérateur. Ton accès s'active dès ton paiement.</p>
         {!configured && <div className="err">Configuration Supabase manquante (variables VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).</div>}
         <div className="field"><label htmlFor="email">Email</label><input id="email" type="email" autoComplete="email" placeholder="toi@exemple.com" value={email} onChange={e => setEmail(e.target.value)} /></div>
         <div className="field"><label htmlFor="pwd">Mot de passe</label><input id="pwd" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="••••••••" value={pwd} onChange={e => setPwd(e.target.value)} /></div>
@@ -58,7 +59,7 @@ export default function Login() {
         <button className="btn ghost" type="button" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); say('') }}>
           {mode === 'login' ? "Première connexion ? Crée ton mot de passe" : "J'ai déjà un compte"}
         </button>
-        <div className="legal">Pas encore membre ? <a href="https://ecomeconnect.com" target="_blank" rel="noreferrer">Rejoindre la school</a></div>
+        <div className="legal">Pas encore membre ? <a href="https://ecomeconnect.com" target="_blank" rel="noreferrer">Rejoindre L'Accélérateur</a></div>
       </form>
     </section>
   )

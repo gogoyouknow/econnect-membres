@@ -52,17 +52,27 @@ h1,h2,h3{text-wrap:balance}
 .center{min-height:100%;display:grid;place-items:center;padding:24px;color:var(--muted)}
 
 /* ---------- LOGIN ---------- */
+<<<<<<< HEAD
 .login{min-height:100%;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;padding:32px max(16px,env(safe-area-inset-left,0px));position:relative;overflow:hidden;
   background:radial-gradient(70% 55% at 50% -10%,rgba(233,197,62,.22),transparent 65%),radial-gradient(40% 30% at 85% 90%,rgba(233,197,62,.07),transparent 60%),var(--bg)}
 .login::after{content:"";position:absolute;left:50%;top:0;width:1px;height:38%;background:linear-gradient(180deg,rgba(233,197,62,.6),transparent);transform:translateX(-50%);opacity:.5}
 .card{width:100%;max-width:420px;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 40%),var(--panel);border:1px solid var(--line-2);border-radius:24px;padding:32px 28px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow);position:relative}
 .card::before{content:"";position:absolute;inset:-1px;border-radius:25px;padding:1px;background:linear-gradient(180deg,rgba(233,197,62,.5),transparent 50%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
-.logo{display:flex;align-items:center;gap:11px}
-.logo i{width:40px;height:40px;border-radius:12px;background:linear-gradient(145deg,var(--gold-2),#c9a21a);display:grid;place-items:center;color:var(--gold-ink);font-family:var(--font-display);font-weight:800;font-size:19px;font-style:normal;box-shadow:0 6px 18px rgba(233,197,62,.3)}
-.logo b{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.2px}
-.logo b span{color:var(--gold)}
+.logo{display:flex;align-items:center;gap:10px;color:var(--fg)}
+.logo svg{flex:none;filter:drop-shadow(0 4px 14px rgba(233,197,62,.25))}
+.logo b{font-family:var(--font-display);font-size:15px;font-weight:800;letter-spacing:.6px;white-space:nowrap}
 .card h1{font-family:var(--font-display);font-size:26px;line-height:1.15;margin:6px 0 0;letter-spacing:-.4px}
 .card p{margin:0;color:var(--muted);font-size:13.5px}
+=======
+.login{min-height:100%;display:grid;place-items:center;padding:32px max(16px,env(safe-area-inset-left,0px));
+  background:radial-gradient(60% 50% at 50% 0%,rgba(233,197,62,.14),transparent 70%),var(--bg)}
+.card{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.logo{display:flex;align-items:center;gap:10px;color:var(--fg)}
+.logo svg{flex:none}
+.logo b{font-family:var(--font-display);font-size:15px;font-weight:800;letter-spacing:.6px;white-space:nowrap}
+.card h1{font-family:var(--font-display);font-size:22px;margin:0;text-wrap:balance}
+.card p{margin:0;color:var(--muted);font-size:13px}
+>>>>>>> main
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
 .field input{width:100%}
@@ -76,8 +86,8 @@ h1,h2,h3{text-wrap:balance}
 .app{height:100%;display:grid;grid-template-columns:250px 1fr 290px;grid-template-rows:60px 1fr}
 .topbar{grid-column:1/-1;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);background:rgba(7,7,7,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:env(safe-area-inset-top,0px);box-sizing:content-box;height:60px;z-index:10}
-.topbar .logo i{width:32px;height:32px;font-size:15px;border-radius:9px;box-shadow:none}
-.topbar .logo b{font-size:15px}
+.topbar .logo svg{filter:none}
+.topbar .logo b{font-size:13px}
 .topbar .sp{flex:1}
 .ic{background:var(--panel-2);border:1px solid var(--line-2);color:var(--fg);border-radius:11px;width:38px;height:38px;display:grid;place-items:center;position:relative;flex:none;transition:background .15s}
 .ic:hover{background:var(--panel-3)}
