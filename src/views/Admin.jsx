@@ -59,7 +59,7 @@ export default function Admin({ me, profiles, settings, toast }) {
         {allowed.filter(a => !profiles.list.some(p => p.email === a.email)).length === 0 && <div><small className="muted">Tout le monde a créé son accès</small></div>}
       </div>
       <div className="post"><b>Apparence</b>
-        <div className="row"><label>Nom de la school</label><input defaultValue={settings.school_name} onBlur={e => e.target.value !== settings.school_name && set({ school_name: e.target.value })} style={{ maxWidth: 220 }} /></div>
+        <div className="row"><label>Nom affiché</label><input defaultValue={settings.school_name} onBlur={e => e.target.value !== settings.school_name && set({ school_name: e.target.value })} style={{ maxWidth: 220 }} /></div>
         <div className="row col"><label>Message de bienvenue<small>Affiché aux nouveaux membres</small></label><textarea defaultValue={settings.welcome_message} rows={3} onBlur={e => e.target.value !== settings.welcome_message && set({ welcome_message: e.target.value })} /></div>
       </div>
       <div className="post"><b>Données</b>
