@@ -289,3 +289,9 @@ h1,h2,h3{text-wrap:balance}
 .livebar a{margin-left:auto;background:var(--bad);color:#fff;text-decoration:none;border-radius:9px;padding:7px 14px;font-weight:700;font-size:12.5px;white-space:nowrap}
 @media (max-width:900px){.app.has-live{grid-template-rows:auto auto 1fr}.pinbar{top:0}.seen{padding-right:38px}.replying,.mentions{margin-left:0}}
 @media (min-width:901px){.app.has-live{grid-template-rows:60px auto 1fr}}
+
+/* ---------- sélection / copie : désactivées partout sauf le texte des messages et les champs ---------- */
+html,body,#root,.app,.login{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.bub p,.quote,.pb,.reply>div div,.notif div,textarea,input,select{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+img{-webkit-user-drag:none;user-drag:none;-webkit-touch-callout:none;pointer-events:auto}
+.bub img,.pb img{-webkit-touch-callout:none}
