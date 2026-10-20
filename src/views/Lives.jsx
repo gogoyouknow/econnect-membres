@@ -17,9 +17,10 @@ export default function Lives({ me, isStaff, toast }) {
   async function save(e) {
     e.preventDefault(); const f = new FormData(e.target)
     const row = { title: f.get('title'), starts_at: new Date(f.get('starts_at')).toISOString(), duration_min: +f.get('duration_min') || 45, host: f.get('host'), link: f.get('link') || null, replay_url: f.get('replay_url') || null, tier_required: +f.get('tier') }
-    const q = form?.id ? supabase.from('lives').update(row).eq('id', form.id) : supabase.from('lives').insert(row)
-    const { error } = await q; if (error) return toast(friendlyError(error), true)
-    toast(form?.id ? 'Live modifié' : 'Live programmé'); setForm(null); load()
+    const q = form?.id ? supabase.from('lives').update(row).eq('id', form.id).select().single() : supabase.from('lives').insert(row).select().single()
+    const { data, error } = await q; if (error) return toast(friendlyError(error), true)
+    if (!form?.id && data?.id) await supabase.rpc('notify_live', { live_id: data.id })
+    toast(form?.id ? 'Live modifié' : 'Live programmé · membres prévenus'); setForm(null); load()
   }
   async function del(l) { await supabase.from('lives').delete().eq('id', l.id); toast('Live supprimé'); load() }
   const Row = ({ l, replay }) => {

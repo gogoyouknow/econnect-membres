@@ -39,6 +39,7 @@ export default function App() {
   const [rail, setRail] = useState(false)
   const [unread, setUnread] = useState(0)
   const [guide, setGuide] = useState(false)
+  const [live, setLive] = useState(null)
   const toast = useToast()
 
   useEffect(() => {
@@ -70,6 +71,14 @@ export default function App() {
   }, [session])
 
   useEffect(() => { location.hash = view; setRail(false) }, [view])
+  useEffect(() => {
+    if (!session) return
+    const check = async () => {
+      const now = new Date(); const { data } = await supabase.from('lives').select('*').lte('starts_at', now.toISOString()).gte('starts_at', new Date(now - 4 * 3600000).toISOString()).order('starts_at', { ascending: false }).limit(1)
+      const l = data?.[0]; setLive(l && new Date(l.starts_at).getTime() + (l.duration_min || 45) * 60000 > now.getTime() ? l : null)
+    }
+    check(); const i = setInterval(check, 60000); return () => clearInterval(i)
+  }, [session])
   useEffect(() => { try { if (isIOS() && !isStandalone() && !localStorage.getItem('guideSeen')) setGuide(true) } catch {} }, [])
 
   if (session === undefined) return <div className="center">Chargement…</div>
@@ -101,7 +110,7 @@ export default function App() {
   else main = <Chat key="general" space="general" {...ctx} />
 
   return (
-    <div className="app">
+    <div className={`app ${live ? 'has-live' : ''}`}>
       <header className="topbar">
         <button className="ic" aria-label="Menu" onClick={() => setRail(r => !r)}>☰</button>
         <Logo size={26} />
@@ -111,6 +120,7 @@ export default function App() {
         <button className="ic" aria-label="Se déconnecter" title="Se déconnecter" onClick={() => supabase.auth.signOut()}>⎋</button>
       </header>
 
+      {live && <div className="livebar"><span className="ld" /><div style={{ minWidth: 0 }}><b>Live en cours · {live.title}</b><small>avec {live.host}</small></div>{live.link ? <a href={live.link} target="_blank" rel="noreferrer">Rejoindre</a> : <button className="btn sm" style={{ marginLeft: 'auto' }} onClick={() => go('lives')}>Voir</button>}</div>}
       {rail && <div className="scrim" onClick={() => setRail(false)} />}
       <nav className={`rail ${rail ? 'open' : ''}`}>
         {groups.map(g => <div key={g}>
