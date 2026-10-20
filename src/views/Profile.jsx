@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { friendlyError } from '../lib/data'
-import { Avatar, compressImage, ROLE_LABEL, TIER_LABEL } from '../lib/ui'
+import { Avatar, compressImage, ROLE_LABEL, TIER_LABEL, Switch } from '../lib/ui'
 
 export default function Profile({ me, toast, refresh }) {
   const [first, setFirst] = useState(me.first_name || me.name.split(' ')[0] || '')
@@ -41,6 +41,11 @@ export default function Profile({ me, toast, refresh }) {
           <button className="btn" disabled={busy}>Enregistrer</button>
         </div>
       </form>
+      <div className="post" style={{ maxWidth: 520 }}><b>Notifications</b>
+        <div className="row"><label>Quand on me mentionne (@{(me.first_name || me.name.split(' ')[0])})<small>Dans le chat ou le fil</small></label><Switch on={me.notif_mentions !== false} label="Mentions" onChange={v => supabase.from('profiles').update({ notif_mentions: v }).eq('id', me.id).then(() => { toast(v ? 'Mentions activées' : 'Mentions désactivées'); refresh() })} /></div>
+        <div className="row"><label>Quand on répond à mes messages</label><Switch on={me.notif_replies !== false} label="Réponses" onChange={v => supabase.from('profiles').update({ notif_replies: v }).eq('id', me.id).then(() => { toast(v ? 'Réponses activées' : 'Réponses désactivées'); refresh() })} /></div>
+        <div className="row"><label>Lives<small>Rappel quand un live est programmé</small></label><Switch on={me.notif_lives !== false} label="Lives" onChange={v => supabase.from('profiles').update({ notif_lives: v }).eq('id', me.id).then(() => { toast(v ? 'Rappels de live activés' : 'Rappels de live désactivés'); refresh() })} /></div>
+      </div>
     </div>
   </>
 }
