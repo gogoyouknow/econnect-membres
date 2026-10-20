@@ -135,15 +135,24 @@ h1,h2,h3{text-wrap:balance}
 .mtools button:hover{background:var(--panel-2);color:var(--fg)}
 .sys{align-self:center;font-size:12px;color:var(--gold);background:var(--gold-dim);border:1px solid rgba(233,197,62,.25);padding:6px 14px;border-radius:999px;text-align:center}
 .typing{font-size:12px;color:var(--muted);padding-left:44px}
-.composer{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,var(--bg) 30%);padding:14px 24px calc(14px + env(safe-area-inset-bottom,0px))}
-.composer .hint{font-size:11.5px;color:var(--muted);min-height:15px;margin-bottom:6px;font-variant-numeric:tabular-nums;padding-left:4px}
+.composer{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,var(--bg) 35%);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
+.composer .hint{font-size:11.5px;color:var(--muted);min-height:15px;margin-bottom:6px;font-variant-numeric:tabular-nums;padding-left:46px}
 .composer .hint.bad{color:var(--bad)}
-.composer .in{display:flex;gap:8px;align-items:flex-end;background:var(--panel);border:1px solid var(--line-2);border-radius:18px;padding:8px;box-shadow:var(--shadow)}
-.composer .in:focus-within{border-color:rgba(233,197,62,.5)}
-.composer textarea{flex:1;min-width:0;resize:none;height:40px;max-height:120px;background:transparent;border:0;padding:9px 8px;box-shadow:none}
-.composer textarea:focus{box-shadow:none}
-.composer .ic{border-radius:11px;background:transparent;border-color:transparent}
-.composer .ic:hover{background:var(--panel-2)}
+.composer .in{display:flex;gap:8px;align-items:flex-end}
+.composer .plus{width:36px;height:36px;border-radius:50%;flex:none;border:0;background:var(--panel-3);color:var(--fg-2);font-size:24px;line-height:1;display:grid;place-items:center;padding:0 0 2px;transition:background .15s,transform .1s}
+.composer .plus:hover{background:#2a2a2a;color:var(--fg)}
+.composer .plus:active{transform:scale(.94)}
+.composer .plus:disabled{opacity:.35}
+.pillbox{flex:1;min-width:0;display:flex;align-items:flex-end;gap:4px;background:var(--panel);border:1px solid var(--line-2);border-radius:20px;padding:3px 3px 3px 14px;transition:border-color .15s,box-shadow .15s}
+.pillbox:focus-within{border-color:rgba(233,197,62,.55);box-shadow:0 0 0 3px var(--gold-dim)}
+.pillbox textarea{flex:1;min-width:0;resize:none;height:30px;max-height:120px;background:transparent;border:0;padding:5px 0;font-size:16px;line-height:20px;box-shadow:none}
+.pillbox textarea:focus{box-shadow:none;outline:none}
+.sendbtn{width:30px;height:30px;border-radius:50%;border:0;flex:none;display:grid;place-items:center;background:var(--gold);color:var(--gold-ink);transform:scale(.6);opacity:0;transition:transform .18s cubic-bezier(.2,.9,.3,1.4),opacity .15s,background .15s}
+.pillbox.has .sendbtn{transform:scale(1);opacity:1}
+.sendbtn:disabled{background:var(--panel-3);color:var(--muted)}
+.sendbtn:active{transform:scale(.9)}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(0,0,0,.25);border-top-color:var(--gold-ink);animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
 .preview{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line-2);border-radius:12px;padding:8px 10px;margin-bottom:8px;font-size:12px}
 .preview img{width:48px;height:48px;object-fit:cover;border-radius:8px}
 .preview button{margin-left:auto;background:none;border:0;color:var(--muted);font-size:16px}
@@ -234,7 +243,7 @@ h1,h2,h3{text-wrap:balance}
   .me{border:0;padding:0}
   .head{padding:14px 16px}
   .body{padding:14px 16px 96px}
-  .composer{padding:10px 12px calc(70px + env(safe-area-inset-bottom,0px))}
+  .composer{padding:10px 12px calc(68px + env(safe-area-inset-bottom,0px))}
   .msg{max-width:88%}
   .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;background:rgba(7,7,7,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);z-index:15;
     padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}

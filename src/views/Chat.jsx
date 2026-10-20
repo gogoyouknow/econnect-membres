@@ -115,10 +115,15 @@ export default function Chat({ space, me, profiles, settings, isStaff, toast }) 
       {pending && <div className="preview"><img src={pending.url} alt="" /><span>{pending.file.name}</span><button aria-label="Retirer la photo" onClick={() => setPending(null)}>✕</button></div>}
       <div className="in">
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={pick} />
-        <button className="ic" aria-label="Envoyer une photo" title="Photo" onClick={() => fileRef.current.click()} disabled={blocked}>📷</button>
-        <textarea placeholder="Écris au groupe…" aria-label="Message" value={text} onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 900) { e.preventDefault(); send() } }} disabled={blocked} />
-        <button className="btn" onClick={send} disabled={blocked || busy || (!text.trim() && !pending)}>{busy ? '…' : 'Envoyer'}</button>
+        <button className="plus" aria-label="Envoyer une photo" title="Photo" onClick={() => fileRef.current.click()} disabled={blocked}>+</button>
+        <div className={`pillbox ${text.trim() || pending ? 'has' : ''}`}>
+          <textarea rows={1} placeholder="Message" aria-label="Message" value={text}
+            onChange={e => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(120, e.target.scrollHeight) + 'px' }}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 900) { e.preventDefault(); send() } }} disabled={blocked} />
+          <button className="sendbtn" aria-label="Envoyer" onClick={send} disabled={blocked || busy || (!text.trim() && !pending)}>
+            {busy ? <span className="spin" /> : <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5" /><path d="M5 12l7-7 7 7" /></svg>}
+          </button>
+        </div>
       </div>
     </div>
     <Lightbox src={zoom} onClose={() => setZoom(null)} />
