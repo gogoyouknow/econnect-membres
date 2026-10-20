@@ -129,11 +129,30 @@ export default function Chat({ space, me, profiles, settings, isStaff, toast }) 
     setOpenId(null)
   }
 
-  // glisser vers la droite = répondre
-  const swipe = useRef({})
-  const onTouchStart = (m) => (e) => { swipe.current = { id: m.id, x: e.touches[0].clientX, y: e.touches[0].clientY, el: e.currentTarget } }
-  const onTouchMove = (e) => { const s = swipe.current; if (!s.el) return; const dx = e.touches[0].clientX - s.x, dy = e.touches[0].clientY - s.y; if (Math.abs(dy) > 30) { s.el.style.transform = ''; return } if (dx > 0) s.el.style.transform = `translateX(${Math.min(dx, 70)}px)` }
-  const onTouchEnd = (m) => (e) => { const s = swipe.current; if (!s.el) return; const dx = (e.changedTouches[0].clientX - s.x); s.el.style.transition = 'transform .18s'; s.el.style.transform = ''; setTimeout(() => { if (s.el) s.el.style.transition = '' }, 200); if (dx > 60 && !m.deleted) { if (navigator.vibrate) navigator.vibrate(10); setReplyTo(m); taRef.current?.focus() } swipe.current = {} }
+  // glisser vers la droite = répondre ; appui long = réactions (façon Apple)
+  const swipe = useRef({}); const lp = useRef(null)
+  const bindTouch = (el, m) => {
+    if (!el || el._bound) return; el._bound = true
+    const bub = () => el.querySelector('.bub')
+    el.addEventListener('touchstart', (e) => {
+      const t = e.touches[0]; swipe.current = { x: t.clientX, y: t.clientY, dir: null, id: m.id }
+      clearTimeout(lp.current); lp.current = setTimeout(() => { if (!swipe.current.dir) { if (navigator.vibrate) navigator.vibrate(8); setOpenId(m.id); swipe.current.dir = 'lp' } }, 420)
+    }, { passive: true })
+    el.addEventListener('touchmove', (e) => {
+      const s = swipe.current; if (s.id !== m.id || s.dir === 'lp') return
+      const t = e.touches[0]; const dx = t.clientX - s.x, dy = t.clientY - s.y
+      if (!s.dir) { if (Math.abs(dx) > 8 || Math.abs(dy) > 8) { s.dir = Math.abs(dx) > Math.abs(dy) * 1.3 && dx > 0 ? 'h' : 'v'; clearTimeout(lp.current) } else return }
+      if (s.dir === 'h') { e.preventDefault(); const b = bub(); if (b) b.style.transform = `translateX(${Math.min(dx, 72)}px)`; s.dx = dx }
+    }, { passive: false })
+    const end = () => {
+      clearTimeout(lp.current); const s = swipe.current; const b = bub()
+      if (b) { b.style.transition = 'transform .18s'; b.style.transform = ''; setTimeout(() => { b.style.transition = '' }, 200) }
+      if (s.dir === 'h' && s.dx > 56 && !m.deleted) { if (navigator.vibrate) navigator.vibrate(10); setReplyTo(m); taRef.current?.focus() }
+      swipe.current = {}
+    }
+    el.addEventListener('touchend', end, { passive: true }); el.addEventListener('touchcancel', end, { passive: true })
+  }
+  useEffect(() => { const close = (e) => { if (!e.target.closest('.msg.open')) setOpenId(null) }; document.addEventListener('touchstart', close, { passive: true }); document.addEventListener('mousedown', close); return () => { document.removeEventListener('touchstart', close); document.removeEventListener('mousedown', close) } }, [])
 
   const pinned = msgs.filter(m => m.pinned && !m.deleted).slice(-1)[0]
   const lastMine = [...msgs].reverse().find(m => m.user_id === me.id && !m.deleted)
@@ -152,8 +171,8 @@ export default function Chat({ space, me, profiles, settings, isStaff, toast }) 
         const parent = m.reply_to ? byId[m.reply_to] : null; const rx = reactions[m.id] || {}
         return <div key={m.id} style={{ display: 'contents' }}>
           {sep && <div className="day">{day}</div>}
-          <div id={'m' + m.id} className={`msg ${mine ? 'me' : ''} ${!mine && u && u.role !== 'member' ? 'coach' : ''} ${openId === m.id ? 'open' : ''}`}
-            onClick={() => setOpenId(openId === m.id ? null : m.id)} onTouchStart={onTouchStart(m)} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd(m)}>
+          <div id={'m' + m.id} ref={el => bindTouch(el, m)} className={`msg ${mine ? 'me' : ''} ${!mine && u && u.role !== 'member' ? 'coach' : ''} ${openId === m.id ? 'open' : ''}`}
+            onContextMenu={e => { e.preventDefault(); setOpenId(m.id) }}>
             <Avatar p={u} />
             <div className="bub">
               <b><NameTag p={u} /></b>
