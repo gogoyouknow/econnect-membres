@@ -236,7 +236,7 @@ h1,h2,h3{text-wrap:balance}
 /* ---------- MOBILE ---------- */
 .tabbar{display:none}
 @media (max-width:900px){
-  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr}
   .rail,.side{display:none}
   .rail.open{display:flex;position:fixed;top:calc(60px + env(safe-area-inset-top,0px));bottom:0;left:0;z-index:20;width:min(300px,85vw);box-shadow:20px 0 60px rgba(0,0,0,.6);border-right:1px solid var(--line-2);padding-bottom:90px}
   .scrim{position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.5);backdrop-filter:blur(2px)}
@@ -287,7 +287,7 @@ h1,h2,h3{text-wrap:balance}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(229,83,61,.3)}50%{box-shadow:0 0 0 8px rgba(229,83,61,.06)}}
 .livebar b{display:block}.livebar small{color:var(--muted)}
 .livebar a{margin-left:auto;background:var(--bad);color:#fff;text-decoration:none;border-radius:9px;padding:7px 14px;font-weight:700;font-size:12.5px;white-space:nowrap}
-@media (max-width:900px){.app.has-live{grid-template-rows:auto auto 1fr}.pinbar{top:0}.seen{padding-right:38px}.replying,.mentions{margin-left:0}}
+@media (max-width:900px){.app.has-live{grid-template-rows:auto auto 1fr}.app,.app>*{max-width:100vw}.main{width:100%}.pinbar{top:0}.seen{padding-right:38px}.replying,.mentions{margin-left:0}}
 @media (min-width:901px){.app.has-live{grid-template-rows:60px auto 1fr}}
 
 /* ---------- sélection / copie : désactivées partout sauf le texte des messages et les champs ---------- */
@@ -312,3 +312,38 @@ html,#root,.main{overscroll-behavior-x:none}
 @media (hover:hover){.msg:hover .mtools{display:flex;animation:none}}
 @keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
 .field input.otp{font-family:var(--font-display);font-size:28px;letter-spacing:8px;text-align:center;font-weight:800;padding:12px}
+
+
+/* ---------- anti-débordement : tout tient dans la largeur ---------- */
+.body>*{max-width:100%;min-width:0}
+.head input.search{max-width:160px;font-size:14px;padding:8px 12px;min-width:0}
+.cards{display:flex;flex-direction:column;gap:10px}
+.mcard .mem{padding:0}
+.mcard .meta{display:flex;flex-wrap:wrap;gap:6px;color:var(--muted);font-size:12px;margin:8px 0 0 44px}
+.mcard .acts2{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0 44px}
+.mcard .acts2 select{font-size:12px;padding:5px 26px 5px 10px;border-radius:8px}
+.replybox select{min-width:0}
+.row{flex-wrap:wrap}
+.row>span,.row>select,.row>button,.row>input{flex:none}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+.lv{flex-wrap:wrap}
+.lv .t{flex:1 1 140px}
+@media (max-width:900px){
+  .head{flex-wrap:nowrap}
+  .head h2{font-size:17px}
+  .head input.search{max-width:130px}
+  .replybox{flex-direction:column;align-items:stretch}
+  .replybox input,.replybox select,.replybox button{width:100%}
+  .row.col .replybox{flex-direction:column}
+  .row{gap:10px}
+  .row label{flex:1 1 160px}
+  .form .grid2{grid-template-columns:1fr}
+  .mcard .meta,.mcard .acts2{margin-left:0}
+  .tags{max-width:100%}
+  .tag{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .pinbar{padding:8px 14px}
+  .livebar{padding:9px 14px}
+  .side{display:none}
+  .post{padding:14px}
+  table,.wrap{display:block;max-width:100%}
+}
