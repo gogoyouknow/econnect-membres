@@ -119,10 +119,12 @@ h1,h2,h3{text-wrap:balance}
 .day{align-self:center;font-size:10.5px;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);padding:4px 12px;border-radius:999px;letter-spacing:.3px;margin:6px 0}
 .msg{display:flex;gap:10px;max-width:76%;position:relative}
 .msg.me{align-self:flex-end;flex-direction:row-reverse}
-.bub{background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 18px 6px;padding:10px 14px;min-width:0;box-shadow:0 2px 10px rgba(0,0,0,.25)}
-.msg.me .bub{background:linear-gradient(180deg,#2a2410,var(--me));border-color:rgba(233,197,62,.22);border-radius:18px 18px 6px 18px}
+.bub{background:linear-gradient(165deg,#1f1f1f 0%,#141414 55%,#0f0f0f 100%);border:1px solid rgba(255,255,255,.09);border-radius:18px 18px 18px 6px;padding:10px 14px;min-width:0;position:relative;box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 6px 18px rgba(0,0,0,.35)}
+.msg.coach .bub{background:linear-gradient(165deg,#242114 0%,#171512 55%,#100f0d 100%);border-color:rgba(233,197,62,.28);box-shadow:0 1px 0 rgba(233,197,62,.18) inset,0 6px 18px rgba(0,0,0,.35)}
+.msg.me .bub{background:linear-gradient(165deg,#3a3012 0%,#2a2410 50%,#1c180a 100%);border-color:rgba(233,197,62,.35);border-radius:18px 18px 6px 18px;box-shadow:0 1px 0 rgba(255,220,120,.22) inset,0 8px 22px rgba(0,0,0,.4)}
 .bub b{font-size:12px;font-weight:600;display:block;margin-bottom:3px;color:var(--fg-2)}
 .msg.me .bub b{color:var(--gold)}
+.msg.coach .bub b{color:var(--gold-2)}
 .bub p{margin:0;white-space:pre-line;overflow-wrap:anywhere;font-size:14.5px}
 .bub p:empty{display:none}
 .bub time{display:block;font-size:10px;color:var(--muted);margin-top:4px;text-align:right;font-variant-numeric:tabular-nums}

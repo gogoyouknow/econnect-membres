@@ -90,7 +90,7 @@ export default function Chat({ space, me, profiles, settings, isStaff, toast }) 
         const sep = day !== lastDay; lastDay = day
         return <div key={m.id} style={{ display: 'contents' }}>
           {sep && <div className="day">{day}</div>}
-          <div className={`msg ${mine ? 'me' : ''} ${openId === m.id ? 'open' : ''}`} onClick={() => setOpenId(openId === m.id ? null : m.id)}>
+          <div className={`msg ${mine ? 'me' : ''} ${!mine && u && u.role !== 'member' ? 'coach' : ''} ${openId === m.id ? 'open' : ''}`} onClick={() => setOpenId(openId === m.id ? null : m.id)}>
             <Avatar p={u} />
             <div className="bub">
               <b><NameTag p={u} /></b>
