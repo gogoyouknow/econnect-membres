@@ -13,11 +13,14 @@ import Moderation from './views/Moderation'
 import Admin from './views/Admin'
 import Side from './views/Side'
 import Upsell from './views/Upsell'
+import Journey from './views/Journey'
+import Tracking from './views/Tracking'
 import Logo from './lib/Logo'
 import Onboarding from './views/Onboarding'
 import Profile from './views/Profile'
 
 const VIEWS = [
+  { id: 'journey', k: '🧭', label: 'Mon parcours', group: 'Espaces', memberOnly: true },
   { id: 'general', k: '💬', label: 'Chat général', group: 'Espaces' },
   { id: 'feed', k: '📰', label: 'Fil & questions', group: 'Espaces' },
   { id: 'lives', k: '🔴', label: 'Lives & replays', group: 'Espaces' },
@@ -27,6 +30,7 @@ const VIEWS = [
   { id: 'members', k: '👥', label: 'Membres', group: 'Communauté' },
   { id: 'notifs', k: '🔔', label: 'Notifications', group: 'Communauté' },
   { id: 'profile', k: '👤', label: 'Mon profil', group: 'Communauté' },
+  { id: 'tracking', k: '📊', label: 'Suivi des élèves', group: 'Gestion', staff: true },
   { id: 'moderation', k: '🛡️', label: 'Modération', group: 'Gestion', staff: true },
   { id: 'admin', k: '⚙️', label: 'Administration', group: 'Gestion', admin: true },
 ]
@@ -94,7 +98,7 @@ export default function App() {
     const d = VIEWS.find(x => x.id === v)
     setView(v)
   }
-  const visible = VIEWS.filter(v => (!v.staff || isStaff) && (!v.admin || isAdmin))
+  const visible = VIEWS.filter(v => (!v.staff || isStaff) && (!v.admin || isAdmin) && (!v.memberOnly || !isStaff))
   const groups = [...new Set(visible.map(v => v.group))]
 
   let main
@@ -105,6 +109,8 @@ export default function App() {
   else if (view === 'lives') main = <Lives {...ctx} />
   else if (view === 'members') main = <Members {...ctx} />
   else if (view === 'profile') main = <Profile {...ctx} />
+  else if (view === 'journey') main = <Journey {...ctx} />
+  else if (view === 'tracking' && isStaff) main = <Tracking {...ctx} />
   else if (view === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
   else if (view === 'moderation' && isStaff) main = <Moderation {...ctx} />
   else if (view === 'admin' && isAdmin) main = <Admin {...ctx} />
@@ -137,7 +143,7 @@ export default function App() {
       <Side {...ctx} />
 
       <nav className="tabbar">
-        {[['general', '💬', 'Chat'], ['feed', '📰', 'Fil'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']].map(([id, k, l]) =>
+        {(isStaff ? [['general', '💬', 'Chat'], ['feed', '📰', 'Fil'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['journey', '🧭', 'Parcours'], ['feed', '📰', 'Fil'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>
           <button key={id} className={view === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
         <button className={rail ? 'on' : ''} onClick={() => setRail(r => !r)}><span>☰</span>Plus</button>
       </nav>
