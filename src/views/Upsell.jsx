@@ -16,7 +16,7 @@ export function UpsellCard({ settings, me, compact }) {
       <p>Ton produit est validé ? C'est ici qu'on scale : suivi personnalisé de tes campagnes, lives privés et le groupe des membres qui vendent déjà.</p>
       <ul><li>Groupe Accélération + chat privé</li><li>Suivi perso de tes campagnes</li><li>Lives privés et retours directs</li></ul>
     </>}
-    <div className="price"><b>200 €</b><span>aujourd'hui, puis 450 €/mois<br />(au lieu de 250 €/mois)</span></div>
+    <div className="price"><b>200 €</b><span>aujourd'hui, puis 450 € par mois<br />sans engagement</span></div>
     <a className="btn" href={link} target="_blank" rel="noreferrer">Passer à l'accompagnement personnalisé →</a>
     <small className="muted">Paiement sécurisé Hotmart · ton abonnement actuel est remplacé, l'accès s'ouvre dès le paiement.</small>
   </div>

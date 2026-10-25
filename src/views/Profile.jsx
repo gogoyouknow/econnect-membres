@@ -44,7 +44,7 @@ export default function Profile({ me, toast, refresh, settings }) {
         </div>
       </form>
       {me.role === 'member' && <div className="post" style={{ maxWidth: 520 }}><b>Mon abonnement</b>
-        <div className="row"><label>{me.tier === 2 ? 'Accompagnement personnalisé' : 'Abonnement Démarrage'}<small>{me.tier === 2 ? '450 €/mois · groupe Accélération ouvert' : '250 €/mois'}</small></label><span className={`pill ${me.tier === 2 ? 'gold' : ''}`}>{TIER_LABEL[me.tier]}</span></div>
+        <div className="row"><label>{me.tier === 2 ? 'Accompagnement personnalisé' : 'Abonnement Démarrage'}<small>{me.tier === 2 ? '450 € par mois sans engagement · groupe Accélération ouvert' : '250 € par mois sans engagement'}</small></label><span className={`pill ${me.tier === 2 ? 'gold' : ''}`}>{TIER_LABEL[me.tier]}</span></div>
         {me.tier < 2 && <UpsellCard settings={settings} me={me} compact />}
         <div className="cancel">
           <button type="button" className="linkbtn" onClick={() => setShowCancel(v => !v)}>{showCancel ? 'Masquer' : 'Besoin de résilier ?'}</button>
