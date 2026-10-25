@@ -62,6 +62,12 @@ export default function Admin({ me, profiles, settings, toast }) {
         <div className="row"><label>Nom affiché</label><input defaultValue={settings.school_name} onBlur={e => e.target.value !== settings.school_name && set({ school_name: e.target.value })} style={{ maxWidth: 220 }} /></div>
         <div className="row col"><label>Message de bienvenue<small>Affiché aux nouveaux membres</small></label><textarea defaultValue={settings.welcome_message} rows={3} onBlur={e => e.target.value !== settings.welcome_message && set({ welcome_message: e.target.value })} /></div>
       </div>
+      <div className="post"><b>Abonnement &amp; upgrade</b>
+        <div className="row col"><label>Lien de paiement Hotmart de l'upgrade<small>Offre « accompagnement personnalisé » : 200 € aujourd'hui puis 450 €/mois. Vide = la carte d'upgrade est masquée.</small></label><input defaultValue={settings.upgrade_url} placeholder="https://pay.hotmart.com/…" onBlur={e => e.target.value !== settings.upgrade_url && set({ upgrade_url: e.target.value.trim() })} /></div>
+        <div className="row"><label>Code de l'offre Hotmart<small>Pour reconnaître l'upgrade (ex. « k3x9ab »)</small></label><input defaultValue={settings.upgrade_offer_code} onBlur={e => e.target.value !== settings.upgrade_offer_code && set({ upgrade_offer_code: e.target.value.trim() })} style={{ maxWidth: 160 }} /></div>
+        <div className="row"><label>Email de résiliation<small>Affiché aux membres dans Mon profil</small></label><input defaultValue={settings.cancel_email} onBlur={e => e.target.value !== settings.cancel_email && set({ cancel_email: e.target.value.trim() })} style={{ maxWidth: 260 }} /></div>
+        <div className="row col"><label>Règle de résiliation<small>Texte affiché sous l'email</small></label><textarea defaultValue={settings.cancel_text} rows={3} onBlur={e => e.target.value !== settings.cancel_text && set({ cancel_text: e.target.value })} /></div>
+      </div>
       <div className="post"><b>Données</b>
         <div className="row"><label>Exporter les membres (CSV)</label><button className="btn ghost sm" onClick={exportCsv}>Exporter</button></div>
         <div className="row"><label>Base de données<small>Supabase · Francfort</small></label><span className="pill gold">OK</span></div>

@@ -12,6 +12,7 @@ import Notifs from './views/Notifs'
 import Moderation from './views/Moderation'
 import Admin from './views/Admin'
 import Side from './views/Side'
+import Upsell from './views/Upsell'
 import Logo from './lib/Logo'
 import Onboarding from './views/Onboarding'
 import Profile from './views/Profile'
@@ -84,21 +85,21 @@ export default function App() {
   if (session === undefined) return <div className="center">Chargement…</div>
   if (!session) return <Login />
   if (!me || !settings) return <div className="center">Chargement de ton espace…</div>
-  if (!me.active) return <section className="login"><div className="card"><Logo size={34} /><h1>Ton accès est en pause</h1><p>Ton abonnement n'est plus actif. Relance-le pour retrouver le groupe, ou écris-nous à contact@theambitiousman.fr.</p><button className="btn ghost" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div></section>
+  if (!me.active) return <section className="login"><div className="card"><Logo size={34} /><h1>Ton accès est en pause</h1><p>Ton abonnement n'est plus actif. Relance-le pour retrouver le groupe, ou écris-nous à {settings.cancel_email || 'contact@theambitiousman.fr'}.</p><button className="btn ghost" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div></section>
   if (!me.onboarded) return <Onboarding me={me} toast={toast} onDone={refresh} />
 
   const isStaff = me.role !== 'member', isAdmin = me.role === 'admin'
   const ctx = { me, profiles, settings, isStaff, isAdmin, refresh, go: setView, toast }
   const go = (v) => {
     const d = VIEWS.find(x => x.id === v)
-    if (d?.tier && me.tier < d.tier && !isStaff) return toast('Groupe Accélération : réservé aux membres avec un produit validé')
     setView(v)
   }
   const visible = VIEWS.filter(v => (!v.staff || isStaff) && (!v.admin || isAdmin))
   const groups = [...new Set(visible.map(v => v.group))]
 
   let main
-  if (['general', 'demarrage', 'acceleration'].includes(view)) main = <Chat key={view} space={view} {...ctx} />
+  if (view === 'acceleration' && me.tier < 2 && !isStaff) main = <Upsell {...ctx} />
+  else if (['general', 'demarrage', 'acceleration'].includes(view)) main = <Chat key={view} space={view} {...ctx} />
   else if (view === 'feed') main = <Feed key="feed" space="feed" {...ctx} />
   else if (view === 'wins') main = <Feed key="wins" space="wins" {...ctx} />
   else if (view === 'lives') main = <Lives {...ctx} />

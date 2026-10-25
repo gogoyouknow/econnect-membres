@@ -2,8 +2,10 @@ import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { friendlyError } from '../lib/data'
 import { Avatar, compressImage, ROLE_LABEL, TIER_LABEL, Switch } from '../lib/ui'
+import { UpsellCard } from './Upsell'
 
-export default function Profile({ me, toast, refresh }) {
+export default function Profile({ me, toast, refresh, settings }) {
+  const [showCancel, setShowCancel] = useState(false)
   const [first, setFirst] = useState(me.first_name || me.name.split(' ')[0] || '')
   const [last, setLast] = useState(me.last_name || '')
   const [busy, setBusy] = useState(false)
@@ -41,6 +43,17 @@ export default function Profile({ me, toast, refresh }) {
           <button className="btn" disabled={busy}>Enregistrer</button>
         </div>
       </form>
+      {me.role === 'member' && <div className="post" style={{ maxWidth: 520 }}><b>Mon abonnement</b>
+        <div className="row"><label>{me.tier === 2 ? 'Accompagnement personnalisé' : 'Abonnement Démarrage'}<small>{me.tier === 2 ? '450 €/mois · groupe Accélération ouvert' : '250 €/mois'}</small></label><span className={`pill ${me.tier === 2 ? 'gold' : ''}`}>{TIER_LABEL[me.tier]}</span></div>
+        {me.tier < 2 && <UpsellCard settings={settings} me={me} compact />}
+        <div className="cancel">
+          <button type="button" className="linkbtn" onClick={() => setShowCancel(v => !v)}>{showCancel ? 'Masquer' : 'Besoin de résilier ?'}</button>
+          {showCancel && <div className="cancelbox">
+            <p>Si tu souhaites annuler ton abonnement, envoie ta demande de résiliation par email à <b>{settings?.cancel_email || 'resiliation@theambitiousman.fr'}</b> depuis l'adresse de ton compte ({me.email}).</p>
+            <p><b>Important :</b> {settings?.cancel_text || 'ta demande doit nous parvenir avant la fin du mois en cours pour ne pas être prélevé le mois suivant.'}</p>
+          </div>}
+        </div>
+      </div>}
       <div className="post" style={{ maxWidth: 520 }}><b>Notifications</b>
         <div className="row"><label>Quand on me mentionne (@{(me.first_name || me.name.split(' ')[0])})<small>Dans le chat ou le fil</small></label><Switch on={me.notif_mentions !== false} label="Mentions" onChange={v => supabase.from('profiles').update({ notif_mentions: v }).eq('id', me.id).then(() => { toast(v ? 'Mentions activées' : 'Mentions désactivées'); refresh() })} /></div>
         <div className="row"><label>Quand on répond à mes messages</label><Switch on={me.notif_replies !== false} label="Réponses" onChange={v => supabase.from('profiles').update({ notif_replies: v }).eq('id', me.id).then(() => { toast(v ? 'Réponses activées' : 'Réponses désactivées'); refresh() })} /></div>

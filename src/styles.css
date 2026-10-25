@@ -347,3 +347,17 @@ html,#root,.main{overscroll-behavior-x:none}
   .post{padding:14px}
   table,.wrap{display:block;max-width:100%}
 }
+
+/* upsell + résiliation */
+.upsell{background:linear-gradient(145deg,#1c1a12,#0f0f0f);border:1px solid rgba(233,197,62,.45);box-shadow:0 10px 40px rgba(233,197,62,.08)}
+.upsell h3{margin:10px 0 6px;font-size:18px;line-height:1.2}
+.upsell p{margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--muted,#c9c9c9)}
+.upsell ul{margin:0 0 12px;padding:0;list-style:none}.upsell li{font-size:13px;padding:4px 0;display:flex;gap:8px}.upsell li:before{content:"✓";color:var(--gold,#E9C53E);font-weight:800}
+.upsell .price{display:flex;align-items:baseline;gap:8px;margin:6px 0 12px}.upsell .price b{font-size:30px;color:var(--gold,#E9C53E)}.upsell .price span{font-size:12px;color:var(--muted,#9a9a9a);line-height:1.3}
+.upsell .btn{display:block;text-align:center;text-decoration:none}
+.upsell small{display:block;margin-top:8px;text-align:center}
+.lockbox{text-align:center;color:var(--muted,#777);border-style:dashed;font-size:13px}
+.cancel{margin-top:10px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px}
+.linkbtn{background:none;border:0;color:var(--muted,#8a8a8a);font-size:12px;text-decoration:underline;cursor:pointer;padding:0;font-family:inherit}
+.cancelbox{margin-top:8px;font-size:12.5px;line-height:1.5;color:var(--muted,#bbb);background:rgba(255,255,255,.03);border-radius:12px;padding:10px 12px}
+.cancelbox p{margin:0 0 8px}.cancelbox p:last-child{margin:0}
