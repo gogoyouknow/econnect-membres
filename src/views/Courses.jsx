@@ -1,22 +1,33 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { makeTracker, attachHtml5, attachBunny, attachYouTube, attachVimeo } from '../lib/watch'
 import { supabase } from '../lib/supabase'
 import { friendlyError } from '../lib/data'
 import { TIER_LABEL } from '../lib/ui'
 
-/** Transforme un lien collé par l'admin en lecteur vidéo */
-export function Player({ url }) {
+/** Lecteur + mesure du visionnage réel (onTick) */
+export function Player({ url, onTick, seen }) {
+  const box = useRef(null)
   const u = (url || '').trim()
-  if (!u) return <div className="novideo">🎬 Vidéo bientôt disponible</div>
-  let src = ''
   const yt = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{6,})/)
   const vm = u.match(/vimeo\.com\/(?:video\/)?(\d+)/)
   const bunny = u.match(/mediadelivery\.net\/(?:embed|play)\/(\d+)\/([\w-]+)/)
-  if (yt) src = `https://www.youtube-nocookie.com/embed/${yt[1]}?rel=0&modestbranding=1`
-  else if (vm) src = `https://player.vimeo.com/video/${vm[1]}?dnt=1`
-  else if (bunny) src = `https://iframe.mediadelivery.net/embed/${bunny[1]}/${bunny[2]}?autoplay=false&preload=true`
-  else if (/\.(mp4|m3u8|webm)(\?|$)/i.test(u)) return <div className="video"><video src={u} controls playsInline controlsList="nodownload" onContextMenu={e => e.preventDefault()} /></div>
-  else src = u
-  return <div className="video"><iframe src={src} allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen loading="lazy" title="Leçon" /></div>
+  const isFile = /\.(mp4|m3u8|webm)(\?|$)/i.test(u)
+  useEffect(() => {
+    if (!u || !box.current) return
+    const tracker = makeTracker(onTick || (() => {}), seen || [])
+    let off = () => {}
+    const el = box.current
+    if (isFile) off = attachHtml5(el.querySelector('video'), tracker)
+    else if (bunny) attachBunny(el.querySelector('iframe'), tracker).then(f => { off = f })
+    else if (vm) off = attachVimeo(el.querySelector('iframe'), tracker)
+    else if (yt) attachYouTube(el.querySelector('.ytmount'), yt[1], tracker).then(f => { off = f })
+    return () => off()
+  }, [u])
+  if (!u) return <div className="novideo">🎬 Vidéo bientôt disponible</div>
+  if (isFile) return <div className="video" ref={box}><video src={u} controls playsInline controlsList="nodownload" onContextMenu={e => e.preventDefault()} /></div>
+  if (yt) return <div className="video" ref={box}><div className="ytmount" /></div>
+  const src = vm ? `https://player.vimeo.com/video/${vm[1]}?dnt=1` : bunny ? `https://iframe.mediadelivery.net/embed/${bunny[1]}/${bunny[2]}?autoplay=false&preload=true` : u
+  return <div className="video" ref={box}><iframe src={src} allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen loading="lazy" title="Leçon" /></div>
 }
 
 export async function loadCourse() {
@@ -28,13 +39,16 @@ export async function loadCourse() {
   return { modules: m.data || [], sections: s.data || [], lessons: l.data || [] }
 }
 
-export default function Courses({ me, isStaff, toast, go }) {
+export default function Courses({ me, isStaff, toast, go, settings }) {
+  const [watch, setWatch] = useState({})       // lesson_id -> { watched_pct, done }
+  const [live, setLive] = useState(null)        // visionnage de la leçon ouverte { pct }
+  const lastSave = useRef(0)
   const [c, setC] = useState({ modules: [], sections: [], lessons: [] })
   const [done, setDone] = useState({})
   const [moduleId, setModuleId] = useState(null)
   const [lessonId, setLessonId] = useState(null)
   const [edit, setEdit] = useState(false)
-  const reload = async () => { const d = await loadCourse(); setC(d); const { data } = await supabase.from('lesson_progress').select('lesson_id').eq('user_id', me.id); const map = {}; (data || []).forEach(x => { map[x.lesson_id] = true }); setDone(map) }
+  const reload = async () => { const d = await loadCourse(); setC(d); const { data } = await supabase.from('lesson_progress').select('lesson_id, done, watched_pct').eq('user_id', me.id); const map = {}, w = {}; (data || []).forEach(x => { if (x.done) map[x.lesson_id] = true; w[x.lesson_id] = x }); setDone(map); setWatch(w) }
   useEffect(() => { reload() }, [me.id])
 
   const mod = c.modules.find(m => m.id === moduleId)
@@ -43,11 +57,24 @@ export default function Courses({ me, isStaff, toast, go }) {
   const modLessons = useMemo(() => secs.flatMap(s => lessonsOf(s.id)), [c, secs])
   const lesson = c.lessons.find(l => l.id === lessonId)
   const locked = (m) => m.tier_required > me.tier && !isStaff
+  const threshold = settings?.watch_threshold ?? 98
+  const gating = (m) => !!settings?.require_watch && m?.gate !== false && !isStaff
+  const lessonLocked = (l) => { if (!mod || !gating(mod)) return false; const i = modLessons.findIndex(x => x.id === l.id); return i > 0 && !done[modLessons[i - 1].id] }
+  const pctOf = (l) => Math.max(watch[l.id]?.watched_pct || 0, live?.id === l.id ? live.pct : 0)
+  const canFinish = (l) => !gating(mod) || !l.video_url || pctOf(l) >= threshold
+  async function onTick(l, t) {
+    setLive({ id: l.id, pct: t.pct })
+    const now = Date.now(); if (now - lastSave.current < 8000 && t.pct < threshold) return; lastSave.current = now
+    const prev = watch[l.id]?.watched_pct || 0; if (t.pct <= prev && t.pct < threshold) return
+    await supabase.from('lesson_progress').upsert({ user_id: me.id, lesson_id: l.id, watched_pct: Math.max(prev, t.pct), last_position: t.position, done: !!done[l.id], updated_at: new Date().toISOString() })
+    setWatch(w => ({ ...w, [l.id]: { ...(w[l.id] || {}), watched_pct: Math.max(prev, t.pct) } }))
+  }
   const pct = (m) => { const ls = c.sections.filter(s => s.module_id === m.id).flatMap(s => lessonsOf(s.id)); if (!ls.length) return 0; return Math.round(ls.filter(l => done[l.id]).length / ls.length * 100) }
 
   async function toggleDone(l) {
-    if (done[l.id]) { await supabase.from('lesson_progress').delete().match({ user_id: me.id, lesson_id: l.id }) }
-    else { await supabase.from('lesson_progress').upsert({ user_id: me.id, lesson_id: l.id }) }
+    if (!done[l.id] && !canFinish(l)) return toast(`Regarde la vidéo jusqu'au bout (${pctOf(l)} % visionné, il faut ${threshold} %)`, true)
+    if (done[l.id]) { await supabase.from('lesson_progress').upsert({ user_id: me.id, lesson_id: l.id, done: false }) }
+    else { await supabase.from('lesson_progress').upsert({ user_id: me.id, lesson_id: l.id, done: true, done_at: new Date().toISOString(), watched_pct: Math.max(watch[l.id]?.watched_pct || 0, pctOf(l)) }) }
     const next = { ...done, [l.id]: !done[l.id] }; setDone(next)
     if (!done[l.id]) { const i = modLessons.findIndex(x => x.id === l.id); const n = modLessons[i + 1]; if (n) { setLessonId(n.id); toast('Leçon terminée ✓ · suivante') } else toast('Module terminé 🎉') }
   }
@@ -62,7 +89,8 @@ export default function Courses({ me, isStaff, toast, go }) {
     return <>
       <div className="head"><button className="ic" onClick={() => setLessonId(null)} aria-label="Retour">‹</button><div style={{ flex: 1, minWidth: 0 }}><h2 className="ell">{lesson.title}</h2><small>{mod.title} · {sec?.title}{lesson.duration ? ` · ${lesson.duration}` : ''}</small></div></div>
       <div className="body lessonbody">
-        <Player url={lesson.video_url} />
+        <Player key={lesson.id} url={lesson.video_url} onTick={t => onTick(lesson, t)} />
+        {gating(mod) && lesson.video_url && !done[lesson.id] && <div className={`watchbar ${pctOf(lesson) >= threshold ? 'ok' : ''}`}><i style={{ width: Math.min(100, pctOf(lesson) / threshold * 100) + '%' }} /><span>{pctOf(lesson) >= threshold ? 'Vidéo visionnée ✓ tu peux passer à la suite' : `${pctOf(lesson)} % visionné · la suite se débloque à ${threshold} %`}</span></div>}
         {isStaff && edit && <div className="post"><b>Vidéo de cette leçon</b>
           <input defaultValue={lesson.video_url} placeholder="Colle le lien : Bunny (iframe.mediadelivery.net/embed/…), YouTube non répertorié, Vimeo ou .mp4" onBlur={e => e.target.value !== lesson.video_url && save('lessons', lesson.id, { video_url: e.target.value.trim() })} />
           <div className="grid2"><input defaultValue={lesson.title} onBlur={e => e.target.value !== lesson.title && save('lessons', lesson.id, { title: e.target.value })} /><input defaultValue={lesson.duration} placeholder="Durée (13:13)" onBlur={e => e.target.value !== lesson.duration && save('lessons', lesson.id, { duration: e.target.value })} /></div>
@@ -72,8 +100,8 @@ export default function Courses({ me, isStaff, toast, go }) {
         {Array.isArray(lesson.resources) && lesson.resources.length > 0 && <div className="post"><b>Ressources</b>{lesson.resources.map((r, k) => <a key={k} className="res" href={r.url} target="_blank" rel="noreferrer">📎 {r.label}</a>)}</div>}
         <div className="lessonnav">
           <button className="btn ghost" disabled={!prev} onClick={() => setLessonId(prev.id)}>‹ Précédente</button>
-          <button className={`btn ${done[lesson.id] ? 'ghost' : ''}`} onClick={() => toggleDone(lesson)}>{done[lesson.id] ? 'Terminée ✓' : next ? 'Terminer et continuer →' : 'Terminer le module ✓'}</button>
-          <button className="btn ghost" disabled={!next} onClick={() => setLessonId(next.id)}>Suivante ›</button>
+          <button className={`btn ${done[lesson.id] ? 'ghost' : ''}`} disabled={!done[lesson.id] && !canFinish(lesson)} onClick={() => toggleDone(lesson)}>{done[lesson.id] ? 'Terminée ✓' : next ? 'Terminer et continuer →' : 'Terminer le module ✓'}</button>
+          <button className="btn ghost" disabled={!next || lessonLocked(next)} onClick={() => setLessonId(next.id)}>{next && lessonLocked(next) ? '🔒 Suivante' : 'Suivante ›'}</button>
         </div>
       </div>
     </>
@@ -88,13 +116,13 @@ export default function Courses({ me, isStaff, toast, go }) {
       <div className="body">
         {mod.description && <p className="muted" style={{ margin: '0 0 10px' }}>{mod.description}</p>}
         <div className="post prog"><div className="barp" style={{ marginTop: 0 }}><i style={{ width: pct(mod) + '%' }} /></div>{resume && <button className="btn" style={{ marginTop: 10 }} onClick={() => setLessonId(resume.id)}>{nb ? 'Reprendre : ' : 'Commencer : '}{resume.title}</button>}</div>
-        {isStaff && edit && <div className="post"><b>Module</b><div className="grid2"><input defaultValue={mod.title} onBlur={e => e.target.value !== mod.title && save('modules', mod.id, { title: e.target.value })} /><select defaultValue={mod.tier_required} onChange={e => save('modules', mod.id, { tier_required: +e.target.value })}><option value={1}>Visible dès Démarrage</option><option value={2}>Réservé Accélération</option></select></div><textarea defaultValue={mod.description} rows={2} onBlur={e => e.target.value !== mod.description && save('modules', mod.id, { description: e.target.value })} /><div className="row"><label>Publié<small>Visible par les membres</small></label><input type="checkbox" defaultChecked={mod.published} onChange={e => save('modules', mod.id, { published: e.target.checked })} /></div></div>}
+        {isStaff && edit && <div className="post"><b>Module</b><div className="grid2"><input defaultValue={mod.title} onBlur={e => e.target.value !== mod.title && save('modules', mod.id, { title: e.target.value })} /><select defaultValue={mod.tier_required} onChange={e => save('modules', mod.id, { tier_required: +e.target.value })}><option value={1}>Visible dès Démarrage</option><option value={2}>Réservé Accélération</option></select></div><textarea defaultValue={mod.description} rows={2} onBlur={e => e.target.value !== mod.description && save('modules', mod.id, { description: e.target.value })} /><div className="row"><label>Publié<small>Visible par les membres</small></label><input type="checkbox" defaultChecked={mod.published} onChange={e => save('modules', mod.id, { published: e.target.checked })} /></div><div className="row"><label>Visionnage obligatoire<small>Leçon suivante bloquée tant que la vidéo n'est pas vue à {threshold} % (réglage global dans Admin)</small></label><input type="checkbox" defaultChecked={mod.gate !== false} onChange={e => save('modules', mod.id, { gate: e.target.checked })} /></div></div>}
         {secs.map(s => <div key={s.id} className="section">
           <div className="sechead">{isStaff && edit ? <input defaultValue={s.title} onBlur={e => e.target.value !== s.title && save('course_sections', s.id, { title: e.target.value })} /> : <b>{s.title}</b>}<small>{lessonsOf(s.id).length} leçon{lessonsOf(s.id).length > 1 ? 's' : ''}</small>{isStaff && edit && <button className="btn ghost sm danger" onClick={() => del('course_sections', s.id, s.title)}>✕</button>}</div>
-          {lessonsOf(s.id).map((l, k) => <button key={l.id} className={`lesson ${done[l.id] ? 'done' : ''} ${resume?.id === l.id ? 'cur' : ''}`} onClick={() => setLessonId(l.id)}>
-            <span className="ck">{done[l.id] ? '✓' : k + 1}</span><span className="t">{l.title}{!l.video_url && isStaff && <small className="muted"> · sans vidéo</small>}</span><span className="d">{l.duration}</span>
+          {lessonsOf(s.id).map((l, k) => { const lk = lessonLocked(l); return <button key={l.id} className={`lesson ${done[l.id] ? 'done' : ''} ${resume?.id === l.id ? 'cur' : ''} ${lk ? 'lk' : ''}`} onClick={() => lk ? toast('Termine d\'abord la leçon précédente') : setLessonId(l.id)}>
+            <span className="ck">{done[l.id] ? '✓' : lk ? '🔒' : k + 1}</span><span className="t">{l.title}{!l.video_url && isStaff && <small className="muted"> · sans vidéo</small>}</span><span className="d">{l.duration}</span>
             {isStaff && edit && <span className="x" onClick={e => { e.stopPropagation(); del('lessons', l.id, l.title) }}>✕</span>}
-          </button>)}
+          </button> })}
           {isStaff && edit && <button className="btn ghost sm" onClick={() => add('lessons', { section_id: s.id, position: lessonsOf(s.id).length + 1, title: 'Nouvelle leçon' })}>+ Leçon</button>}
         </div>)}
         {isStaff && edit && <button className="btn ghost sm" onClick={() => add('course_sections', { module_id: mod.id, position: secs.length + 1, title: 'Nouvelle section' })}>+ Section</button>}
