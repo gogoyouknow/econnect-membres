@@ -14,6 +14,7 @@ import Admin from './views/Admin'
 import Side from './views/Side'
 import Upsell from './views/Upsell'
 import Journey from './views/Journey'
+import Courses from './views/Courses'
 import Tracking from './views/Tracking'
 import Logo from './lib/Logo'
 import Onboarding from './views/Onboarding'
@@ -21,6 +22,7 @@ import Profile from './views/Profile'
 
 const VIEWS = [
   { id: 'journey', k: '🧭', label: 'Mon parcours', group: 'Espaces', memberOnly: true },
+  { id: 'courses', k: '🎓', label: 'Cours', group: 'Espaces' },
   { id: 'general', k: '💬', label: 'Chat général', group: 'Espaces' },
   { id: 'feed', k: '📰', label: 'Fil & questions', group: 'Espaces' },
   { id: 'lives', k: '🔴', label: 'Lives & replays', group: 'Espaces' },
@@ -110,6 +112,7 @@ export default function App() {
   else if (view === 'members') main = <Members {...ctx} />
   else if (view === 'profile') main = <Profile {...ctx} />
   else if (view === 'journey') main = <Journey {...ctx} />
+  else if (view === 'courses') main = <Courses {...ctx} />
   else if (view === 'tracking' && isStaff) main = <Tracking {...ctx} />
   else if (view === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
   else if (view === 'moderation' && isStaff) main = <Moderation {...ctx} />
@@ -143,7 +146,7 @@ export default function App() {
       <Side {...ctx} />
 
       <nav className="tabbar">
-        {(isStaff ? [['general', '💬', 'Chat'], ['feed', '📰', 'Fil'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['journey', '🧭', 'Parcours'], ['feed', '📰', 'Fil'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>
+        {(isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>
           <button key={id} className={view === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
         <button className={rail ? 'on' : ''} onClick={() => setRail(r => !r)}><span>☰</span>Plus</button>
       </nav>
