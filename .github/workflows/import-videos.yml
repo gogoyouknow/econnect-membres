@@ -1,0 +1,22 @@
+name: Import vidéos → Bunny → Cours
+on:
+  push:
+    paths: ['videos/import-*.json']
+  workflow_dispatch:
+    inputs:
+      list: { description: 'Fichier JSON (videos/import-xxx.json)', required: true }
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg jq > /dev/null
+      - name: Importer
+        run: |
+          if [ -n "${{ github.event.inputs.list }}" ]; then lists="${{ github.event.inputs.list }}"; else lists=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'videos/import-*.json' | grep . || ls videos/import-*.json); fi
+          for l in $lists; do [ -f "$l" ] && bash videos/import.sh "$l"; done
+      - name: Sauver le résultat
+        run: |
+          git config user.name "robot-import" && git config user.email "robot@theambitiousman.fr"
+          git add videos/done-*.json && git commit -m "Import vidéos : résultat" && git push || echo "rien à sauver"
