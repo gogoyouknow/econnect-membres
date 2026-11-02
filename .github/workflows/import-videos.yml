@@ -5,6 +5,8 @@ on:
   workflow_dispatch:
     inputs:
       list: { description: 'Fichier JSON (videos/import-xxx.json)', required: true }
+permissions:
+  contents: write
 jobs:
   import:
     runs-on: ubuntu-latest
