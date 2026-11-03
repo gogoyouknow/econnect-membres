@@ -1,0 +1,15 @@
+[
+ "0001_init.sql",
+ "0002_lock_roles.sql",
+ "0003_onboarding.sql",
+ "0004_chat_plus.sql",
+ "0005_emails.sql",
+ "0006_hotmart.sql",
+ "0007_hotmart_log.sql",
+ "0008_abonnement.sql",
+ "0009_parcours.sql",
+ "0010_cours.sql",
+ "0011_visionnage.sql",
+ "0012_import_video.sql",
+ "0013_import_lecon.sql"
+]
