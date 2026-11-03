@@ -13,10 +13,12 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg jq > /dev/null
       - name: Importer
         run: |
-          if [ -n "${{ github.event.inputs.list }}" ]; then lists="${{ github.event.inputs.list }}"; else lists=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'videos/import-*.json' | grep . || ls videos/import-*.json); fi
+          if [ -n "${{ github.event.inputs.list }}" ]; then lists="${{ github.event.inputs.list }}"; else lists=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'videos/import-*.json' 2>/dev/null | grep . || ls -t videos/import-*.json | head -1); fi
+          echo "listes : $lists"
           for l in $lists; do [ -f "$l" ] && bash videos/import.sh "$l"; done
       - name: Sauver le résultat
         run: |
