@@ -1,7 +1,8 @@
 {
-  "bunny_library": "797634",
-  "bunny_api_key": "c02c0584-6499-430f-a7a138bb7e42-9252-47f0",
-  "supabase_url": "https://jfournnrqewntnfyptic.supabase.co",
-  "supabase_anon": "sb_publishable_uIqvifUhbt8o-rBn13uUmQ_g7U6idOe",
-  "import_key": "8JHAlqDlx1gP-KcQd4azv-31MaYhswmW"
+ "bunny_library": "797634",
+ "bunny_api_key": "c02c0584-6499-430f-a7a138bb7e42-9252-47f0",
+ "supabase_url": "https://jfournnrqewntnfyptic.supabase.co",
+ "supabase_anon": "sb_publishable_uIqvifUhbt8o-rBn13uUmQ_g7U6idOe",
+ "import_key": "8JHAlqDlx1gP-KcQd4azv-31MaYhswmW",
+ "supabase_ref": "jfournnrqewntnfyptic"
 }

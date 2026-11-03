@@ -1,0 +1,33 @@
+name: SQL → Supabase
+on:
+  push:
+    paths: ['supabase/migrations/*.sql']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Appliquer les SQL non encore appliqués
+        env:
+          PAT: ${{ secrets.SUPABASE_PAT }}
+        run: |
+          if [ -z "$PAT" ]; then echo "Secret SUPABASE_PAT absent (GitHub → Settings → Secrets → Actions)"; exit 1; fi
+          REF=$(jq -r .supabase_ref videos/keys.json)
+          for f in $(ls supabase/migrations/*.sql | sort); do
+            b=$(basename "$f")
+            if jq -e --arg b "$b" 'index($b)' supabase/applied.json > /dev/null; then continue; fi
+            echo "=== $b"
+            body=$(jq -Rs '{query: .}' "$f")
+            code=$(curl -sS -o /tmp/out.json -w "%{http_code}" -X POST "https://api.supabase.com/v1/projects/$REF/database/query" -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" -d "$body")
+            head -c 600 /tmp/out.json; echo; echo "HTTP $code"
+            if [ "$code" != "200" ] && [ "$code" != "201" ]; then echo "ÉCHEC $b"; exit 1; fi
+            jq --arg b "$b" '. + [$b]' supabase/applied.json > /tmp/a.json && mv /tmp/a.json supabase/applied.json
+          done
+      - name: Mémoriser
+        if: always()
+        run: |
+          git config user.name "robot-sql" && git config user.email "robot@theambitiousman.fr"
+          git add supabase/applied.json && git commit -m "SQL appliqué" && git push || echo "rien à sauver"
