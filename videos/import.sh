@@ -20,6 +20,9 @@ for i in $(seq 0 $((n-1))); do
   if [ -n "$lesson" ]; then
     curl -sS -X POST "$SB/rest/v1/rpc/import_lesson_video?apikey=$ANON" -H "Content-Type: application/json" \
       -d "{\"p_lesson\":$lesson,\"p_url\":\"$embed\",\"p_duration\":\"$dur\",\"p_key\":\"$IK\"}" -w "\nleçon $lesson : HTTP %{http_code}\n"
+  else
+    jq -c --arg e "$embed" --arg d "$dur" --arg k "$IK" ".[$i] | {p_module:.module, p_section_pos:.section_pos, p_section:.section, p_lesson_pos:.position, p_title:.lesson, p_url:\$e, p_duration:\$d, p_key:\$k}" "$LIST" > /tmp/body.json
+    curl -sS -X POST "$SB/rest/v1/rpc/import_lesson?apikey=$ANON" -H "Content-Type: application/json" --data-binary @/tmp/body.json -w "\nleçon créée : HTTP %{http_code}\n"
   fi
   jq --arg t "$title" --arg g "$guid" --arg e "$embed" --arg d "$dur" --argjson l "${lesson:-null}" '. + [{title:$t, guid:$g, embed:$e, duration:$d, lesson_id:$l}]' "$OUT" > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
   rm -f "$f"
