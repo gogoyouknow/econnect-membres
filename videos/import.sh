@@ -6,6 +6,14 @@ LIB=$(jq -r .bunny_library "$KEYS"); KEY=$(jq -r .bunny_api_key "$KEYS")
 SB=$(jq -r .supabase_url "$KEYS"); ANON=$(jq -r .supabase_anon "$KEYS"); IK=$(jq -r .import_key "$KEYS")
 OUT="videos/done-$(basename "$LIST")"; echo "[]" > "$OUT"
 n=$(jq length "$LIST")
+# Si la liste crée des leçons, on attend que la fonction import_lesson existe (SQL 0013 appliqué), jusqu'à 2 h
+if [ "$(jq -r '.[0].lesson_id // empty' "$LIST")" = "" ]; then
+  for w in $(seq 1 240); do
+    code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$SB/rest/v1/rpc/import_lesson?apikey=$ANON" -H "Content-Type: application/json" -d '{"p_key":"x"}')
+    [ "$code" != "404" ] && break
+    echo "en attente du SQL 0013 (import_lesson absent)… $w"; sleep 30
+  done
+fi
 for i in $(seq 0 $((n-1))); do
   title=$(jq -r ".[$i].title" "$LIST"); url=$(jq -r ".[$i].url" "$LIST"); lesson=$(jq -r ".[$i].lesson_id // empty" "$LIST")
   echo "=== [$((i+1))/$n] $title"
