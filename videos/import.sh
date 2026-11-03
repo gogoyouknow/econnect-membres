@@ -9,7 +9,7 @@ n=$(jq length "$LIST")
 # Si la liste crée des leçons, on attend que la fonction import_lesson existe (SQL 0013 appliqué), jusqu'à 2 h
 if [ "$(jq -r '.[0].lesson_id // empty' "$LIST")" = "" ]; then
   for w in $(seq 1 240); do
-    code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$SB/rest/v1/rpc/import_lesson?apikey=$ANON" -H "Content-Type: application/json" -d '{"p_key":"x"}')
+    code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$SB/rest/v1/rpc/import_lesson?apikey=$ANON" -H "Content-Type: application/json" -d '{"p_module":0,"p_section_pos":0,"p_section":"","p_lesson_pos":0,"p_title":"","p_url":"","p_duration":"","p_key":"x"}')
     [ "$code" != "404" ] && break
     echo "en attente du SQL 0013 (import_lesson absent)… $w"; sleep 30
   done
