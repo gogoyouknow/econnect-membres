@@ -415,7 +415,7 @@ html,#root,.main{overscroll-behavior-x:none}
 .lesson .th img{width:100%;height:100%;object-fit:cover;display:block}
 .lesson .th.empty{background:linear-gradient(145deg,#1a1a1a,#0d0d0d);border:1px solid var(--line,#1f1f1f)}
 .lesson.lk .th img{filter:grayscale(1) brightness(.6)}
-.modcard .cover{position:relative;margin:-16px -18px 12px;border-radius:var(--r) var(--r) 0 0;overflow:hidden;aspect-ratio:16/6;background:#000}
+.modcard .cover{position:relative;margin:-16px -18px 12px;border-radius:var(--r) var(--r) 0 0;overflow:hidden;aspect-ratio:16/5;max-height:170px;background:#000}
 .modcard .cover img{width:100%;height:100%;object-fit:cover;display:block}
 .modcard.locked .cover img{filter:grayscale(1) brightness(.45)}
 .modcard .cover span{position:absolute;inset:0;display:grid;place-items:center;font-size:28px}
