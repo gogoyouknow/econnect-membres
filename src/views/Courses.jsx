@@ -120,7 +120,7 @@ export default function Courses({ me, isStaff, toast, go, settings }) {
         {secs.map(s => <div key={s.id} className="section">
           <div className="sechead">{isStaff && edit ? <input defaultValue={s.title} onBlur={e => e.target.value !== s.title && save('course_sections', s.id, { title: e.target.value })} /> : <b>{s.title}</b>}<small>{lessonsOf(s.id).length} leçon{lessonsOf(s.id).length > 1 ? 's' : ''}</small>{isStaff && edit && <button className="btn ghost sm danger" onClick={() => del('course_sections', s.id, s.title)}>✕</button>}</div>
           {lessonsOf(s.id).map((l, k) => { const lk = lessonLocked(l); return <button key={l.id} className={`lesson ${done[l.id] ? 'done' : ''} ${resume?.id === l.id ? 'cur' : ''} ${lk ? 'lk' : ''}`} onClick={() => lk ? toast('Termine d\'abord la leçon précédente') : setLessonId(l.id)}>
-            <span className="ck">{done[l.id] ? '✓' : lk ? '🔒' : k + 1}</span>{thumbOf(l.video_url) ? <span className="th"><img src={thumbOf(l.video_url)} alt="" loading="lazy" /></span> : <span className="th empty">▶</span>}<span className="t">{l.title}{!l.video_url && isStaff && <small className="muted"> · sans vidéo</small>}</span><span className="d">{l.duration}</span>
+            <span className="ck">{done[l.id] ? '✓' : lk ? '🔒' : k + 1}</span><Thumb className="th" srcs={[l.thumb_url, `/thumbs/l${l.id}.jpg`, thumbOf(l.video_url)]} /><span className="t">{l.title}{!l.video_url && isStaff && <small className="muted"> · sans vidéo</small>}</span><span className="d">{l.duration}</span>
             {isStaff && edit && <span className="x" onClick={e => { e.stopPropagation(); del('lessons', l.id, l.title) }}>✕</span>}
           </button> })}
           {isStaff && edit && <button className="btn ghost sm" onClick={() => add('lessons', { section_id: s.id, position: lessonsOf(s.id).length + 1, title: 'Nouvelle leçon' })}>+ Leçon</button>}
@@ -135,8 +135,8 @@ export default function Courses({ me, isStaff, toast, go, settings }) {
     <div className="head"><div style={{ flex: 1 }}><h2>Cours</h2><small>{c.modules.filter(m => m.published).length} modules · avance dans l'ordre</small></div>{isStaff && <button className="btn ghost sm" onClick={() => setEdit(v => !v)}>{edit ? 'Fermer' : '✎ Modifier'}</button>}</div>
     <div className="body">
       <div className="cards">
-        {c.modules.filter(m => m.published || isStaff).map(m => { const p = pct(m), lk = locked(m); const cover = m.cover_url || thumbOf(c.sections.filter(s => s.module_id === m.id).flatMap(s => lessonsOf(s.id)).find(l => thumbOf(l.video_url))?.video_url); return <div key={m.id} className={`post mcard modcard ${lk ? 'locked' : ''} ${!m.published ? 'draft' : ''}`} onClick={() => !lk && setModuleId(m.id)}>
-          {cover && <div className="cover"><img src={cover} alt="" loading="lazy" />{lk && <span>🔒</span>}</div>}
+        {c.modules.filter(m => m.published || isStaff).map(m => { const p = pct(m), lk = locked(m); const first = c.sections.filter(s => s.module_id === m.id).flatMap(s => lessonsOf(s.id))[0]; return <div key={m.id} className={`post mcard modcard ${lk ? 'locked' : ''} ${!m.published ? 'draft' : ''}`} onClick={() => !lk && setModuleId(m.id)}>
+          <Thumb className="cover" srcs={[m.cover_url, `/thumbs/m${m.id}.jpg`, first && `/thumbs/l${first.id}.jpg`, first && thumbOf(first.video_url)]} extra={lk && <span>🔒</span>} />
           <div className="mem"><div className="num">{lk ? '🔒' : m.position}</div><div style={{ flex: 1, minWidth: 0 }}><b>{m.title}</b><small>{m.description}</small></div></div>
           <div className="meta">{lk ? <span>Réservé {TIER_LABEL[m.tier_required]}</span> : <><span>{c.sections.filter(s => s.module_id === m.id).flatMap(s => lessonsOf(s.id)).length} leçons</span><span>·</span><span>{p} %</span></>}{!m.published && <span className="pill">brouillon</span>}</div>
           {!lk && <div className="barp"><i style={{ width: p + '%' }} /></div>}
@@ -155,6 +155,14 @@ export function thumbOf(url) {
   let m = url.match(/mediadelivery\.net\/(?:embed|play)\/(\d+)\/([0-9a-f-]{36})/); if (m && BUNNY_CDN[m[1]]) return `https://${BUNNY_CDN[m[1]]}/${m[2]}/thumbnail_3.jpg`
   m = url.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?v=|embed\/))([\w-]{11})/); if (m) return `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg`
   return ''
+}
+
+/** Image avec repli : essaie chaque source dans l'ordre (vignette Circle importée, puis image Bunny) */
+function Thumb({ srcs, className, extra }) {
+  const list = srcs.filter(Boolean)
+  const [i, setI] = useState(0)
+  if (!list.length || i >= list.length) return className === 'th' ? <span className="th empty">▶</span> : null
+  return <span className={className}><img src={list[i]} alt="" loading="lazy" onError={() => setI(i + 1)} />{extra}</span>
 }
 
 function linkify(t) {

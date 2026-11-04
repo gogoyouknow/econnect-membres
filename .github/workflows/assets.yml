@@ -1,0 +1,32 @@
+name: Images → app
+on:
+  push:
+    paths: ['videos/assets-*.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Télécharger
+        run: |
+          mkdir -p public/thumbs
+          lists=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'videos/assets-*.json' 2>/dev/null | grep . || ls -t videos/assets-*.json | head -1)
+          for l in $lists; do
+            n=$(jq length "$l")
+            for i in $(seq 0 $((n-1))); do
+              f=$(jq -r ".[$i].file" "$l"); u=$(jq -r ".[$i].url" "$l")
+              code=$(curl -sSL -o "public/thumbs/$f" -w "%{http_code}" "$u") || true
+              echo "$f : HTTP $code $(stat -c %s "public/thumbs/$f" 2>/dev/null) o"
+              [ "$code" = "200" ] || rm -f "public/thumbs/$f"
+            done
+          done
+          # recadrage léger : on garde l'image telle quelle (JPEG), juste limitée à 1280 px de large
+          sudo apt-get install -y -qq imagemagick > /dev/null && for f in public/thumbs/*.jpg; do mogrify -resize '1280x>' -quality 85 "$f"; done || true
+      - name: Enregistrer
+        run: |
+          git config user.name "robot-images" && git config user.email "robot@theambitiousman.fr"
+          git add public/thumbs && git commit -m "Images Circle (vignettes, couvertures)" && git push || echo "rien"
