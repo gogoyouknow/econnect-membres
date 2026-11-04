@@ -35,4 +35,15 @@ for i in $(seq 0 $((n-1))); do
   jq --arg t "$title" --arg g "$guid" --arg e "$embed" --arg d "$dur" --argjson l "${lesson:-null}" '. + [{title:$t, guid:$g, embed:$e, duration:$d, lesson_id:$l}]' "$OUT" > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
   rm -f "$f"
 done
+# Vignettes : une fois l'encodage fini, on prend l'image du milieu de la vidéo (thumbnail_3) plutôt que la 1re seconde (souvent noire)
+for w in $(seq 1 60); do
+  pending=0
+  for g in $(jq -r '.[].guid' "$OUT"); do
+    st=$(curl -sS "https://video.bunnycdn.com/library/$LIB/videos/$g" -H "AccessKey: $KEY" | jq -r .status)
+    if [ "$st" = "4" ]; then
+      if ! grep -q "$g" /tmp/thumbs.done 2>/dev/null; then curl -sS -o /dev/null -X POST "https://video.bunnycdn.com/library/$LIB/videos/$g/thumbnail?thumbnailUrl=thumbnail_3.jpg" -H "AccessKey: $KEY" && echo "$g" >> /tmp/thumbs.done && echo "vignette : $g"; fi
+    elif [ "$st" != "5" ]; then pending=1; fi
+  done
+  [ "$pending" = "0" ] && break; sleep 30
+done
 cat "$OUT"
