@@ -152,7 +152,7 @@ const BUNNY_CDN = { 797634: 'vz-e6265c08-fa4.b-cdn.net' }
 /** Vignette d'une leçon : Bunny (thumbnail.jpg), YouTube (hqdefault), sinon rien */
 export function thumbOf(url) {
   if (!url) return ''
-  let m = url.match(/mediadelivery\.net\/(?:embed|play)\/(\d+)\/([0-9a-f-]{36})/); if (m && BUNNY_CDN[m[1]]) return `https://${BUNNY_CDN[m[1]]}/${m[2]}/thumbnail.jpg?t=3`
+  let m = url.match(/mediadelivery\.net\/(?:embed|play)\/(\d+)\/([0-9a-f-]{36})/); if (m && BUNNY_CDN[m[1]]) return `https://${BUNNY_CDN[m[1]]}/${m[2]}/thumbnail_3.jpg`
   m = url.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?v=|embed\/))([\w-]{11})/); if (m) return `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg`
   return ''
 }
