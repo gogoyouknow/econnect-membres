@@ -426,3 +426,4 @@ html,#root,.main{overscroll-behavior-x:none}
 .modgrid .modcard{display:flex;flex-direction:column}
 .modgrid .mcard .meta{margin-left:0}
 @media (max-width:900px){.modgrid{grid-template-columns:1fr}}
+@media (max-width:900px){.modgrid .modcard .mem small{display:none}}
