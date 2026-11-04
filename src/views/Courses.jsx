@@ -134,7 +134,7 @@ export default function Courses({ me, isStaff, toast, go, settings }) {
   return <>
     <div className="head"><div style={{ flex: 1 }}><h2>Cours</h2><small>{c.modules.filter(m => m.published).length} modules · avance dans l'ordre</small></div>{isStaff && <button className="btn ghost sm" onClick={() => setEdit(v => !v)}>{edit ? 'Fermer' : '✎ Modifier'}</button>}</div>
     <div className="body">
-      <div className="cards">
+      <div className="cards modgrid">
         {c.modules.filter(m => m.published || isStaff).map(m => { const p = pct(m), lk = locked(m); const first = c.sections.filter(s => s.module_id === m.id).flatMap(s => lessonsOf(s.id))[0]; return <div key={m.id} className={`post mcard modcard ${lk ? 'locked' : ''} ${!m.published ? 'draft' : ''}`} onClick={() => !lk && setModuleId(m.id)}>
           <Thumb className="cover" srcs={[m.cover_url, `/thumbs/m${m.id}.jpg`, first && `/thumbs/l${first.id}.jpg`, first && thumbOf(first.video_url)]} extra={lk && <span>🔒</span>} />
           <div className="mem"><div className="num">{lk ? '🔒' : m.position}</div><div style={{ flex: 1, minWidth: 0 }}><b>{m.title}</b><small>{m.description}</small></div></div>
