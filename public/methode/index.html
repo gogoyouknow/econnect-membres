@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<base href="/methode/">
+<title>La Méthode E-Connect · Lance ta boutique en ligne</title>
+<meta name="description" content="La méthode pas à pas pour créer ta boutique, trouver un produit gagnant et lancer tes premières publicités avec un petit budget. 97 €, accès à vie.">
+<meta property="og:title" content="La Méthode E-Connect">
+<meta property="og:description" content="Crée ta boutique, trouve un produit gagnant et lance tes premières pubs avec un petit budget.">
+<meta property="og:image" content="https://econnect-membres.vercel.app/methode/img/hero.webp">
+<meta property="og:type" content="website">
+<link rel="icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Poppins:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: squelette exact de la page SPARK (même ordre, même texte), mis à niveau avec les blocs qui convertissent : VSL, chiffres, comparatifs, valeurs, carrousel de résultats, 3 étapes d'accès, barre d'achat mobile */
+:root {
+  --bg: #0a0a0a;
+  --bg2: #141414;
+  --card: #1a1a1a;
+  --line: #2a2a2a;
+  --fg: #ffffff;
+  --muted: #a3a3a3;
+  --gold: #f5c518;
+  --gold-soft: rgba(245, 197, 24, 0.12);
+  --green: #1fa34a;
+  --green-hi: #25bd57;
+  --paper: #f6f4ee;
+  --ink: #111111;
+  --display: "Bricolage Grotesque", "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --body: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16.5px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+img { display: block; max-width: 100%; height: auto; }
+.sec { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: clamp(52px, 8vw, 88px); }
+.sec.alt { background: var(--bg2); }
+.sec.paper { background: var(--paper); color: var(--ink); }
+.wrap { max-width: 920px; margin: 0 auto; }
+.narrow { max-width: 680px; margin: 0 auto; }
+.center { text-align: center; }
+h1, h2, h3 { font-family: var(--display); font-weight: 800; letter-spacing: -0.025em; line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(32px, 5.8vw, 54px); }
+h2 { font-size: clamp(26px, 4.4vw, 40px); }
+h3 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; }
+p { margin: 0; }
+.g { color: var(--gold); }
+.u { text-decoration: underline; text-decoration-color: var(--gold); text-decoration-thickness: 3px; text-underline-offset: 5px; }
+.lead { color: #cfcfcf; font-size: clamp(16px, 1.8vw, 18px); margin-top: 14px; }
+.paper .lead { color: #444; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+
+/* CTA */
+.cta { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 28px; }
+.btn { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; text-align: center; background: linear-gradient(180deg, var(--green-hi), var(--green)); color: #fff; border-radius: 999px; padding: 16px 34px; box-shadow: 0 10px 30px -10px rgba(37, 189, 87, .6); transition: transform .15s ease; max-width: 100%; }
+.btn:hover { transform: translateY(-2px); }
+.btn:focus-visible, summary:focus-visible, .nav-b:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+.btn b { font-weight: 800; font-size: clamp(16px, 2vw, 19px); text-transform: uppercase; letter-spacing: .01em; line-height: 1.25; }
+.btn span { font-size: 13px; opacity: .9; margin-top: 2px; }
+.trust { display: flex; gap: 6px 16px; flex-wrap: wrap; justify-content: center; font-size: 13px; color: var(--muted); }
+.paper .trust { color: #555; }
+.trust span::before { content: "✓ "; color: var(--gold); font-weight: 800; }
+.paper .trust span::before { color: var(--green); }
+
+/* hero */
+.bar { background: var(--gold); color: #111; font-weight: 700; font-size: clamp(13px, 1.6vw, 15px); text-align: center; border-radius: 10px; padding: 9px 14px; display: inline-block; }
+.logo { display: flex; justify-content: center; align-items: center; gap: 10px; font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: -.02em; margin-bottom: 26px; }
+.logo i { width: 34px; height: 34px; border-radius: 9px; background: #fff; display: grid; place-items: center; }
+.logo i svg { width: 18px; height: 18px; }
+.hero { position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; left: 50%; top: -200px; width: 900px; height: 600px; transform: translateX(-50%); background: radial-gradient(ellipse, rgba(245, 197, 24, .16), transparent 65%); pointer-events: none; }
+.hero > * { position: relative; }
+.hero h1 { margin-top: 18px; }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
+.chips span { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+.vsl { margin: 30px auto 0; max-width: 640px; aspect-ratio: 16 / 9; border-radius: 18px; border: 2px solid var(--gold); background: radial-gradient(circle at 50% 45%, rgba(245, 197, 24, .2), transparent 60%), #0f0f0f; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--muted); font-size: 14px; }
+.vsl i { width: 74px; height: 74px; border-radius: 50%; background: var(--gold); display: grid; place-items: center; box-shadow: 0 0 0 10px rgba(245, 197, 24, .15); }
+.vsl i svg { width: 28px; height: 28px; margin-left: 4px; }
+.students { margin: 26px auto 0; max-width: 520px; }
+.students p { font-size: 14px; color: var(--muted); margin-top: 8px; }
+.price-line { margin-top: 26px; font-family: var(--display); font-weight: 800; font-size: clamp(22px, 3.4vw, 30px); letter-spacing: -.01em; text-transform: uppercase; }
+.mock { margin: 22px auto 0; max-width: 820px; border-radius: 18px; overflow: hidden; }
+
+/* stats */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; text-align: center; }
+.stat b { display: block; font-family: var(--display); font-weight: 800; font-size: clamp(26px, 3.6vw, 34px); color: var(--gold); line-height: 1.05; letter-spacing: -.03em; white-space: nowrap; }
+.stat span { color: var(--muted); font-size: 13.5px; }
+
+/* problem compare */
+.cmp { margin-top: 30px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.col { border-radius: 18px; padding: 22px; min-width: 0; }
+.col.y17 { background: var(--card); border: 1px solid var(--line); }
+.col.y25 { background: #1d1212; border: 1px solid #4a2323; }
+.col .yr { font-family: var(--display); font-weight: 800; font-size: 34px; letter-spacing: -.03em; }
+.col.y25 .yr { color: #ff6b5a; }
+.col p.t { color: var(--muted); font-size: 14.5px; margin: 4px 0 12px; }
+.col ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; font-size: 15px; }
+.col li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; }
+.col.y17 li::before { content: "→"; color: var(--muted); }
+.col.y25 li::before { content: "✕"; color: #ff6b5a; font-weight: 700; }
+.result { margin-top: 14px; border-left: 4px solid #ff6b5a; padding: 12px 16px; background: #1d1212; border-radius: 0 12px 12px 0; font-size: 15.5px; }
+.result b { color: #ff6b5a; }
+
+/* new model */
+.model { margin-top: 26px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mi { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: start; font-size: 15.5px; }
+.mi i { width: 28px; height: 28px; border-radius: 8px; background: var(--gold); color: #111; display: grid; place-items: center; font-style: normal; font-weight: 800; }
+.mi b { color: var(--gold); }
+.model-note { margin-top: 16px; text-align: center; color: #cfcfcf; }
+
+/* situations */
+.sits { margin-top: 28px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.sit { background: #fff; color: var(--ink); border-radius: 18px; padding: 18px; display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 16px; align-items: center; }
+.sit img { width: 84px; height: 84px; border-radius: 14px; }
+.sit p { font-size: 15.5px; font-weight: 500; line-height: 1.45; }
+.yes-box { margin-top: 22px; text-align: center; font-size: 17px; }
+.yes-box b { background: var(--gold); color: #111; padding: 0 8px; border-radius: 6px; }
+
+/* story */
+.story { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: clamp(22px, 4vw, 44px); align-items: start; }
+.story .ph { border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
+.story .ph small { display: block; text-align: center; color: var(--muted); font-size: 12.5px; padding: 8px; background: var(--card); }
+.story .txt { display: flex; flex-direction: column; gap: 14px; color: #dcdcdc; }
+.story .txt b { color: #fff; }
+.frust { font-family: var(--display); font-weight: 800; font-size: 22px; color: #ff6b5a; letter-spacing: -.01em; }
+.turn { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: clamp(22px, 4vw, 44px); align-items: center; margin-top: 36px; }
+.turn .ph2 { border-radius: 18px; overflow: hidden; }
+.vision { margin-top: 30px; background: var(--gold); color: #111; border-radius: 20px; padding: clamp(22px, 3.4vw, 32px); }
+.vision h3 { font-size: clamp(20px, 2.6vw, 26px); }
+.vision p { margin-top: 10px; font-size: 16px; }
+.vision .final { margin-top: 16px; font-family: var(--display); font-weight: 800; font-size: clamp(19px, 2.4vw, 24px); }
+
+/* 4 steps */
+.steps4 { margin-top: 30px; display: flex; flex-direction: column; gap: 14px; }
+.s4 { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 18px; background: #fff; color: var(--ink); border-radius: 20px; padding: 22px; }
+.s4 .n { width: 56px; height: 56px; border-radius: 50%; background: var(--gold); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 26px; }
+.s4 h3 { margin-bottom: 6px; }
+.s4 p { color: #444; font-size: 15.5px; }
+.s4 p + p { margin-top: 8px; }
+.s4 strong { color: #111; }
+.only { margin-top: 18px; text-align: center; font-family: var(--display); font-weight: 800; font-size: 22px; }
+
+/* means */
+.means { margin-top: 28px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.means > div { border-radius: 18px; padding: 22px; }
+.means .no { background: #fff; border: 1px solid #e3e0d6; }
+.means .yes { background: #111; color: #fff; }
+.means h3 { margin-bottom: 12px; }
+.means ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; font-size: 15px; }
+.means li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; }
+.means .no li::before { content: "✕"; color: #c0392b; font-weight: 800; }
+.means .yes li::before { content: "✓"; color: var(--gold); font-weight: 800; }
+.learn { margin-top: 30px; display: flex; flex-direction: column; gap: 10px; }
+.learn div { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; font-size: 15.5px; background: #fff; border: 1px solid #e3e0d6; border-radius: 14px; padding: 14px 16px; }
+.learn div::before { content: "✓"; width: 22px; height: 22px; border-radius: 50%; background: var(--gold); display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+
+/* modules */
+.mods { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
+.mod { background: var(--card); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; }
+.mod img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; }
+.mod .b { padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; }
+.mod .k { font-size: 12px; font-weight: 700; letter-spacing: .12em; color: var(--gold); text-transform: uppercase; }
+.mod .b p { color: var(--muted); font-size: 15px; }
+.inc { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; font-size: 14px; }
+.inc span { color: #6fdc8c; font-weight: 600; }
+.inc span::before { content: "✓ "; }
+.inc s { color: var(--muted); }
+.bonus-t { margin-top: 44px; }
+.bons { margin-top: 22px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.bon { background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.bon img { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #0f0f0f; padding: 12px; }
+.bon .b { padding: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.bon .b p { color: var(--muted); font-size: 14px; }
+.bon .inc { margin-top: auto; padding-top: 8px; }
+.stackv { margin-top: 26px; background: var(--card); border: 2px solid var(--gold); border-radius: 22px; padding: 24px; }
+.sv-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.sv-row b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sv-tot { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-top: 16px; flex-wrap: wrap; }
+.sv-tot s { font-family: var(--display); color: var(--muted); font-size: 24px; }
+.sv-tot strong { font-family: var(--display); font-weight: 800; font-size: 48px; color: var(--gold); line-height: 1; letter-spacing: -.03em; }
+
+/* results */
+.car-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.nav { display: flex; gap: 8px; align-items: center; }
+.nav-b { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.nav-b:hover { border-color: var(--gold); color: var(--gold); }
+.nav-b svg { width: 18px; height: 18px; }
+.count { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.car { margin-top: 22px; display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; scrollbar-width: none; }
+.car::-webkit-scrollbar { display: none; }
+.shot { flex: 0 0 auto; width: min(260px, 72vw); margin: 0; scroll-snap-align: start; background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.shot img { width: 100%; height: 420px; object-fit: cover; object-position: top; }
+.shot.wide { width: min(500px, 86vw); }
+.shot.wide img { object-fit: contain; background: #fff; }
+.shot figcaption { padding: 14px 16px; }
+.shot figcaption b { font-family: var(--display); font-weight: 800; font-size: 22px; color: var(--gold); display: block; }
+.shot figcaption span { font-size: 14px; color: var(--muted); }
+.disc { margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+
+/* guarantee */
+.guar { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: clamp(20px, 4vw, 40px); align-items: center; }
+.guar ul { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.guar li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; font-size: 15.5px; }
+.guar li::before { content: "✓"; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%; background: var(--green); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 12px; }
+.notis { margin-top: 30px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.notis div { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; font-size: 15px; }
+.notis div::before { content: "✓"; color: var(--gold); font-weight: 800; }
+.nb { margin-top: 18px; background: #fff; color: #111; border-radius: 14px; padding: 16px; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; max-width: 420px; margin-inline: auto; box-shadow: 0 20px 40px -20px rgba(0,0,0,.6); }
+.nb .ic { width: 40px; height: 40px; border-radius: 10px; background: #5e8e3e; display: grid; place-items: center; }
+.nb .ic svg { width: 22px; height: 22px; }
+.nb b { display: block; font-size: 14.5px; }
+.nb small { color: #666; font-size: 12.5px; }
+.nb em { font-style: normal; color: #888; font-size: 12px; }
+
+/* recap */
+.recap { margin-top: 26px; background: #fff; color: #111; border-radius: 22px; overflow: hidden; border: 3px solid var(--gold); }
+.recap .rt { background: var(--gold); padding: 14px 20px; font-family: var(--display); font-weight: 800; font-size: 20px; text-align: center; }
+.recap ul { margin: 0; padding: 18px 22px; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 15.5px; }
+.recap li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; }
+.recap li::before { content: "»"; color: var(--gold); font-weight: 800; font-size: 20px; line-height: 1.1; }
+.recap .rp { text-align: center; padding: 0 20px 22px; }
+.recap .rp b { font-family: var(--display); font-weight: 800; font-size: 28px; }
+
+/* access steps */
+.acc { margin-top: 28px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.acc div { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+.acc i { width: 36px; height: 36px; border-radius: 50%; background: var(--gold); color: #111; display: grid; place-items: center; font-style: normal; font-weight: 800; margin-bottom: 12px; }
+.acc p { color: var(--muted); font-size: 14.5px; margin-top: 6px; }
+
+/* trainer */
+.trainer { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: clamp(22px, 4vw, 44px); align-items: center; }
+.trainer .ph { border-radius: 20px; overflow: hidden; border: 2px solid var(--gold); }
+.trainer .txt { display: flex; flex-direction: column; gap: 12px; color: #dcdcdc; }
+.trainer .txt b { color: #fff; }
+
+/* faq */
+.faq { margin-top: 26px; display: flex; flex-direction: column; gap: 10px; }
+details { background: #fff; color: #111; border-radius: 14px; padding: 0 18px; }
+summary { cursor: pointer; list-style: none; padding: 16px 0; display: flex; justify-content: space-between; gap: 14px; align-items: center; font-weight: 600; font-size: 15.5px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: ""; width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; background: var(--gold) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5' fill='none' stroke='%23111' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat; transition: transform .2s; }
+details[open] summary::after { transform: rotate(180deg); }
+details p { color: #444; padding-bottom: 16px; font-size: 15px; }
+details p + p { margin-top: -6px; }
+
+/* order */
+.order { background: radial-gradient(ellipse at 50% 0%, rgba(245, 197, 24, .12), transparent 60%), var(--bg); border-top: 1px solid var(--line); }
+.o-items { margin-top: 26px; display: flex; flex-direction: column; gap: 16px; }
+.o-item { position: relative; display: grid; grid-template-columns: 26px 54px minmax(0, 1fr) auto; gap: 14px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; cursor: pointer; }
+.o-item input { position: absolute; opacity: 0; pointer-events: none; }
+.o-box { width: 26px; height: 26px; border-radius: 7px; border: 2px solid var(--gold); display: grid; place-items: center; background: transparent; transition: background .15s; }
+.o-box svg { width: 16px; height: 16px; fill: none; stroke: #111; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.o-item input:checked + .o-box { background: var(--gold); }
+.o-item input:checked + .o-box svg { opacity: 1; }
+.o-item input:focus-visible + .o-box { outline: 3px solid var(--fg); outline-offset: 3px; }
+.o-item img { width: 54px; height: 40px; object-fit: cover; border-radius: 8px; }
+.o-txt small { display: block; color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.o-txt b { display: block; font-size: 16.5px; }
+.o-txt em { display: block; font-style: normal; color: var(--muted); font-size: 13px; }
+.o-price { font-family: var(--display); font-weight: 800; font-size: 24px; white-space: nowrap; text-align: right; }
+.o-price i { display: block; font-style: normal; font-family: var(--body); font-weight: 500; font-size: 12px; color: var(--muted); }
+.o-item.bump { grid-template-columns: 22px 26px minmax(0, 1fr) auto; border: 2px solid var(--gold); box-shadow: 0 0 40px -12px rgba(245, 197, 24, .55); margin-inline: 6px; padding-top: 24px; }
+.o-item.bump .o-price { color: var(--gold); }
+.o-arrow { color: var(--gold); font-weight: 800; font-size: 20px; animation: nudge 1.2s ease-in-out infinite; }
+@keyframes nudge { 50% { transform: translateX(4px); } }
+.o-tag { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: var(--gold); color: #111; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+.o-item.bump ul { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; color: var(--gold); }
+.o-item.bump li::before { content: "✓ "; }
+.o-total { margin-top: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+.o-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 600; }
+.o-row b { font-family: var(--display); font-weight: 800; font-size: 30px; }
+.o-sub { color: var(--muted); font-size: 13px; text-align: right; margin-top: 2px; }
+.o-btn { display: block; margin-top: 16px; text-align: center; text-decoration: none; text-transform: uppercase; font-weight: 800; font-size: 18px; letter-spacing: .02em; color: #fff; background: linear-gradient(180deg, var(--green-hi), var(--green)); border-radius: 14px; padding: 18px; box-shadow: 0 14px 40px -12px rgba(37, 189, 87, .7); }
+.o-btn:hover { filter: brightness(1.05); }
+.o-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+.o-safe { margin-top: 14px; text-align: center; color: var(--muted); font-size: 13px; }
+@media (max-width: 460px) { .o-item { grid-template-columns: 26px minmax(0, 1fr) auto; } .o-item img { display: none; } .o-item.bump { grid-template-columns: 26px minmax(0, 1fr) auto; } .o-arrow { display: none; } }
+
+footer { padding: 28px max(16px, env(safe-area-inset-right, 0px)) 110px max(16px, env(safe-area-inset-left, 0px)); text-align: center; color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); }
+footer p + p { margin-top: 6px; }
+
+.sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: rgba(10, 10, 10, .94); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sticky b { font-weight: 700; font-size: 14px; display: block; }
+.sticky small { color: var(--gold); font-weight: 700; font-size: 13px; }
+.sticky .btn { padding: 11px 20px; }
+.sticky .btn b { font-size: 14px; }
+
+@media (max-width: 760px) {
+  .stats, .cmp, .model, .sits, .means, .notis, .acc, .bons { grid-template-columns: minmax(0, 1fr); }
+  .story, .turn, .guar, .trainer { grid-template-columns: minmax(0, 1fr); }
+  .story .ph, .trainer .ph { max-width: 280px; margin: 0 auto; }
+  .turn .ph2 { max-width: 280px; margin: 0 auto; order: -1; }
+  .mod { grid-template-columns: minmax(0, 1fr); }
+  .guar img { max-width: 200px; margin: 0 auto; }
+  .s4 { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 1. HAUT DE PAGE -->
+<section class="sec hero">
+  <div class="wrap center">
+    <div class="logo"><i aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M8 32L32 8M14 8h18v18" fill="none" stroke="#0a0a0a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></i>E-<span class="g">CONNECT</span></div>
+    <span class="bar">Pour tout débutant(e) qui souhaite se lancer dans l'e-commerce en 2026 :</span>
+    <h1>Découvrez LA <span class="g">nouvelle méthode</span> <span class="u">E-CONNECT</span> pour se lancer dans l'e-commerce sans faire de dropshipping</h1>
+    <div class="chips"><span>Même si vous partez de zéro</span><span>Sans compte Stripe</span><span>Avec un petit capital</span><span>Sans outils coûteux</span></div>
+    <div class="students"><img src="img/eleves.webp" alt="Photos d'élèves de la méthode"><p>Rejoignez <b>+100 e-commerçants</b> satisfaits</p></div>
+    <p class="price-line">Obtenez tout ceci pour <span class="g u">seulement 97 €</span> aujourd'hui</p>
+    <div class="mock"><img src="img/hero.webp" alt="Le pack de la Méthode E-Connect : 4 modules et 3 bonus"></div>
+    <div class="cta"><a class="btn" href="#commander"><b>Oui, je veux accéder à la méthode maintenant</b><span>Accès immédiat pour seulement 97 €</span></a><div class="trust"><span>Paiement sécurisé</span><span>Accès immédiat</span><span>Garantie résultats 30 jours</span></div></div>
+  </div>
+</section>
+
+<!-- CHIFFRES (nouveau) -->
+<section class="sec alt" style="padding-block:28px">
+  <div class="wrap stats">
+    <div class="stat"><b>+100</b><span>élèves ont appliqué la méthode</span></div>
+    <div class="stat"><b>+60 000 €</b><span>de bénéfices pendant le Covid</span></div>
+    <div class="stat"><b>24-48 h</b><span>de livraison chez vos clients</span></div>
+  </div>
+</section>
+
+<!-- 2. LE DROPSHIPPING EST MORT -->
+<section class="sec">
+  <div class="wrap">
+    <div class="center narrow">
+      <h2>Soyons réalistes, les chiffres en e-commerce ne cessent de grimper depuis 2017</h2>
+      <p class="lead">Mais disons-nous la vérité : <b class="g">le dropshipping classique est mort.</b> Le « vieux modèle » ne fonctionne plus.</p>
+    </div>
+    <div class="cmp">
+      <div class="col y17"><div class="yr">2017</div><p class="t">Il vous fallait :</p><ul><li>Trouver un produit tendance sur Adspy ou Minea.</li><li>Commander chez un fournisseur sur AliExpress.</li><li>Créer une boutique Shopify à la va-vite.</li><li>Lancer des pubs Facebook en espérant faire quelques ventes.</li><li>Et recommencer tout à zéro dès que le produit ne marche plus.</li></ul></div>
+      <div class="col y25"><div class="yr">2026</div><p class="t">Trop saturé, trop risqué et trop instable. Il faut :</p><ul><li>Gérer les blocages Stripe, les retours clients, les délais de livraison interminables…</li><li>Gérer les blocages de Business Managers.</li><li>Voir vos marges fondre à cause de la concurrence.</li><li>Convaincre des clients qui ne font plus confiance aux boutiques « dropshipping ».</li></ul></div>
+    </div>
+    <p class="result"><b>Résultat :</b> des centaines d'entrepreneurs abandonnent avant même d'avoir eu leur première vente rentable.</p>
+  </div>
+</section>
+
+<!-- 3. NOUVEAU MODÈLE -->
+<section class="sec alt">
+  <div class="wrap">
+    <div class="center narrow">
+      <h2>En 2026, <span class="g">un nouveau modèle</span> a pris le relais.</h2>
+      <p class="lead">Un modèle plus simple, plus rapide et plus rentable. Un modèle où vous pouvez :</p>
+    </div>
+    <div class="model">
+      <div class="mi"><i>1</i><span>Vendre sur des <b>marchés vierges et inexploités</b> à faible concurrence</span></div>
+      <div class="mi"><i>2</i><span><b>Livrer vos clients en 24-48 heures</b>, pas en plusieurs semaines</span></div>
+      <div class="mi"><i>3</i><span>Créer une <b>boutique optimisée</b> avec des taux de conversion élevés, même sans design complexe</span></div>
+      <div class="mi"><i>4</i><span>Travailler avec des <b>clients plus confiants</b>, qui achètent sans hésiter</span></div>
+      <div class="mi"><i>5</i><span><b>Lancer vos premières ventes en quelques jours</b>, sans pub coûteuse ni outils compliqués</span></div>
+      <div class="mi"><i>6</i><span>Et surtout : le faire <b>sans faire de dropshipping</b></span></div>
+    </div>
+    <p class="model-note">Très peu de personnes parlent de ce nouveau modèle qui vous permet de faire de l'e-commerce sans blocage Stripe, PayPal, Meta, etc. <b class="g">Il s'appelle E-Connect.</b></p>
+  </div>
+</section>
+
+<!-- 4. LES 4 SITUATIONS -->
+<section class="sec">
+  <div class="wrap">
+    <h2 class="center">Peut-être l'une de ces situations vous semble familière…</h2>
+    <div class="sits">
+      <div class="sit"><img src="img/s1.webp" alt=""><p>Vous avez <b>déjà essayé le dropshipping classique</b>, mais vous avez perdu vos économies sans résultats concrets ?</p></div>
+      <div class="sit"><img src="img/s2.webp" alt=""><p>Vous avez passé des heures à chercher des produits « winners » sans jamais trouver celui qui marche vraiment ?</p></div>
+      <div class="sit"><img src="img/s3.webp" alt=""><p>Vous êtes fatigué des <b>blocages Stripe</b> ou PayPal, des délais AliExpress et des retours clients interminables ?</p></div>
+      <div class="sit"><img src="img/s4.webp" alt=""><p>Ou vous rêvez simplement de <b>créer un revenu en ligne stable</b>, sans toutes les galères du e-commerce classique ?</p></div>
+    </div>
+    <p class="yes-box">Si vous avez répondu <b>OUI</b> à au moins une de ces questions, continuez de lire cette page. Ce qui va suivre est fait pour vous…</p>
+  </div>
+</section>
+
+<!-- 5. HISTOIRE + VISION -->
+<section class="sec alt">
+  <div class="wrap">
+    <h2 class="center">Voici comment l'e-commerce <span class="g">a changé ma vie…</span></h2>
+    <div class="story" style="margin-top:32px">
+      <div class="ph"><img src="img/avant.webp" alt="Clément il y a 5 ans"><small>Moi il y a 5 ans</small></div>
+      <div class="txt">
+        <p><b>Hello ! Je suis Clément Gomes.</b></p>
+        <p>Ça, c'est moi il y a 5 ans, lorsque j'étais endetté à moins 8 000 € sur mes différents comptes.</p>
+        <p>Livreur Uber Eats, je travaillais de 9 h jusqu'à plus de 23 h, 7 jours sur 7, sans repos, pour me bâtir un capital.</p>
+        <p>J'ai réinvesti mes économies dans des formations et dans des coachings sans résultats concrets.</p>
+        <p class="frust">C'ÉTAIT VRAIMENT FRUSTRANT.</p>
+      </div>
+    </div>
+    <div class="turn">
+      <div class="stack" style="color:#dcdcdc">
+        <p><b style="color:#fff">Après 9 mois d'essais-erreurs</b>, j'ai fini par trouver 2 produits qui ont littéralement changé ma vie…</p>
+        <p>… et qui m'ont permis de <b class="g">générer plus de 60 000 € de bénéfices durant le Covid.</b></p>
+        <p>J'ai commencé à partager mes connaissances à un petit groupe de personnes qui ont obtenu assez rapidement des résultats, allant de 100 à 250 € net par jour.</p>
+      </div>
+      <div class="ph2"><img src="img/clement.webp" alt="Clément Gomes aujourd'hui"></div>
+    </div>
+    <div class="vision">
+      <h3>Et c'est là que j'ai compris une chose : ce qui manque à la plupart des débutants, ce n'est pas une formation de plus. C'est de passer à l'action.</h3>
+      <p>Aujourd'hui, ma priorité, ce sont les témoignages. Pour en avoir, il me faut des personnes motivées qui passent à l'action. Si vous passez à l'action, vous allez avoir des résultats. Et si vous avez des résultats, je peux vous accompagner plus loin.</p>
+      <p class="final">J'ai alors décidé de créer une méthode en 4 étapes simples pour partager tout ce qui m'a permis, à moi et à mes étudiants, de réussir dans l'e-commerce : la Méthode E-Connect.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6. LES 4 ÉTAPES -->
+<section class="sec paper">
+  <div class="wrap">
+    <div class="center narrow">
+      <h2>Générez vos premiers revenus en seulement 4 étapes simples avec la Méthode E-Connect :</h2>
+      <p class="lead">Pas besoin de regarder des dizaines de vidéos d'une formation de +50 heures pour vous lancer.</p>
+    </div>
+    <div class="steps4">
+      <div class="s4"><span class="n">1</span><div><h3>Créer une boutique en moins de 30 minutes</h3><p>Fini les boutiques compliquées ou mal configurées. Vous apprendrez à créer une <strong>boutique simple, rassurante et efficace</strong>, qui inspire confiance dès le premier clic.</p><p>Pas besoin d'être un expert : tout est pensé pour vous permettre de lancer rapidement une boutique prête à encaisser vos premières commandes.</p></div></div>
+      <div class="s4"><span class="n">2</span><div><h3>Identifier des produits gagnants</h3><p>Vous découvrirez comment identifier des <strong>produits qui se vendent facilement</strong>, avec une logistique plus fluide et des délais de livraison <strong>réduits à quelques jours seulement.</strong></p><p>Plus besoin d'attendre 3 semaines qu'un colis parte de Chine : vous travaillerez avec des solutions fiables, testées et prêtes à servir vos clients immédiatement.</p></div></div>
+      <div class="s4"><span class="n">3</span><div><h3>Lancer vos publicités avec un petit budget</h3><p>Vous mettrez en place un <strong>système de vente simple</strong> qui attire des clients chaque jour, sans dépendre d'algorithmes publicitaires capricieux.</p><p>Le tout avec des <strong>taux de conversion bien plus élevés</strong>, parce que vos clients achètent en toute confiance, sans peur d'être arnaqués, et parce qu'ils savent qu'ils recevront réellement ce qu'ils ont commandé.</p></div></div>
+      <div class="s4"><span class="n">4</span><div><h3>Encaisser en automatique</h3><p>Une fois vos pubs lancées, vous pouvez confier toute la logistique à une entreprise partenaire qui gère le stock, appelle les clients pour confirmer leurs commandes, livre les produits directement et transfère vos bénéfices sur votre compte bancaire chaque semaine, sans que vous n'ayez rien à faire.</p></div></div>
+    </div>
+    <p class="only">4 étapes simples, pas PLUS…</p>
+  </div>
+</section>
+
+<!-- 7. CE QUE CELA SIGNIFIE + CE QUE VOUS ALLEZ APPRENDRE -->
+<section class="sec paper" style="padding-top:0">
+  <div class="wrap">
+    <h2 class="center">Et voici ce que cela signifie pour vous…</h2>
+    <div class="means">
+      <div class="no"><h3>Plus besoin de :</h3><ul><li>Passer des heures à configurer votre boutique monoproduit.</li><li>Créer un compte Stripe et prier pour qu'il ne se fasse pas bloquer.</li><li>Convaincre des clients méfiants de sortir leur carte bancaire.</li><li>Gérer des litiges ou des remboursements interminables.</li><li>Attendre 3 semaines qu'un produit arrive d'AliExpress.</li></ul></div>
+      <div class="yes"><h3>À la place, ayez un système qui :</h3><ul><li>Inspire la confiance des clients dès le premier contact.</li><li>Offre des délais de livraison rapides et une expérience client fluide.</li><li>Génère des ventes stables avec un panier moyen plus élevé.</li><li>Vous permet de construire un vrai business e-commerce durable.</li><li>Vous apporte des clients satisfaits et fidèles.</li></ul></div>
+    </div>
+    <h2 class="center" style="margin-top:48px">À l'issue de ce programme, voici ce que vous allez apprendre</h2>
+    <div class="learn">
+      <div>Comment créer et lancer votre boutique en moins de 30 minutes, même si vous partez de zéro, pour commencer à vendre rapidement.</div>
+      <div>La méthode simple pour trouver des produits qui se vendent et maximiser vos ventes dès le début.</div>
+      <div>Un plan d'action pour maîtriser la publicité et attirer des centaines de clients sans besoin d'expérience.</div>
+      <div>Les astuces pour créer des créatives percutantes qui captivent vos prospects et boostent vos ventes.</div>
+      <div>Comment calculer facilement votre rentabilité en un clic pour maximiser vos profits.</div>
+    </div>
+    <div class="cta"><a class="btn" href="#commander"><b>Oui, je veux accéder à la méthode maintenant</b><span>Accès immédiat pour seulement 97 €</span></a></div>
+  </div>
+</section>
+
+<!-- 8. MODULES + BONUS + VALEUR -->
+<section class="sec" id="offre">
+  <div class="wrap">
+    <h2 class="center">Concrètement, voici ce à quoi vous aurez accès en rejoignant la Méthode E-Connect aujourd'hui :</h2>
+    <div class="mods">
+      <article class="mod"><img src="img/m1.webp" alt="Module 1 : boutique en moins de 30 minutes"><div class="b"><span class="k">Module 1</span><h3>Création d'une boutique en -30 min</h3><p>Créer une boutique en ligne optimisée, bien brandée, en 2 ou 3 clics, sans coder et sans être expert en design de site.</p><div class="inc"><span>Inclus dans l'offre</span><s>97 €</s></div></div></article>
+      <article class="mod"><img src="img/m2.webp" alt="Module 2 : trouver des produits gagnants"><div class="b"><span class="k">Module 2</span><h3>Trouver des produits gagnants</h3><p>Comment dénicher des produits à forte demande qui se vendent bien et vous rapportent de beaux bénéfices.</p><div class="inc"><span>Inclus dans l'offre</span><s>147 €</s></div></div></article>
+      <article class="mod"><img src="img/m3.webp" alt="Module 3 : publicités Facebook rentables"><div class="b"><span class="k">Module 3</span><h3>Publicités Facebook rentables</h3><p>Attirez des centaines de clients qualifiés sur votre boutique, en démarrant avec 10 € par jour.</p><div class="inc"><span>Inclus dans l'offre</span><s>147 €</s></div></div></article>
+      <article class="mod"><img src="img/m4.webp" alt="Module 4 : le testing"><div class="b"><span class="k">Module 4</span><h3>Le testing</h3><p>Lisez vos chiffres, validez votre produit, et commandez votre stock seulement quand il est prêt à se vendre.</p><div class="inc"><span>Inclus dans l'offre</span><s>97 €</s></div></div></article>
+    </div>
+
+    <h2 class="center bonus-t">Mais ce n'est pas tout. Recevez également <span class="g">03 bonus exclusifs</span></h2>
+    <div class="bons">
+      <article class="bon"><img src="img/b1.webp" alt="Bonus 1 : créatives impactantes"><div class="b"><h3>Créatives impactantes</h3><p>Une masterclass exclusive pour apprendre à créer des créatives irrésistibles.</p><div class="inc"><span>Inclus</span><s>97 €</s></div></div></article>
+      <article class="bon"><img src="img/b2.webp" alt="Bonus 2 : calculateur de rentabilité"><div class="b"><h3>Calculateur de rentabilité</h3><p>Évaluez votre rentabilité pour diminuer vos dépenses et maximiser votre profit.</p><div class="inc"><span>Inclus</span><s>47 €</s></div></div></article>
+      <article class="bon"><img src="img/b3.webp" alt="Bonus 3 : template Shopify d'une boutique gagnante"><div class="b"><h3>Template Shopify d'une boutique gagnante</h3><p>Le modèle d'une boutique qui vend déjà : vous l'importez, vous l'adaptez à votre produit, et c'est prêt.</p><div class="inc"><span>Inclus</span><s>97 €</s></div></div></article>
+    </div>
+
+    <div class="stackv" aria-label="Valeur totale de l'offre">
+      <div class="sv-row"><span>Module 1 · Boutique en -30 min</span><b>97 €</b></div>
+      <div class="sv-row"><span>Module 2 · Produits gagnants</span><b>147 €</b></div>
+      <div class="sv-row"><span>Module 3 · Publicités Facebook rentables</span><b>147 €</b></div>
+      <div class="sv-row"><span>Module 4 · Le testing</span><b>97 €</b></div>
+      <div class="sv-row"><span>Bonus 1 · Créatives impactantes</span><b>97 €</b></div>
+      <div class="sv-row"><span>Bonus 2 · Calculateur de rentabilité</span><b>47 €</b></div>
+      <div class="sv-row"><span>Bonus 3 · Template Shopify d'une boutique gagnante</span><b>97 €</b></div>
+      <div class="sv-tot"><span>Valeur totale <s>729 €</s></span><span>Aujourd'hui <strong>97 €</strong></span></div>
+    </div>
+    <div class="cta"><a class="btn" href="#commander"><b>Oui, je veux accéder à la méthode maintenant</b><span>Accès immédiat pour seulement 97 €</span></a></div>
+  </div>
+</section>
+
+<!-- 9. TÉMOIGNAGES -->
+<section class="sec alt">
+  <div class="wrap">
+    <div class="car-top">
+      <h2>Ils ont déjà appliqué la Méthode E-Connect. <span class="g">Voici leurs résultats…</span></h2>
+      <div class="nav"><span class="count" id="cnt">1 / 6</span><button class="nav-b" id="prev" type="button" aria-label="Précédent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><button class="nav-b" id="next" type="button" aria-label="Suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button></div>
+    </div>
+    <div class="car" id="car">
+      <figure class="shot"><img src="img/mohab.jpg" alt="Tableau de bord de Mohammed : 3 148,95 € de ventes en une semaine"><figcaption><b>3 148,95 €</b><span>en une semaine, 100 € de pub · Mohammed</span></figcaption></figure>
+      <figure class="shot"><img src="img/mohamedb.jpg" alt="Tableau de bord de Mohamed B : 4 858,38 € de ventes en deux semaines"><figcaption><b>4 858,38 €</b><span>en deux semaines · Mohamed B</span></figcaption></figure>
+      <figure class="shot"><img src="img/marie.jpg" alt="Tableau de bord de Marie : 1 819,55 € de ventes en 3 jours"><figcaption><b>1 819,55 €</b><span>en 3 jours, 57,75 € de pub · Marie</span></figcaption></figure>
+      <figure class="shot"><img src="img/taoufiq.jpg" alt="Tableau de bord de Taoufiq : 319,92 € en une journée"><figcaption><b>319,92 €</b><span>en une journée, 20 € de pub · Taoufiq</span></figcaption></figure>
+      <figure class="shot"><img src="img/yanis.jpg" alt="Tableau de bord de Yanis : 419,86 € de ventes"><figcaption><b>419,86 €</b><span>de ventes sur sa boutique · Yanis</span></figcaption></figure>
+      <figure class="shot wide"><img src="img/roas19.jpg" alt="Campagne d'un élève : ROAS 19"><figcaption><b>ROAS 19</b><span>16,67 € de pub, 321,04 € de ventes · Campagne d'un élève</span></figcaption></figure>
+    </div>
+    <p class="disc">Résultats d'élèves non représentatifs et non garantis. Ils dépendent du travail, du temps et du produit de chacun.</p>
+  </div>
+</section>
+
+<!-- 10. GARANTIE -->
+<section class="sec">
+  <div class="wrap guar">
+    <img src="img/garantie.webp" alt="Garantie résultats">
+    <div>
+      <h2>Profitez de ma <span class="g">Garantie Résultats</span></h2>
+      <p class="lead">Vous appliquez, vous ne vendez pas ? Je vous rembourse. Je ne rembourse pas quelqu'un qui n'a rien fait. Mais si, dans les 30 jours suivant votre inscription, vous n'avez pas fait une seule vente alors que vous avez appliqué 100 % de mes conseils, je vous rembourse intégralement. Pour cela, il faut :</p>
+      <ul>
+        <li>avoir regardé l'intégralité des modules</li>
+        <li>avoir créé votre boutique avec la méthode</li>
+        <li>avoir lancé au minimum 3 campagnes, à 10 € par jour pendant 3 jours minimum</li>
+        <li>m'envoyer vos captures (boutique, tableau de bord Shopify et gestionnaire de publicités) avec votre demande par email</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 11. LANCEZ DÈS CE SOIR + RÉCAP -->
+<section class="sec alt">
+  <div class="narrow center">
+    <h2>Lancez votre première boutique <span class="g">dès ce soir</span></h2>
+    <p class="lead">Imaginez recevoir des notifications de vente Shopify de votre boutique sur votre téléphone d'ici 24-48 h, sans ruiner vos économies…</p>
+    <div class="nb" aria-label="Exemple de notification de vente"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 016 0v2"/></svg></span><div style="text-align:left"><b>Nouvelle commande</b><small>Paiement à la livraison · exemple</small></div><em>maintenant</em></div>
+    <p class="lead">Tout ceci est possible avec la Méthode E-Connect 👇</p>
+    <div class="notis" style="text-align:left">
+      <div>Méthode simple et rapide à mettre en place.</div>
+      <div>Résultats rapides et mesurables dès vos premiers jours de test.</div>
+      <div>Adaptée à tout débutant.</div>
+      <div>Très faible investissement de démarrage.</div>
+    </div>
+    <div class="recap" style="text-align:left">
+      <div class="rt">Voici le récapitulatif de tout ce que vous allez recevoir</div>
+      <ul>
+        <li><span><b>Module 1 :</b> Création de boutique en -30 minutes</span></li>
+        <li><span><b>Module 2 :</b> Recherche de produits gagnants</span></li>
+        <li><span><b>Module 3 :</b> Maîtrise totale de Facebook Ads pour lancer des campagnes rentables</span></li>
+        <li><span><b>Module 4 :</b> Le testing, valider votre produit avant de commander votre stock</span></li>
+        <li><span><b>Bonus 1 :</b> Comment faire de bonnes créatives</span></li>
+        <li><span><b>Bonus 2 :</b> Tableau des profits pour calculer sa rentabilité</span></li>
+        <li><span><b>Bonus 3 :</b> Template Shopify d'une boutique gagnante</span></li>
+      </ul>
+      <div class="rp"><b>Aujourd'hui seulement : 97 €</b></div>
+    </div>
+    <div class="cta"><a class="btn" href="#commander"><b>Je veux obtenir le système maintenant</b><span>Accès immédiat pour seulement 97 €</span></a></div>
+  </div>
+</section>
+
+<!-- 12. COMMENT REJOINDRE (nouveau) -->
+<section class="sec">
+  <div class="wrap center">
+    <h2>Comment rejoindre la Méthode E-Connect</h2>
+    <div class="acc" style="text-align:left">
+      <div><i>1</i><h3>Vous rejoignez</h3><p>Paiement sécurisé en 2 minutes. Aucune expérience requise.</p></div>
+      <div><i>2</i><h3>Accès automatique</h3><p>Vous recevez un email, vous installez l'application L'Accélérateur, et toute la formation est débloquée.</p></div>
+      <div><i>3</i><h3>Vous passez à l'action</h3><p>Une heure par jour, vous suivez les modules dans l'ordre et vous lancez votre premier test.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 13. À PROPOS -->
+<section class="sec alt">
+  <div class="wrap trainer">
+    <div class="ph"><img src="img/clement.webp" alt="Clément Gomes, votre formateur"></div>
+    <div class="txt">
+      <h2>À propos de <span class="g">votre formateur</span></h2>
+      <p><b>Je suis Clément Gomes !</b> J'ai généré plus de 3 millions de chiffre d'affaires dans l'e-commerce en 2023.</p>
+      <p>J'ai accompagné +5 élèves qui ont généré +5 000 € net à la fin du mois, vidéos en preuve encore aujourd'hui.</p>
+      <p>J'ai des élèves qui obtiennent des résultats : certains sont à 100 € net par jour, d'autres à 250 € net.</p>
+      <p>Je suis réputé sur TikTok pour être franc et ne pas vendre du rêve aux gens. Les personnes me contactent pour gagner du temps en postulant pour être en accompagnement personnalisé avec moi.</p>
+      <p><b>Et je vous révèle tout dans la Méthode E-Connect.</b></p>
+    </div>
+  </div>
+</section>
+
+<!-- 14. FAQ -->
+<section class="sec">
+  <div class="narrow">
+    <h2 class="center">Réponses aux <span class="g">questions les plus fréquentes</span></h2>
+    <div class="faq">
+      <details id="f1"><summary>Je n'ai aucune expérience en e-commerce, est-ce que cette méthode est faite pour moi ?</summary><p>Absolument ! La Méthode E-Connect est conçue pour les débutants. Chaque module vous guide étape par étape, même si vous partez de zéro.</p><p>Vous apprendrez tout, de la création de votre boutique en moins de 30 minutes à la maîtrise des publicités Facebook.</p></details>
+      <details id="f2"><summary>Combien de temps faut-il pour commencer à voir des résultats ?</summary><p>Votre boutique peut être prête en 30 minutes. Ensuite, vous lancez vos campagnes et vous testez votre produit pendant 3 jours.</p><p>Les premières ventes arrivent souvent pendant ce test, mais tout dépend de votre produit et du temps que vous y consacrez.</p></details>
+      <details id="f3"><summary>Je n'ai pas un gros budget pour la publicité. Est-ce que je peux quand même réussir ?</summary><p>Bien sûr ! Dans le module 3, vous apprendrez à lancer des campagnes publicitaires rentables même avec un petit budget. 10 € par jour pendant 3 jours suffisent pour tester votre produit.</p></details>
+      <details id="f4"><summary>Pourquoi seulement 97 € ? Y a-t-il un piège ?</summary><p>Il n'y a aucun piège. Ma priorité aujourd'hui, ce sont les success stories.</p><p>Je préfère que beaucoup de personnes motivées passent à l'action plutôt que de vendre une formation à plusieurs milliers d'euros. C'est pour ça que je propose ce tarif.</p></details>
+      <details id="f5"><summary>Et si je n'ai aucun résultat ?</summary><p>Sous 30 jours, si vous n'avez fait aucune vente alors que vous avez regardé tous les modules, créé votre boutique et lancé au minimum 3 campagnes (10 € par jour pendant 3 jours minimum), je vous rembourse. Il suffit de m'envoyer votre demande par email avec vos captures.</p></details>
+      <details id="f6"><summary>C'est quoi la différence avec le dropshipping ?</summary><p>Avec E-Connect, vos clients paient à la livraison et reçoivent leur commande en 24 à 48 h, depuis un entrepôt local.</p><p>Pas de Stripe, pas de PayPal, pas d'attente de 3 semaines : vos clients vous font confiance, et vous n'avez plus de compte bloqué.</p></details>
+      <details id="f7"><summary>Dans quels pays vais-je vendre ?</summary><p>En Europe, en Amérique latine ou en Afrique, sur des marchés où il y a encore très peu de concurrence.</p></details>
+      <details id="f8"><summary>Est-ce que je peux me lancer si j'habite en Afrique ou ailleurs ?</summary><p>Oui. Vous pouvez lancer votre boutique où que vous habitiez : en France, en Afrique ou ailleurs. Tout se fait en ligne, depuis votre téléphone ou votre ordinateur.</p></details>
+      <details id="f9"><summary>Est-ce que je dois acheter du stock tout de suite ?</summary><p>Non. Vous testez d'abord votre produit avec la publicité. Vous commandez votre stock seulement quand vos chiffres montrent que le produit se vend.</p></details>
+      <details id="f10"><summary>Quels sont les autres frais à prévoir ?</summary><p>Votre budget publicité : 10 € par jour pendant 3 jours suffisent pour tester. Shopify : 1 € par mois les 3 premiers mois. Votre nom de domaine : environ 12 $ par an.</p><p>Claude ou ChatGPT, seulement si vous ne l'avez pas déjà. C'est tout.</p></details>
+      <details id="f11"><summary>Est-ce que je dois créer une société ?</summary><p>Non, pas besoin pour vous lancer. Vous en aurez besoin seulement au moment où votre produit sera validé.</p></details>
+      <details id="f12"><summary>Combien de temps dois-je y consacrer ?</summary><p>Une heure par jour, c'est suffisant. Les vidéos se regardent à votre rythme, et la création de votre boutique ne prend que 30 minutes.</p></details>
+      <details id="f13"><summary>Comment je reçois la formation ?</summary><p>Juste après votre paiement, vous recevez automatiquement un email. Vous installez l'application L'Accélérateur sur votre téléphone ou votre ordinateur, et vous accédez à toute la formation.</p></details>
+    </div>
+    <div class="cta"><a class="btn" href="#commander"><b>Oui, je veux accéder à la méthode maintenant</b><span>Accès immédiat pour seulement 97 €</span></a><div class="trust"><span>Paiement sécurisé</span><span>Accès immédiat</span><span>Garantie résultats 30 jours</span></div></div>
+  </div>
+</section>
+
+<!-- 15. COMMANDER (achat en bas de page) -->
+<section class="sec order" id="commander">
+  <div class="narrow">
+    <h2 class="center">Finaliser <span class="g">votre inscription</span></h2>
+    <p class="lead center">Accès immédiat après paiement</p>
+    <div class="o-items">
+      <label class="o-item main">
+        <input type="checkbox" checked disabled aria-label="Méthode E-Connect incluse">
+        <span class="o-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
+        <img src="img/hero.webp" alt="">
+        <span class="o-txt"><small>Le plus vendu</small><b>La Méthode E-Connect</b><em>4 modules + 3 bonus · accès immédiat</em></span>
+        <span class="o-price">97 €</span>
+      </label>
+      <label class="o-item bump" for="bump">
+        <span class="o-tag">🔥 Recommandé</span>
+        <span class="o-arrow" aria-hidden="true">→</span>
+        <input type="checkbox" id="bump">
+        <span class="o-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
+        <span class="o-txt"><b>Je veux être accompagné</b>
+          <ul><li>Le groupe avec moi, un coach et les élèves</li><li>Des lives chaque semaine</li><li>Des retours sur vos campagnes</li></ul>
+        </span>
+        <span class="o-price">160 €<i>/ mois</i></span>
+      </label>
+    </div>
+    <div class="o-total">
+      <div class="o-row"><span>Total aujourd'hui</span><b id="total">97 €</b></div>
+      <p class="o-sub" id="total-sub" hidden>dont 160 € pour le 1er mois d'accompagnement, puis 160 € par mois, sans engagement</p>
+      <a class="o-btn" id="buy" href="https://buy.stripe.com/fZu8wP3VR9xl5vDal8fIs03" target="_blank" rel="noopener">Accéder maintenant</a>
+    </div>
+    <p class="o-safe">🔒 Paiement sécurisé · Accès immédiat · Garantie résultats 30 jours</p>
+  </div>
+</section>
+
+<footer>
+  <p>Ce site ne fait pas partie du site Facebook ou de Facebook Inc. En outre, ce site n'est pas approuvé par Facebook en aucune façon. FACEBOOK est une marque déposée de FACEBOOK, Inc.</p>
+  <p>© The Ambitious Man · Copyright 2026 · Tous droits réservés · Mentions légales · Conditions de vente</p>
+</footer>
+
+<div class="sticky">
+  <div><b>Méthode E-Connect</b><small>97 € · accès immédiat</small></div>
+  <a class="btn" href="#commander"><b>Commander</b></a>
+</div>
+
+<script>
+(function () {
+  var car = document.getElementById('car'), cnt = document.getElementById('cnt'), n = car.children.length;
+  function w() { return car.children[0].offsetWidth + 14; }
+  document.getElementById('prev').addEventListener('click', function () { car.scrollBy({ left: -w(), behavior: 'smooth' }); });
+  document.getElementById('next').addEventListener('click', function () { car.scrollBy({ left: w(), behavior: 'smooth' }); });
+  car.addEventListener('scroll', function () { cnt.textContent = Math.min(n, Math.round(car.scrollLeft / w()) + 1) + ' / ' + n; }, { passive: true });
+})();
+</script>
+
+<script>
+(function () {
+  // Liens de paiement : à remplacer par les vrais liens Hotmart / systeme.io
+  var PAY_SEUL = 'https://buy.stripe.com/fZu8wP3VR9xl5vDal8fIs03';          // Méthode E-Connect seule (97 €)
+  var PAY_AVEC_ACCOMP = 'https://buy.stripe.com/eVq4gz0JF4d10bj78WfIs04';   // Méthode + accompagnement (97 € + 160 €/mois)
+  var bump = document.getElementById('bump'), buy = document.getElementById('buy'), sub = document.getElementById('total-sub');
+  var total = document.getElementById('total');
+  function upd() { buy.href = bump.checked ? PAY_AVEC_ACCOMP : PAY_SEUL; sub.hidden = !bump.checked; total.textContent = bump.checked ? '257 €' : '97 €'; }
+  bump.addEventListener('change', upd); upd();
+})();
+</script>
+
+</body>
+</html>
