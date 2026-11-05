@@ -451,3 +451,10 @@ html,#root,.main{overscroll-behavior-x:none}
 @media (max-width:420px){.spbtn small{display:none}}
 .spbtn b.short{display:none}
 @media (max-width:420px){.spbtn b.full{display:none}.spbtn b.short{display:block}}
+
+/* menu de gauche repliable */
+.railh{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:0;cursor:pointer;font-size:10.5px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);margin:14px 0 6px;padding:4px 10px;font-weight:700;border-radius:8px}
+.railh:hover{color:var(--fg-2);background:rgba(255,255,255,.03)}
+.rail>div:first-child .railh{margin-top:0}
+.railh i{font-style:normal;font-size:10px;transition:transform .15s}
+.railh.shut i{transform:rotate(-90deg)}

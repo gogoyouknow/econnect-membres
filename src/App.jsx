@@ -28,6 +28,9 @@ const SPACES = {
 
 const VIEWS = [
   { id: 'mcours', k: '🎓', label: 'Ma formation', group: 'Méthode E-Connect', sp: 'methode' },
+  { id: 'mwins', k: '🏆', label: 'Résultats', group: 'Méthode E-Connect', sp: 'methode' },
+  { id: 'mlives', k: '🔴', label: 'Lives & replays', group: 'Méthode E-Connect', sp: 'methode' },
+  { id: 'mchat', k: '💬', label: 'Chat', group: 'Méthode E-Connect', sp: 'methode', needAccel: true },
   { id: 'offre', k: '⚡', label: "L'Accélérateur", group: 'Méthode E-Connect', sp: 'methode', noAccel: true },
   { id: 'journey', k: '🧭', label: 'Mon parcours', group: 'Espaces', memberOnly: true },
   { id: 'courses', k: '🎓', label: 'Cours', group: 'Espaces' },
@@ -57,6 +60,7 @@ export default function App() {
   const [live, setLive] = useState(null)
   const [spacePref, setSpacePref] = useState(() => { try { return localStorage.getItem('space') } catch { return null } })
   const [spaceMenu, setSpaceMenu] = useState(false)
+  const [folded, setFolded] = useState(() => { try { return JSON.parse(localStorage.getItem('railFolded') || '{}') } catch { return {} } })
   const toast = useToast()
 
   useEffect(() => {
@@ -127,6 +131,9 @@ export default function App() {
   let main
   if (space === 'methode') {
     if (cur === 'offre') main = <AccelOffer {...ctx} />
+    else if (cur === 'mwins') main = <Feed key="mwins" space="wins" {...ctx} />
+    else if (cur === 'mlives') main = <Lives {...ctx} />
+    else if (cur === 'mchat') main = owns.accel ? <Chat key="mchat" space="general" {...ctx} /> : <AccelOffer {...ctx} reason="chat" />
     else if (cur === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
     else if (cur === 'profile') main = <Profile {...ctx} />
     else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
@@ -167,12 +174,14 @@ export default function App() {
       {live && space === 'accel' && <div className="livebar"><span className="ld" /><div style={{ minWidth: 0 }}><b>Live en cours · {live.title}</b><small>avec {live.host}</small></div>{live.link ? <a href={live.link} target="_blank" rel="noreferrer">Rejoindre</a> : <button className="btn sm" style={{ marginLeft: 'auto' }} onClick={() => go('lives')}>Voir</button>}</div>}
       {rail && <div className="scrim" onClick={() => setRail(false)} />}
       <nav className={`rail ${rail ? 'open' : ''}`}>
-        {groups.map(g => <div key={g}>
-          <h3>{space === 'methode' && g === 'Communauté' ? 'Mon compte' : g}</h3>
-          {visible.filter(v => v.group === g).map(v => {
-            const locked = v.tier && me.tier < v.tier && !isStaff
+        {groups.map((g, gi) => <div key={g}>
+          {(() => { const key = space + ':' + g, items = visible.filter(v => v.group === g), hasCur = items.some(v => v.id === cur), shut = folded[key] ?? (gi > 0 && !hasCur)
+            const toggle = () => { const n = { ...folded, [key]: !shut }; setFolded(n); try { localStorage.setItem('railFolded', JSON.stringify(n)) } catch {} }
+            return <><button className={`railh ${shut ? 'shut' : ''}`} onClick={toggle} aria-expanded={!shut}><span>{space === 'methode' && g === 'Communauté' ? 'Mon compte' : g}</span><i>▾</i></button>
+          {!shut && items.map(v => {
+            const locked = (v.tier && me.tier < v.tier && !isStaff) || (v.needAccel && !owns.accel)
             return <button key={v.id} className={`nav ${cur === v.id ? 'on' : ''} ${locked ? 'lock' : ''}`} onClick={() => go(v.id)}><span className="k">{locked ? '🔒' : v.k}</span>{v.label}</button>
-          })}
+          })}</> })()}
         </div>)}
       </nav>
 
@@ -180,7 +189,7 @@ export default function App() {
       {space === 'accel' && <Side {...ctx} />}
 
       <nav className="tabbar">
-        {(space === 'methode' ? [['mcours', '🎓', 'Formation'], ...(owns.accel ? [] : [['offre', '⚡', 'Accélérateur']]), ['notifs', '🔔', 'Notifs'], ['profile', '👤', 'Profil']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>
+        {(space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>
           <button key={id} className={cur === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
         <button className={rail ? 'on' : ''} onClick={() => setRail(r => !r)}><span>☰</span>Plus</button>
       </nav>

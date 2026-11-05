@@ -62,6 +62,16 @@ export default function Courses({ me, isStaff, toast, go, settings, scope }) {
   const locked = (m) => !isStaff && (outOfMethode(m) || m.tier_required > me.tier)
   const shown = c.modules.filter(m => (m.published || isStaff) && (!inMethode || m.methode || !me.accel || isStaff))
   const threshold = settings?.watch_threshold ?? 98
+  // modules dans l'ordre : un module s'ouvre quand toutes les leçons du module précédent sont terminées
+  const lessonsOfModule = (m) => c.sections.filter(s => s.module_id === m.id).flatMap(s => lessonsOf(s.id))
+  const complete = (m) => lessonsOfModule(m).every(l => done[l.id])
+  const blockedBy = (m) => {
+    if (isStaff || !settings?.require_watch) return null
+    const seq = shown.filter(x => x.published && !(outOfMethode(x) || x.tier_required > me.tier))
+    const i = seq.findIndex(x => x.id === m.id)
+    for (let k = 0; k < i; k++) if (!complete(seq[k])) return seq[k]
+    return null
+  }
   const gating = (m) => !!settings?.require_watch && m?.gate !== false && !isStaff
   const lessonLocked = (l) => { if (!mod || !gating(mod)) return false; const i = modLessons.findIndex(x => x.id === l.id); return i > 0 && !done[modLessons[i - 1].id] }
   const pctOf = (l) => Math.max(watch[l.id]?.watched_pct || 0, live?.id === l.id ? live.pct : 0)
@@ -80,11 +90,13 @@ export default function Courses({ me, isStaff, toast, go, settings, scope }) {
     if (done[l.id]) { await supabase.from('lesson_progress').upsert({ user_id: me.id, lesson_id: l.id, done: false }) }
     else { await supabase.from('lesson_progress').upsert({ user_id: me.id, lesson_id: l.id, done: true, done_at: new Date().toISOString(), watched_pct: Math.max(watch[l.id]?.watched_pct || 0, pctOf(l)) }) }
     const next = { ...done, [l.id]: !done[l.id] }; setDone(next)
-    if (!done[l.id]) { const i = modLessons.findIndex(x => x.id === l.id); const n = modLessons[i + 1]; if (n) { setLessonId(n.id); toast('Leçon terminée ✓ · suivante') } else toast('Module terminé 🎉') }
+    if (!done[l.id]) { const i = modLessons.findIndex(x => x.id === l.id); const n = modLessons[i + 1]; if (n) { setLessonId(n.id); toast('Leçon terminée ✓ · suivante') } else toast('Module terminé 🎉 · le module suivant est ouvert') }
   }
   const save = async (table, id, patch) => { const { error } = await supabase.from(table).update(patch).eq('id', id); if (error) toast(friendlyError(error), true); else reload() }
   const add = async (table, row) => { const { error } = await supabase.from(table).insert(row); if (error) toast(friendlyError(error), true); else reload() }
   const del = async (table, id, label) => { if (!confirm(`Supprimer « ${label} » ?`)) return; const { error } = await supabase.from(table).delete().eq('id', id); if (error) toast(friendlyError(error), true); else { if (table === 'lessons' && lessonId === id) setLessonId(null); reload() } }
+
+  if (mod && blockedBy(mod)) { setTimeout(() => setModuleId(null)); return null }
 
   // ---------- Leçon ouverte ----------
   if (lesson && mod) {
@@ -139,13 +151,13 @@ export default function Courses({ me, isStaff, toast, go, settings, scope }) {
     <div className="head"><div style={{ flex: 1 }}><h2>{inMethode ? 'La Méthode E-Connect' : 'Cours'}</h2><small>{shown.filter(m => m.published && !locked(m)).length} modules · avance dans l'ordre</small></div>{isStaff && <button className="btn ghost sm" onClick={() => setEdit(v => !v)}>{edit ? 'Fermer' : '✎ Modifier'}</button>}</div>
     <div className="body">
       <div className="cards modgrid">
-        {shown.map(m => { const p = pct(m), lk = locked(m); const first = c.sections.filter(s => s.module_id === m.id).flatMap(s => lessonsOf(s.id))[0]; return <div key={m.id} className={`post mcard modcard ${lk ? 'locked' : ''} ${!m.published ? 'draft' : ''}`} onClick={() => !lk && setModuleId(m.id)}>
+        {shown.map(m => { const p = pct(m), bk = !locked(m) && blockedBy(m), lk = locked(m) || !!bk; const first = c.sections.filter(s => s.module_id === m.id).flatMap(s => lessonsOf(s.id))[0]; return <div key={m.id} className={`post mcard modcard ${lk ? 'locked' : ''} ${!m.published ? 'draft' : ''}`} onClick={() => bk ? toast(`Termine d'abord toutes les vidéos du ${bk.title.split(' · ')[0]}`) : !lk && setModuleId(m.id)}>
           <Thumb className="cover" srcs={[m.cover_url, `/thumbs/m${m.id}.jpg`, first && `/thumbs/l${first.id}.jpg`, first && thumbOf(first.video_url)]} extra={lk && <span>🔒</span>} />
           <div className="mem"><div className="num">{lk ? '🔒' : m.position}</div><div style={{ flex: 1, minWidth: 0 }}><b>{m.title}</b><small>{m.description}</small></div></div>
-          <div className="meta">{lk ? <span>{outOfMethode(m) ? 'Inclus dans L\'Accélérateur' : `Réservé ${TIER_LABEL[m.tier_required]}`}</span> : <><span>{c.sections.filter(s => s.module_id === m.id).flatMap(s => lessonsOf(s.id)).length} leçons</span><span>·</span><span>{p} %</span></>}{!m.published && <span className="pill">brouillon</span>}{isStaff && inMethode && !m.methode && <span className="pill">hors Méthode</span>}</div>
+          <div className="meta">{lk ? <span>{bk ? `S'ouvre quand le ${bk.title.split(' · ')[0]} est terminé` : outOfMethode(m) ? 'Inclus dans L\'Accélérateur' : `Réservé ${TIER_LABEL[m.tier_required]}`}</span> : <><span>{c.sections.filter(s => s.module_id === m.id).flatMap(s => lessonsOf(s.id)).length} leçons</span><span>·</span><span>{p} %</span></>}{!m.published && <span className="pill">brouillon</span>}{isStaff && inMethode && !m.methode && <span className="pill">hors Méthode</span>}</div>
           {!lk && <div className="barp"><i style={{ width: p + '%' }} /></div>}
           {lk && outOfMethode(m) && <button className="btn sm" style={{ marginTop: 8 }} onClick={e => { e.stopPropagation(); go('offre') }}>Découvrir L'Accélérateur →</button>}
-          {lk && !outOfMethode(m) && me.tier < 2 && me.accel && <button className="btn sm" style={{ marginTop: 8 }} onClick={e => { e.stopPropagation(); go('acceleration') }}>Passer à l'accompagnement personnalisé →</button>}
+          {lk && !bk && !outOfMethode(m) && me.tier < 2 && me.accel && <button className="btn sm" style={{ marginTop: 8 }} onClick={e => { e.stopPropagation(); go('acceleration') }}>Passer à l'accompagnement personnalisé →</button>}
         </div> })}
       </div>
       {isStaff && edit && <button className="btn ghost sm" onClick={() => add('modules', { position: c.modules.length + 1, title: `Module ${c.modules.length + 1}`, published: false })}>+ Module</button>}

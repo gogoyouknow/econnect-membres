@@ -34,11 +34,11 @@ export default function Upsell({ settings, me }) {
 }
 
 /** Élève de la Méthode E-Connect : présentation de L'Accélérateur (accompagnement 160 €/mois via Stripe) */
-export function AccelOffer({ settings, me }) {
+export function AccelOffer({ settings, me, reason }) {
   const u = (settings?.accel_url || '').trim()
   const link = u ? `${u}${u.includes('?') ? '&' : '?'}prefilled_email=${encodeURIComponent(me.email)}` : ''
   return <>
-    <div className="head"><div style={{ flex: 1 }}><h2>L'Accélérateur</h2><small>L'accompagnement en groupe, avec Clément et les coachs</small></div></div>
+    <div className="head"><div style={{ flex: 1 }}><h2>{reason === 'chat' ? 'Chat' : "L'Accélérateur"}</h2><small>{reason === 'chat' ? 'Le chat est réservé aux membres de l\'accompagnement' : 'L\'accompagnement en groupe, avec Clément et les coachs'}</small></div></div>
     <div className="body">
       <div className="post upsell" style={{ maxWidth: 560 }}>
         <span className="pill gold">Quand tu veux aller plus vite</span>
