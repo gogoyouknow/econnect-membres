@@ -5,7 +5,7 @@ import { Avatar, ROLE_LABEL, TIER_LABEL, ago } from '../lib/ui'
 
 export default function Members({ me, profiles, isStaff, isAdmin, toast, refresh }) {
   const [q, setQ] = useState('')
-  const list = profiles.list.filter(p => !q || p.name.toLowerCase().includes(q.toLowerCase()) || p.email.toLowerCase().includes(q.toLowerCase()))
+  const list = profiles.list.filter(p => isStaff || p.accel || p.role !== 'member').filter(p => !q || p.name.toLowerCase().includes(q.toLowerCase()) || p.email.toLowerCase().includes(q.toLowerCase()))
   const online = p => p.last_seen && Date.now() - new Date(p.last_seen) < 10 * 60000
 
   async function setRole(p, role) { const { error } = await supabase.from('profiles').update({ role }).eq('id', p.id); if (error) return toast(friendlyError(error), true); toast(`${p.name} est maintenant ${ROLE_LABEL[role]}`) }
@@ -14,7 +14,7 @@ export default function Members({ me, profiles, isStaff, isAdmin, toast, refresh
   async function unmute(p) { await supabase.from('profiles').update({ muted_until: null }).eq('id', p.id); toast('Sourdine levée') }
   async function invite(e) {
     e.preventDefault(); const f = new FormData(e.target); const email = String(f.get('email')).trim().toLowerCase(); if (!email) return
-    const { error } = await supabase.from('allowed_emails').upsert({ email, tier: +f.get('tier'), role: 'member', source: 'manual' })
+    const { error } = await supabase.from('allowed_emails').upsert(f.get('tier') === 'm' ? { email, tier: 1, role: 'member', source: 'manual', methode: true, accel: false } : { email, tier: +f.get('tier'), role: 'member', source: 'manual' })
     if (error) return toast(friendlyError(error), true)
     toast(`${email} peut maintenant créer son accès`); e.target.reset()
   }
@@ -23,12 +23,12 @@ export default function Members({ me, profiles, isStaff, isAdmin, toast, refresh
     <div className="head"><div style={{ flex: 1 }}><h2>Membres</h2><small>{profiles.list.filter(p => p.active).length} membres · {profiles.list.filter(online).length} en ligne</small></div><input placeholder="Rechercher…" value={q} onChange={e => setQ(e.target.value)} className="search" /></div>
     <div className="body">
       {isAdmin && <form className="post" onSubmit={invite}><b>Ajouter un membre</b>
-        <div className="replybox"><input name="email" type="email" placeholder="email@exemple.com" required /><select name="tier" defaultValue={1}><option value={1}>Démarrage (250 €)</option><option value={2}>Accélération (450 €)</option></select><button className="btn">Autoriser</button></div>
+        <div className="replybox"><input name="email" type="email" placeholder="email@exemple.com" required /><select name="tier" defaultValue={1}><option value={1}>Démarrage (250 €)</option><option value={2}>Accélération (450 €)</option><option value="m">Méthode E-Connect seule</option></select><button className="btn">Autoriser</button></div>
         <small className="muted">Le membre crée ensuite son mot de passe sur la page de connexion avec cet email. Plus tard, Hotmart fera ça tout seul à chaque paiement.</small></form>}
       <div className="cards">
         {list.map(p => { const muted = p.muted_until && new Date(p.muted_until) > new Date(); return <div key={p.id} className="post mcard" style={!p.active ? { opacity: .55 } : {}}>
           <div className="mem"><Avatar p={p} /><div style={{ minWidth: 0, flex: 1 }}><b>{p.name}{online(p) && <span className="dot" style={{ marginLeft: 6 }} />}</b><small>{isStaff ? p.email : ''}</small></div>
-            {p.role === 'member' ? <span className={`pill ${p.tier === 2 ? 'gold' : ''}`}>{TIER_LABEL[p.tier]}</span> : <span className="pill gold">{ROLE_LABEL[p.role]}</span>}</div>
+            {p.role === 'member' && !p.accel ? <span className="pill">Méthode</span> : p.role === 'member' ? <span className={`pill ${p.tier === 2 ? 'gold' : ''}`}>{TIER_LABEL[p.tier]}{isStaff && p.methode ? ' + Méthode' : ''}</span> : <span className="pill gold">{ROLE_LABEL[p.role]}</span>}</div>
           <div className="meta"><span>{p.status || '—'}</span><span>·</span><span>{p.last_seen ? 'vu ' + ago(p.last_seen) : 'jamais connecté'}</span>{muted && <span>· 🔇 sourdine</span>}{!p.active && <span>· accès coupé</span>}</div>
           {isStaff && <div className="acts2">
             {isAdmin && p.id !== me.id && <select value={p.role} onChange={e => setRole(p, e.target.value)}><option value="member">Membre</option><option value="mod">Modérateur</option><option value="admin">Admin</option></select>}

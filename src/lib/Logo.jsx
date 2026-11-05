@@ -11,7 +11,7 @@ export default function Logo({ size = 30, text = true }) {
   return (
     <div className="logo">
       <Mark size={size} />
-      {text && <b>L'ACCÉLÉRATEUR</b>}
+      {text && <b>E-CONNECT</b>}
     </div>
   )
 }

@@ -9,7 +9,7 @@ export default function Side({ me, profiles, settings, isStaff, go, toast }) {
     supabase.from('lives').select('*').gte('starts_at', new Date(Date.now() - 3600000).toISOString()).order('starts_at').limit(1).then(({ data }) => setNext(data?.[0] || null))
     if (isStaff) supabase.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'open').then(({ count }) => setOpen(count || 0))
   }, [isStaff])
-  const online = profiles.list.filter(p => p.active && p.last_seen && Date.now() - new Date(p.last_seen) < 10 * 60000)
+  const online = profiles.list.filter(p => p.active && (p.accel || p.role !== 'member') && p.last_seen && Date.now() - new Date(p.last_seen) < 10 * 60000)
   const canPush = pushSupported() && Notification.permission !== 'granted'
   return <aside className="side">
     <div className="box gold"><h3>Prochain live</h3>

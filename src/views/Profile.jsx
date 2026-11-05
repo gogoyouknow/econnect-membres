@@ -25,7 +25,7 @@ export default function Profile({ me, toast, refresh, settings }) {
     } catch (x) { toast(friendlyError(x), true) }
   }
   return <>
-    <div className="head"><div style={{ flex: 1 }}><h2>Mon profil</h2><small>{ROLE_LABEL[me.role]}{me.role === 'member' ? ` · Groupe ${TIER_LABEL[me.tier]}` : ''} · {me.email}</small></div></div>
+    <div className="head"><div style={{ flex: 1 }}><h2>Mon profil</h2><small>{ROLE_LABEL[me.role]}{me.role === 'member' && me.accel ? ` · Groupe ${TIER_LABEL[me.tier]}` : me.role === 'member' ? ' · Méthode E-Connect' : ''} · {me.email}</small></div></div>
     <div className="body">
       <form className="post form" onSubmit={save} style={{ maxWidth: 520 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -43,7 +43,14 @@ export default function Profile({ me, toast, refresh, settings }) {
           <button className="btn" disabled={busy}>Enregistrer</button>
         </div>
       </form>
-      {me.role === 'member' && <div className="post" style={{ maxWidth: 520 }}><b>Mon abonnement</b>
+      {me.role === 'member' && me.methode && <div className="post" style={{ maxWidth: 520 }}><b>Ma formation</b>
+        <div className="row"><label>La Méthode E-Connect<small>Paiement unique · accès à vie à la formation</small></label><span className="pill gold">Active</span></div>
+      </div>}
+      {me.role === 'member' && me.accel && me.stripe_customer && <div className="post" style={{ maxWidth: 520 }}><b>Mon abonnement</b>
+        <div className="row"><label>Accompagnement L'Accélérateur<small>160 € par mois sans engagement</small></label><span className="pill gold">Actif</span></div>
+        <div className="cancel"><small className="muted">Pour arrêter l'abonnement, écris à <b>{settings?.cancel_email || 'resiliation@theambitiousman.fr'}</b> depuis l'adresse de ton compte ({me.email}). Ton accès à la formation reste ouvert.</small></div>
+      </div>}
+      {me.role === 'member' && me.accel && !me.stripe_customer && <div className="post" style={{ maxWidth: 520 }}><b>Mon abonnement</b>
         <div className="row"><label>{me.tier === 2 ? 'Accompagnement personnalisé' : 'Abonnement Démarrage'}<small>{me.tier === 2 ? '450 € par mois sans engagement · groupe Accélération ouvert' : '250 € par mois sans engagement'}</small></label><span className={`pill ${me.tier === 2 ? 'gold' : ''}`}>{TIER_LABEL[me.tier]}</span></div>
         {me.tier < 2 && <UpsellCard settings={settings} me={me} compact />}
         <div className="cancel">

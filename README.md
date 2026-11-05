@@ -15,3 +15,21 @@ PWA (React + Vite) + Supabase. Déployée sur Vercel.
 cp .env.example .env   # remplir
 npm install && npm run dev
 ```
+
+## Espaces et accès (Méthode E-Connect / L'Accélérateur)
+
+L'app a deux espaces, choisis en haut à gauche. Chaque membre ne voit que ce qu'il a payé :
+
+- `profiles.methode` : la formation Méthode E-Connect (modules marqués « Inclus dans la Méthode »).
+- `profiles.accel` : L'Accélérateur (chat, fil, lives, membres, tous les modules). Vrai par défaut, comme avant.
+
+### Paiement Stripe → accès automatique
+
+1. Stripe → Développeurs → Webhooks → Ajouter un endpoint :
+   `https://<projet>.supabase.co/functions/v1/stripe-webhook`.
+   Événements : `checkout.session.completed`, `customer.subscription.deleted`, `charge.refunded`, `charge.dispute.created`.
+2. Copier le secret de signature (`whsec_…`) dans l'app : Administration → Paiements Stripe.
+3. Les liens de paiement reconnus sont dans la table `stripe_offers` (97 € → Méthode, 257 € → Méthode + Accélérateur).
+   Journal : table `stripe_events` (visible dans Administration).
+
+Fin d'abonnement → l'espace Accélérateur se ferme, la formation reste ouverte. Remboursement de la Méthode → accès en pause.

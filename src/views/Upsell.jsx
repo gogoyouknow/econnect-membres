@@ -32,3 +32,24 @@ export default function Upsell({ settings, me }) {
     </div>
   </>
 }
+
+/** Élève de la Méthode E-Connect : présentation de L'Accélérateur (accompagnement 160 €/mois via Stripe) */
+export function AccelOffer({ settings, me }) {
+  const u = (settings?.accel_url || '').trim()
+  const link = u ? `${u}${u.includes('?') ? '&' : '?'}prefilled_email=${encodeURIComponent(me.email)}` : ''
+  return <>
+    <div className="head"><div style={{ flex: 1 }}><h2>L'Accélérateur</h2><small>L'accompagnement en groupe, avec Clément et les coachs</small></div></div>
+    <div className="body">
+      <div className="post upsell" style={{ maxWidth: 560 }}>
+        <span className="pill gold">Quand tu veux aller plus vite</span>
+        <h3>Tu n'es plus seul devant tes campagnes</h3>
+        <p>La formation te donne la méthode. Dans L'Accélérateur, on regarde tes chiffres avec toi, on te dit quoi couper et quoi garder, et tu avances avec des gens qui font la même chose que toi.</p>
+        <ul><li>Le groupe privé et le chat avec les coachs</li><li>3 lives par semaine, et les replays</li><li>Des retours sur tes campagnes au quotidien</li><li>Les modules avancés : structure gagnante et scaling</li></ul>
+        <div className="price"><b>160 €</b><span>par mois<br />sans engagement</span></div>
+        {link ? <a className="btn" href={link} target="_blank" rel="noreferrer">Rejoindre L'Accélérateur →</a>
+          : <p className="muted">Écris-nous à <b>contact@theambitiousman.fr</b> pour y entrer.</p>}
+        <small className="muted">Paiement sécurisé Stripe · l'accès s'ouvre dans l'app dès le paiement, ta formation reste à toi.</small>
+      </div>
+    </div>
+  </>
+}

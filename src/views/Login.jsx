@@ -71,7 +71,7 @@ export default function Login() {
 
   const titles = { login: 'Connecte-toi à ton espace', signup: 'Crée ton accès', code: 'Entre ton code', forgot: 'Mot de passe oublié', reset: 'Choisis un nouveau mot de passe' }
   const subs = {
-    login: "Réservé aux membres de L'Accélérateur. Ton accès s'active dès ton paiement.",
+    login: "Réservé aux membres E-Connect (Méthode et Accélérateur). Ton accès s'active dès ton paiement.",
     signup: "Utilise l'email avec lequel tu as payé. Tu recevras un code à 6 chiffres.",
     code: `On t'a envoyé un code à 6 chiffres par email. Il est valable 10 minutes.`,
     forgot: "Entre ton email, on t'envoie un lien pour en choisir un nouveau.",
