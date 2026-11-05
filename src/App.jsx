@@ -12,15 +12,23 @@ import Notifs from './views/Notifs'
 import Moderation from './views/Moderation'
 import Admin from './views/Admin'
 import Side from './views/Side'
-import Upsell from './views/Upsell'
+import Upsell, { AccelOffer } from './views/Upsell'
 import Journey from './views/Journey'
 import Courses from './views/Courses'
 import Tracking from './views/Tracking'
-import Logo from './lib/Logo'
+import { Mark } from './lib/Logo'
 import Onboarding from './views/Onboarding'
 import Profile from './views/Profile'
 
+// Espaces de l'app : chacun a ses propres accès (profiles.methode / profiles.accel)
+const SPACES = {
+  methode: { name: 'Méthode E-Connect', short: 'Méthode', sub: 'Ta formation', home: 'mcours' },
+  accel: { name: "L'Accélérateur", short: 'Accélérateur', sub: 'Le groupe et l\'accompagnement', home: 'general' },
+}
+
 const VIEWS = [
+  { id: 'mcours', k: '🎓', label: 'Ma formation', group: 'Méthode E-Connect', sp: 'methode' },
+  { id: 'offre', k: '⚡', label: "L'Accélérateur", group: 'Méthode E-Connect', sp: 'methode', noAccel: true },
   { id: 'journey', k: '🧭', label: 'Mon parcours', group: 'Espaces', memberOnly: true },
   { id: 'courses', k: '🎓', label: 'Cours', group: 'Espaces' },
   { id: 'general', k: '💬', label: 'Chat général', group: 'Espaces' },
@@ -30,11 +38,11 @@ const VIEWS = [
   { id: 'demarrage', k: '🚀', label: 'Démarrage', group: 'Groupes' },
   { id: 'acceleration', k: '⚡', label: 'Accélération', group: 'Groupes', tier: 2 },
   { id: 'members', k: '👥', label: 'Membres', group: 'Communauté' },
-  { id: 'notifs', k: '🔔', label: 'Notifications', group: 'Communauté' },
-  { id: 'profile', k: '👤', label: 'Mon profil', group: 'Communauté' },
+  { id: 'notifs', k: '🔔', label: 'Notifications', group: 'Communauté', sp: 'both' },
+  { id: 'profile', k: '👤', label: 'Mon profil', group: 'Communauté', sp: 'both' },
   { id: 'tracking', k: '📊', label: 'Suivi des élèves', group: 'Gestion', staff: true },
   { id: 'moderation', k: '🛡️', label: 'Modération', group: 'Gestion', staff: true },
-  { id: 'admin', k: '⚙️', label: 'Administration', group: 'Gestion', admin: true },
+  { id: 'admin', k: '⚙️', label: 'Administration', group: 'Gestion', admin: true, sp: 'both' },
 ]
 
 export default function App() {
@@ -47,6 +55,8 @@ export default function App() {
   const [unread, setUnread] = useState(0)
   const [guide, setGuide] = useState(false)
   const [live, setLive] = useState(null)
+  const [spacePref, setSpacePref] = useState(() => { try { return localStorage.getItem('space') } catch { return null } })
+  const [spaceMenu, setSpaceMenu] = useState(false)
   const toast = useToast()
 
   useEffect(() => {
@@ -91,63 +101,87 @@ export default function App() {
   if (session === undefined) return <div className="center">Chargement…</div>
   if (!session) return <Login />
   if (!me || !settings) return <div className="center">Chargement de ton espace…</div>
-  if (!me.active) return <section className="login"><div className="card"><Logo size={34} /><h1>Ton accès est en pause</h1><p>Ton abonnement n'est plus actif. Relance-le pour retrouver le groupe, ou écris-nous à {settings.cancel_email || 'contact@theambitiousman.fr'}.</p><button className="btn ghost" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div></section>
+  if (!me.active) return <section className="login"><div className="card"><div className="logo"><Mark size={34} /><b>E-CONNECT</b></div><h1>Ton accès est en pause</h1><p>Ton abonnement n'est plus actif. Relance-le pour retrouver le groupe, ou écris-nous à {settings.cancel_email || 'contact@theambitiousman.fr'}.</p><button className="btn ghost" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div></section>
   if (!me.onboarded) return <Onboarding me={me} toast={toast} onDone={refresh} />
 
   const isStaff = me.role !== 'member', isAdmin = me.role === 'admin'
   const ctx = { me, profiles, settings, isStaff, isAdmin, refresh, go: setView, toast }
-  const go = (v) => {
-    const d = VIEWS.find(x => x.id === v)
-    setView(v)
+  // quels espaces ce membre possède, et lequel est affiché
+  const owns = { methode: isStaff || !!me.methode, accel: isStaff || me.accel !== false }
+  const inSpace = (v, s) => (v.sp || 'accel') === s || v.sp === 'both'
+  const viewSp = VIEWS.find(v => v.id === view)?.sp || (view === 'acceleration' ? 'accel' : null)
+  let space = owns[spacePref] ? spacePref : owns.accel ? 'accel' : 'methode'
+  if (viewSp && viewSp !== 'both' && viewSp !== space && owns[viewSp]) space = viewSp   // lien direct (#mcours, notification…)
+  const spaceList = Object.keys(SPACES).filter(s => owns[s] || (s === 'accel' && owns.methode))   // un élève Méthode voit L'Accélérateur (verrouillé)
+  const switchSpace = (s) => {
+    setSpaceMenu(false)
+    if (!owns[s]) { setView('offre'); return }
+    try { localStorage.setItem('space', s) } catch {}
+    setSpacePref(s); setView(SPACES[s].home)
   }
-  const visible = VIEWS.filter(v => (!v.staff || isStaff) && (!v.admin || isAdmin) && (!v.memberOnly || !isStaff))
+  const go = (v) => setView(v)
+  const visible = VIEWS.filter(v => inSpace(v, space) && (!v.staff || isStaff) && (!v.admin || isAdmin) && (!v.memberOnly || !isStaff) && (!v.noAccel || !owns.accel))
+  const cur = visible.some(v => v.id === view) || (view === 'acceleration' && space === 'accel') ? view : SPACES[space].home
   const groups = [...new Set(visible.map(v => v.group))]
 
   let main
-  if (view === 'acceleration' && me.tier < 2 && !isStaff) main = <Upsell {...ctx} />
-  else if (['general', 'demarrage', 'acceleration'].includes(view)) main = <Chat key={view} space={view} {...ctx} />
-  else if (view === 'feed') main = <Feed key="feed" space="feed" {...ctx} />
-  else if (view === 'wins') main = <Feed key="wins" space="wins" {...ctx} />
-  else if (view === 'lives') main = <Lives {...ctx} />
-  else if (view === 'members') main = <Members {...ctx} />
-  else if (view === 'profile') main = <Profile {...ctx} />
-  else if (view === 'journey') main = <Journey {...ctx} />
-  else if (view === 'courses') main = <Courses {...ctx} />
-  else if (view === 'tracking' && isStaff) main = <Tracking {...ctx} />
-  else if (view === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
-  else if (view === 'moderation' && isStaff) main = <Moderation {...ctx} />
-  else if (view === 'admin' && isAdmin) main = <Admin {...ctx} />
+  if (space === 'methode') {
+    if (cur === 'offre') main = <AccelOffer {...ctx} />
+    else if (cur === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
+    else if (cur === 'profile') main = <Profile {...ctx} />
+    else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
+    else main = <Courses key="methode" scope="methode" {...ctx} />
+  }
+  else if (cur === 'acceleration' && me.tier < 2 && !isStaff) main = <Upsell {...ctx} />
+  else if (['general', 'demarrage', 'acceleration'].includes(cur)) main = <Chat key={cur} space={cur} {...ctx} />
+  else if (cur === 'feed') main = <Feed key="feed" space="feed" {...ctx} />
+  else if (cur === 'wins') main = <Feed key="wins" space="wins" {...ctx} />
+  else if (cur === 'lives') main = <Lives {...ctx} />
+  else if (cur === 'members') main = <Members {...ctx} />
+  else if (cur === 'profile') main = <Profile {...ctx} />
+  else if (cur === 'journey') main = <Journey {...ctx} />
+  else if (cur === 'courses') main = <Courses {...ctx} />
+  else if (cur === 'tracking' && isStaff) main = <Tracking {...ctx} />
+  else if (cur === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
+  else if (cur === 'moderation' && isStaff) main = <Moderation {...ctx} />
+  else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
   else main = <Chat key="general" space="general" {...ctx} />
 
   return (
-    <div className={`app ${live ? 'has-live' : ''}`}>
+    <div className={`app ${live && space === 'accel' ? 'has-live' : ''} ${space === 'accel' ? '' : 'noside'}`}>
       <header className="topbar">
         <button className="ic" aria-label="Menu" onClick={() => setRail(r => !r)}>☰</button>
-        <Logo size={26} />
+        <div className="spaces">
+          <button className="spbtn" onClick={() => spaceList.length > 1 && setSpaceMenu(m => !m)} aria-haspopup={spaceList.length > 1}><Mark size={24} /><span><b className="full">{SPACES[space].name}</b><b className="short">{SPACES[space].short}</b><small>{SPACES[space].sub}</small></span>{spaceList.length > 1 && <i>▾</i>}</button>
+          {spaceMenu && <><div className="spscrim" onClick={() => setSpaceMenu(false)} /><div className="spmenu">
+            <small>Tes espaces</small>
+            {spaceList.map(s => <button key={s} className={s === space ? 'on' : ''} onClick={() => switchSpace(s)}><span><b>{SPACES[s].name}</b><small>{owns[s] ? SPACES[s].sub : 'Accompagnement · 160 €/mois'}</small></span><em>{s === space ? '✓' : owns[s] ? '' : '🔒'}</em></button>)}
+          </div></>}
+        </div>
         <div className="sp" />
         <button className="ic" aria-label="Notifications" onClick={() => go('notifs')}>🔔{unread > 0 && <span className="n">{unread}</span>}</button>
         <div className="me" style={{ cursor: 'pointer' }} onClick={() => go('profile')}><Avatar p={me} /><div><b>{me.name}</b><small>{ROLE_LABEL[me.role]}</small></div></div>
         <button className="ic" aria-label="Se déconnecter" title="Se déconnecter" onClick={() => supabase.auth.signOut()}>⎋</button>
       </header>
 
-      {live && <div className="livebar"><span className="ld" /><div style={{ minWidth: 0 }}><b>Live en cours · {live.title}</b><small>avec {live.host}</small></div>{live.link ? <a href={live.link} target="_blank" rel="noreferrer">Rejoindre</a> : <button className="btn sm" style={{ marginLeft: 'auto' }} onClick={() => go('lives')}>Voir</button>}</div>}
+      {live && space === 'accel' && <div className="livebar"><span className="ld" /><div style={{ minWidth: 0 }}><b>Live en cours · {live.title}</b><small>avec {live.host}</small></div>{live.link ? <a href={live.link} target="_blank" rel="noreferrer">Rejoindre</a> : <button className="btn sm" style={{ marginLeft: 'auto' }} onClick={() => go('lives')}>Voir</button>}</div>}
       {rail && <div className="scrim" onClick={() => setRail(false)} />}
       <nav className={`rail ${rail ? 'open' : ''}`}>
         {groups.map(g => <div key={g}>
-          <h3>{g}</h3>
+          <h3>{space === 'methode' && g === 'Communauté' ? 'Mon compte' : g}</h3>
           {visible.filter(v => v.group === g).map(v => {
             const locked = v.tier && me.tier < v.tier && !isStaff
-            return <button key={v.id} className={`nav ${view === v.id ? 'on' : ''} ${locked ? 'lock' : ''}`} onClick={() => go(v.id)}><span className="k">{locked ? '🔒' : v.k}</span>{v.label}</button>
+            return <button key={v.id} className={`nav ${cur === v.id ? 'on' : ''} ${locked ? 'lock' : ''}`} onClick={() => go(v.id)}><span className="k">{locked ? '🔒' : v.k}</span>{v.label}</button>
           })}
         </div>)}
       </nav>
 
       <main className="main">{main}</main>
-      <Side {...ctx} />
+      {space === 'accel' && <Side {...ctx} />}
 
       <nav className="tabbar">
-        {(isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>
-          <button key={id} className={view === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
+        {(space === 'methode' ? [['mcours', '🎓', 'Formation'], ...(owns.accel ? [] : [['offre', '⚡', 'Accélérateur']]), ['notifs', '🔔', 'Notifs'], ['profile', '👤', 'Profil']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>
+          <button key={id} className={cur === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
         <button className={rail ? 'on' : ''} onClick={() => setRail(r => !r)}><span>☰</span>Plus</button>
       </nav>
 

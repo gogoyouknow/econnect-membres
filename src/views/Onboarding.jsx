@@ -39,7 +39,7 @@ export default function Onboarding({ me, onDone, toast }) {
     <section className="login">
       <form className="card" onSubmit={save}>
         <Logo size={34} />
-        <h1>Fais-toi connaître du groupe</h1>
+        <h1>{me.accel === false ? 'Bienvenue dans la Méthode' : 'Fais-toi connaître du groupe'}</h1>
         <p>Ton prénom et ta photo s'affichent à côté de tes messages. Ça prend 20 secondes.</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '4px 0' }}>
           <button type="button" className="av" onClick={() => fileRef.current.click()} aria-label="Choisir une photo"
@@ -57,7 +57,7 @@ export default function Onboarding({ me, onDone, toast }) {
           <div className="field"><label htmlFor="last">Nom</label><input id="last" autoComplete="family-name" placeholder="Diallo" value={last} onChange={e => setLast(e.target.value)} /></div>
         </div>
         <div className="err">{err}</div>
-        <button className="btn" type="submit" disabled={busy}>{busy ? 'Enregistrement…' : 'Entrer dans le groupe'}</button>
+        <button className="btn" type="submit" disabled={busy}>{busy ? 'Enregistrement…' : me.accel === false ? 'Commencer la formation' : 'Entrer dans le groupe'}</button>
         <div className="legal">Tu pourras modifier ça plus tard depuis ton profil.</div>
       </form>
     </section>
