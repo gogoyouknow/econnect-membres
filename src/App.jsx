@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase, configured } from './lib/supabase'
 import { loadProfiles, loadSettings } from './lib/data'
 import { Avatar, ROLE_LABEL, useToast } from './lib/ui'
-import { isIOS, isStandalone } from './lib/push'
+import { isIOS, isStandalone, pushSupported, enablePush } from './lib/push'
 import Login from './views/Login'
 import Chat from './views/Chat'
 import Feed from './views/Feed'
@@ -21,6 +21,8 @@ import Onboarding from './views/Onboarding'
 import Profile from './views/Profile'
 import Messages from './views/Messages'
 import Leads from './views/Leads'
+import Agenda from './views/Agenda'
+import { agenda } from './views/Booking'
 
 // Espaces de l'app : chacun a ses propres accès (profiles.methode / profiles.accel)
 const SPACES = {
@@ -30,12 +32,16 @@ const SPACES = {
 
 const VIEWS = [
   { id: 'mcours', k: '🎓', label: 'Ma formation', group: 'Méthode E-Connect', sp: 'methode' },
+  { id: 'messages', k: '💬', label: 'Élèves & messages', group: 'Méthode E-Connect', sp: 'methode', staff: true },
+  { id: 'messages', k: '✉️', label: 'Messages', group: 'Méthode E-Connect', sp: 'methode', needDm: true, memberOnly: true },
   { id: 'mwins', k: '🏆', label: 'Résultats', group: 'Méthode E-Connect', sp: 'methode' },
   { id: 'mlives', k: '🔴', label: 'Lives & replays', group: 'Méthode E-Connect', sp: 'methode' },
   { id: 'mchat', k: '💬', label: 'Chat', group: 'Méthode E-Connect', sp: 'methode', needAccel: true },
   { id: 'offre', k: '⚡', label: "L'Accélérateur", group: 'Méthode E-Connect', sp: 'methode', noAccel: true },
   { id: 'journey', k: '🧭', label: 'Mon parcours', group: 'Espaces', memberOnly: true },
   { id: 'courses', k: '🎓', label: 'Cours', group: 'Espaces' },
+  { id: 'messages', k: '💬', label: 'Élèves & messages', group: 'Espaces', sp: 'accel', staff: true },
+  { id: 'messages', k: '✉️', label: 'Messages', group: 'Espaces', sp: 'accel', needDm: true, memberOnly: true },
   { id: 'general', k: '💬', label: 'Chat général', group: 'Espaces' },
   { id: 'feed', k: '📰', label: 'Fil & questions', group: 'Espaces' },
   { id: 'lives', k: '🔴', label: 'Lives & replays', group: 'Espaces' },
@@ -43,9 +49,9 @@ const VIEWS = [
   { id: 'demarrage', k: '🚀', label: 'Démarrage', group: 'Groupes' },
   { id: 'acceleration', k: '⚡', label: 'Accélération', group: 'Groupes', tier: 2 },
   { id: 'members', k: '👥', label: 'Membres', group: 'Communauté' },
-  { id: 'messages', k: '✉️', label: 'Messages', group: 'Communauté', sp: 'both', needDm: true },
   { id: 'notifs', k: '🔔', label: 'Notifications', group: 'Communauté', sp: 'both' },
   { id: 'profile', k: '👤', label: 'Mon profil', group: 'Communauté', sp: 'both' },
+  { id: 'agenda', k: '📅', label: 'Agenda', group: 'Gestion', staff: true },
   { id: 'leads', k: '🎯', label: 'Prospects', group: 'Gestion', staff: true },
   { id: 'tracking', k: '📊', label: 'Suivi des élèves', group: 'Gestion', staff: true },
   { id: 'moderation', k: '🛡️', label: 'Modération', group: 'Gestion', staff: true },
@@ -64,6 +70,7 @@ export default function App() {
   const [live, setLive] = useState(null)
   const [spacePref, setSpacePref] = useState(() => { try { return localStorage.getItem('space') } catch { return null } })
   const [spaceMenu, setSpaceMenu] = useState(false)
+  const [pushAsk, setPushAsk] = useState(() => { try { return pushSupported() && Notification.permission === 'default' && !localStorage.getItem('pushAsked') } catch { return false } })
   const [folded, setFolded] = useState(() => { try { return JSON.parse(localStorage.getItem('railFolded') || '{}') } catch { return {} } })
   const toast = useToast()
 
@@ -83,6 +90,15 @@ export default function App() {
   }, [session])
 
   useEffect(() => { if (session) refresh() }, [session, refresh])
+  // retour de Google après « Connecter Google Agenda »
+  useEffect(() => {
+    if (!session || location.pathname !== '/agenda-google') return
+    const code = new URLSearchParams(location.search).get('code')
+    history.replaceState(null, '', '/#agenda'); setView('agenda')
+    if (!code) return toast('Connexion Google annulée', true)
+    agenda({ action: 'oauth_exchange', code, redirect_uri: location.origin + '/agenda-google' })
+      .then(r => toast(`Google Agenda connecté (${r.email}) ✓`)).catch(e => toast(e.message, true))
+  }, [session])
 
   useEffect(() => {
     if (!session) return
@@ -117,7 +133,7 @@ export default function App() {
   // quels espaces ce membre possède, et lequel est affiché
   const owns = { methode: isStaff || !!me.methode, accel: isStaff || me.accel !== false }
   const inSpace = (v, s) => (v.sp || 'accel') === s || v.sp === 'both'
-  const viewSp = VIEWS.find(v => v.id === view)?.sp || (view === 'acceleration' ? 'accel' : null)
+  const viewSp = view === 'messages' ? 'both' : VIEWS.find(v => v.id === view)?.sp || (view === 'acceleration' ? 'accel' : null)
   let space = owns[spacePref] ? spacePref : owns.accel ? 'accel' : 'methode'
   if (viewSp && viewSp !== 'both' && viewSp !== space && owns[viewSp]) space = viewSp   // lien direct (#mcours, notification…)
   const spaceList = Object.keys(SPACES).filter(s => owns[s] || (s === 'accel' && owns.methode))   // un élève Méthode voit L'Accélérateur (verrouillé)
@@ -157,12 +173,13 @@ export default function App() {
   else if (cur === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
   else if (cur === 'messages') main = <Messages {...ctx} />
   else if (cur === 'leads' && isStaff) main = <Leads {...ctx} />
+  else if (cur === 'agenda' && isStaff) main = <Agenda {...ctx} />
   else if (cur === 'moderation' && isStaff) main = <Moderation {...ctx} />
   else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
   else main = <Chat key="general" space="general" {...ctx} />
 
   return (
-    <div className={`app ${live && space === 'accel' ? 'has-live' : ''} ${space === 'accel' ? '' : 'noside'}`}>
+    <div className={`app ${live && space === 'accel' ? 'has-live' : ''} ${space === 'accel' && !['courses', 'messages', 'agenda'].includes(cur) ? '' : 'noside'}`}>
       <header className="topbar">
         <button className="ic" aria-label="Menu" onClick={() => setRail(r => !r)}>☰</button>
         <div className="spaces">
@@ -192,11 +209,15 @@ export default function App() {
         </div>)}
       </nav>
 
-      <main className="main">{main}</main>
-      {space === 'accel' && <Side {...ctx} />}
+      <main className="main">
+        {pushAsk && (!isIOS() || isStandalone()) && <div className="pushbar"><span>🔔 Active les notifications pour être prévenu des messages, des lives et des réponses.</span>
+        <button className="btn sm" onClick={() => enablePush(me.id).then(() => { toast('Notifications activées sur cet appareil'); setPushAsk(false) }).catch(e => toast(e.message, true))}>Activer</button>
+        <button className="x" aria-label="Plus tard" onClick={() => { setPushAsk(false); try { localStorage.setItem('pushAsked', '1') } catch {} }}>✕</button></div>}
+        {main}</main>
+      {space === 'accel' && !['courses', 'messages', 'agenda'].includes(cur) && <Side {...ctx} />}
 
       <nav className="tabbar">
-        {(space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>
+        {(space === 'methode' ? (isStaff ? [['mcours', '🎓', 'Formation'], ['messages', '💬', 'Élèves'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives']] : [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], me.dm_enabled ? ['messages', '✉️', 'Messages'] : ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']]) : isStaff ? [['general', '💬', 'Chat'], ['messages', '✉️', 'Élèves'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], me.dm_enabled ? ['messages', '✉️', 'Messages'] : ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>
           <button key={id} className={cur === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
         <button className={rail ? 'on' : ''} onClick={() => setRail(r => !r)}><span>☰</span>Plus</button>
       </nav>

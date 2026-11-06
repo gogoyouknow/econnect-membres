@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Logo from '../lib/Logo'
 import { SITUATIONS, COACHING, BUDGETS, CAPITAL } from './Leads'
+import { SlotPicker, agenda, fmtDay, fmtHour } from './Booking'
 
 /** Page affichée juste après le paiement Stripe : /bienvenue?session_id=cs_…
  *  Une question par page. */
@@ -11,6 +12,8 @@ export default function LeadForm() {
   const [f, setF] = useState({ email: '', first_name: '', last_name: '', phone: '', situation: '', wants_coaching: '', budget: '', has_capital: '' })
   const [i, setI] = useState(0)
   const [done, setDone] = useState(false)
+  const [booking, setBooking] = useState(false)   // étape « réserve ton appel » (prospects chauds)
+  const [booked, setBooked] = useState(null)
   const [busy, setBusy] = useState(false); const [err, setErr] = useState('')
   const set = (k, v) => setF(x => ({ ...x, [k]: v }))
 
@@ -46,14 +49,25 @@ export default function LeadForm() {
     const { error } = await supabase.rpc('submit_lead', { p: { ...f, session_id: sid } })
     setBusy(false)
     if (error) return setErr(error.message.replace(/^.*?: /, ''))
-    setDone(true); window.scrollTo(0, 0)
+    if (f.wants_coaching === 'oui' && f.has_capital === 'oui') setBooking(true); else setDone(true)
+    window.scrollTo(0, 0)
   }
   const pick = (k, v) => { set(k, v); setTimeout(() => setI(n => Math.min(n + 1, total - 1)), 180) }
   const knownName = !!(pre && pre.name)
 
   return <section className="leadpage"><div className="leadcard">
     <div className="leadhead"><Logo size={26} /><div className="paid">✓ Paiement validé</div></div>
-    {done ? <div className="lstep" key="done">
+    {booking && !done ? <div className="lstep" key="booking">
+      <h1>Réserve ton appel avec nous</h1>
+      <p>30 minutes en visio pour faire le point sur ton projet et voir si l'accompagnement est fait pour toi. Choisis le moment qui t'arrange.</p>
+      <SlotPicker onBook={async (s) => { const r = await agenda({ action: 'book', session_id: sid, start: s }); setBooked(r); setDone(true); window.scrollTo(0, 0) }} />
+      <button type="button" className="lback" onClick={() => setDone(true)}>Je préfère qu'on me recontacte</button>
+    </div> : done && booked ? <div className="lstep" key="booked">
+      <h1>C'est calé{f.first_name ? `, ${f.first_name}` : ''} ✅</h1>
+      <p>Rendez-vous <b>{fmtDay(booked.starts_at)} à {fmtHour(booked.starts_at)}</b>{booked.host ? ` avec ${booked.host}` : ''}. Tu viens de recevoir la confirmation et l'invitation par email.</p>
+      <p>Ton accès à la formation arrive aussi par email. Tu peux le créer tout de suite :</p>
+      <a className="btn big" href="/#signup">Créer mon accès à la formation</a>
+    </div> : done ? <div className="lstep" key="done">
       <h1>Merci{f.first_name ? ` ${f.first_name}` : ''}, c'est noté 🙌</h1>
       <p>Ton accès arrive par email dans quelques minutes{pre?.email || f.email ? <> à <b>{pre?.email || f.email}</b></> : null}. Tu peux aussi le créer tout de suite avec cette adresse.</p>
       <a className="btn big" href="/#signup">Créer mon accès à la formation</a>

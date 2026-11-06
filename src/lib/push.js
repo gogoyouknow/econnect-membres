@@ -7,9 +7,10 @@ export const isStandalone = () => window.matchMedia('(display-mode: standalone)'
 export const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
 
 export async function enablePush(userId) {
-  const key = import.meta.env.VITE_VAPID_PUBLIC_KEY
   if (!pushSupported()) throw new Error('Les notifications ne sont pas disponibles sur ce navigateur')
   if (isIOS() && !isStandalone()) throw new Error("Sur iPhone, ajoute d'abord l'app à ton écran d'accueil")
+  let key = import.meta.env.VITE_VAPID_PUBLIC_KEY
+  if (!key) { const { data } = await supabase.functions.invoke('push', { body: { action: 'key' } }); key = data?.key }
   if (!key) throw new Error('Notifications pas encore configurées côté serveur')
   const perm = await Notification.requestPermission()
   if (perm !== 'granted') throw new Error('Notifications refusées')
