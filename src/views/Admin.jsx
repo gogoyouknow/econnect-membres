@@ -39,6 +39,11 @@ export default function Admin({ me, profiles, settings, toast }) {
     e.target.reset()
   }
   async function removeAllowed(a) { await supabase.from('allowed_emails').delete().eq('email', a.email); load() }
+  const exportAi = async () => {
+    const rows = []; for (let from = 0; ; from += 1000) { const { data, error } = await supabase.from('ai_corpus').select('*').order('created_at').range(from, from + 999); if (error) return toast(friendlyError(error), true); rows.push(...data); if (data.length < 1000) break }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.map(r => JSON.stringify(r)).join('\n')], { type: 'application/x-ndjson' })); a.download = `conversations-ia-${new Date().toISOString().slice(0, 10)}.jsonl`; a.click()
+    toast(`${rows.length} messages exportés`)
+  }
   const exportCsv = async () => {
     const rows = [['nom', 'email', 'role', 'groupe', 'avancement', 'actif', 'inscrit'], ...profiles.list.map(p => [p.name, p.email, p.role, p.tier, p.status || '', p.active, p.created_at])]
     const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -93,6 +98,7 @@ export default function Admin({ me, profiles, settings, toast }) {
       </div>
       <div className="post"><b>Données</b>
         <div className="row"><label>Exporter les membres (CSV)</label><button className="btn ghost sm" onClick={exportCsv}>Exporter</button></div>
+        <div className="row"><label>Conversations pour l'IA<small>Chat, groupes, fil, réponses et messages privés, anonymisés (sans nom ni email), au format JSONL. Tout est déjà enregistré au fur et à mesure.</small></label><button className="btn ghost sm" onClick={exportAi}>Exporter</button></div>
         <div className="row"><label>Base de données<small>Supabase · Francfort</small></label><span className="pill gold">OK</span></div>
       </div>
     </div>

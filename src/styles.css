@@ -553,3 +553,23 @@ html,#root,.main{overscroll-behavior-x:none}
 .bka a.btn,.leadcard a.btn{text-decoration:none}
 .dmitem i.kind{font-size:10px;opacity:1;color:var(--muted);border:1px solid var(--line-2);border-radius:99px;padding:1px 6px;white-space:nowrap}
 .dmitem em.off{font-style:normal;font-size:10px;color:#f87171;margin-left:6px;background:none;padding:0}
+
+/* médias dans les messages */
+.dmmsg .bub.media{padding:6px 6px 8px}
+.dmmsg .bub img,.dmmsg .bub video{display:block;max-width:min(320px,62vw);max-height:360px;border-radius:10px;margin-bottom:4px;cursor:zoom-in;background:#000}
+.voice{display:flex;align-items:center;gap:8px;min-width:250px;max-width:340px;padding:4px 4px 2px}
+.vplay{width:36px;height:36px;border-radius:50%;border:0;background:var(--gold);color:var(--gold-ink);font-weight:800;cursor:pointer;flex:none;font-size:13px}
+.voice input[type=range]{flex:1;min-width:60px;accent-color:var(--gold)}
+.vt{font-size:11.5px;color:var(--muted);min-width:32px;font-variant-numeric:tabular-nums}
+.vrate{display:flex;gap:2px}.vrate button{border:1px solid var(--line-2);background:none;color:var(--fg-2);font-size:10.5px;padding:3px 5px;border-radius:6px;cursor:pointer;font-family:inherit}
+.vrate button.on{background:var(--gold-dim);color:var(--gold);border-color:rgba(233,197,62,.5)}
+.recbar{flex:1;display:flex;align-items:center;gap:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);border-radius:12px;padding:6px 10px}
+.recbar .dot{width:10px;height:10px;border-radius:50%;background:#ef4444;animation:blink 1s infinite}
+.recbar small{color:var(--muted);flex:1}
+@keyframes blink{50%{opacity:.25}}
+.dmcomposer .ic{flex:none}
+.dmcomposer:has(.recbar) > input:not([type=file]),.dmcomposer:has(.recbar) > .btn{display:none}
+/* invitation à activer les notifications */
+.pushbar{display:flex;align-items:center;gap:10px;padding:8px 16px;background:var(--gold-dim);border-bottom:1px solid rgba(233,197,62,.25);font-size:13.5px;grid-column:1/-1}
+.pushbar span{flex:1}.pushbar .x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:15px}
+@media (max-width:900px){.dmcomposer{padding:10px 12px calc(68px + env(safe-area-inset-bottom,0px))}}

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase, configured } from './lib/supabase'
 import { loadProfiles, loadSettings } from './lib/data'
 import { Avatar, ROLE_LABEL, useToast } from './lib/ui'
-import { isIOS, isStandalone } from './lib/push'
+import { isIOS, isStandalone, pushSupported, enablePush } from './lib/push'
 import Login from './views/Login'
 import Chat from './views/Chat'
 import Feed from './views/Feed'
@@ -70,6 +70,7 @@ export default function App() {
   const [live, setLive] = useState(null)
   const [spacePref, setSpacePref] = useState(() => { try { return localStorage.getItem('space') } catch { return null } })
   const [spaceMenu, setSpaceMenu] = useState(false)
+  const [pushAsk, setPushAsk] = useState(() => { try { return pushSupported() && Notification.permission === 'default' && !localStorage.getItem('pushAsked') } catch { return false } })
   const [folded, setFolded] = useState(() => { try { return JSON.parse(localStorage.getItem('railFolded') || '{}') } catch { return {} } })
   const toast = useToast()
 
@@ -208,7 +209,11 @@ export default function App() {
         </div>)}
       </nav>
 
-      <main className="main">{main}</main>
+      <main className="main">
+        {pushAsk && (!isIOS() || isStandalone()) && <div className="pushbar"><span>🔔 Active les notifications pour être prévenu des messages, des lives et des réponses.</span>
+        <button className="btn sm" onClick={() => enablePush(me.id).then(() => { toast('Notifications activées sur cet appareil'); setPushAsk(false) }).catch(e => toast(e.message, true))}>Activer</button>
+        <button className="x" aria-label="Plus tard" onClick={() => { setPushAsk(false); try { localStorage.setItem('pushAsked', '1') } catch {} }}>✕</button></div>}
+        {main}</main>
       {space === 'accel' && !['courses', 'messages', 'agenda'].includes(cur) && <Side {...ctx} />}
 
       <nav className="tabbar">
