@@ -87,9 +87,10 @@ create table if not exists public.leads (
   created_at timestamptz not null default now(),
   session_id text unique,                 -- session Stripe (relie le formulaire au paiement)
   email text, first_name text, last_name text, phone text,
-  goals text[] default '{}', goals_text text,
-  wants_coaching text,                    -- oui | peut-etre | non
-  budget text,
+  situation text,                         -- etudiant | salarie | chomage | entrepreneur
+  wants_coaching text,                    -- oui | non
+  budget text,                            -- budget disponible aujourd'hui
+  has_capital text,                       -- oui | non
   offer text, amount numeric,
   status text not null default 'nouveau' check (status in ('nouveau','contacte','rdv','close','perdu')),
   note text default ''
@@ -118,18 +119,17 @@ declare sid text := nullif(p ->> 'session_id', ''); em text := lower(trim(coales
 begin
   if em !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then raise exception 'Email invalide'; end if;
   if sid is not null then pre := public.lead_prefill(sid); end if;
-  insert into public.leads (session_id, email, first_name, last_name, phone, goals, goals_text, wants_coaching, budget, offer, amount)
+  insert into public.leads (session_id, email, first_name, last_name, phone, situation, wants_coaching, budget, has_capital, offer, amount)
   values (sid, em, left(p ->> 'first_name', 80), left(p ->> 'last_name', 80), left(p ->> 'phone', 40),
-          coalesce(array(select left(x, 120) from jsonb_array_elements_text(coalesce(p -> 'goals', '[]'::jsonb)) x limit 10), '{}'),
-          left(p ->> 'goals_text', 1500), left(p ->> 'wants_coaching', 20), left(p ->> 'budget', 40),
+          left(p ->> 'situation', 30), left(p ->> 'wants_coaching', 20), left(p ->> 'budget', 40), left(p ->> 'has_capital', 10),
           coalesce(pre ->> 'offer', ''), nullif(pre ->> 'amount', '')::numeric)
   on conflict (session_id) do update set email = excluded.email, first_name = excluded.first_name, last_name = excluded.last_name, phone = excluded.phone,
-    goals = excluded.goals, goals_text = excluded.goals_text, wants_coaching = excluded.wants_coaching, budget = excluded.budget
+    situation = excluded.situation, wants_coaching = excluded.wants_coaching, budget = excluded.budget, has_capital = excluded.has_capital
   returning leads.id into id;
-  hot := (p ->> 'wants_coaching') in ('oui', 'peut-etre');
+  hot := (p ->> 'wants_coaching') = 'oui' and (p ->> 'has_capital') = 'oui';
   insert into public.notifications (user_id, title, body, url)
     select pr.id, case when hot then '🔥 Prospect chaud : ' else 'Nouveau formulaire : ' end || coalesce(nullif(p ->> 'first_name', ''), em),
-           'Accompagnement : ' || coalesce(p ->> 'wants_coaching', '?') || ' · budget ' || coalesce(p ->> 'budget', '?'), '#leads'
+           'Accompagnement : ' || coalesce(p ->> 'wants_coaching', '?') || ' · budget ' || coalesce(p ->> 'budget', '?') || ' · capital : ' || coalesce(p ->> 'has_capital', '?'), '#leads'
     from public.profiles pr where pr.role = 'admin' and pr.active;
   return jsonb_build_object('ok', true, 'id', id);
 end $$;
