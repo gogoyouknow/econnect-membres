@@ -162,7 +162,7 @@ export default function App() {
   else main = <Chat key="general" space="general" {...ctx} />
 
   return (
-    <div className={`app ${live && space === 'accel' ? 'has-live' : ''} ${space === 'accel' ? '' : 'noside'}`}>
+    <div className={`app ${live && space === 'accel' ? 'has-live' : ''} ${space === 'accel' && cur !== 'courses' ? '' : 'noside'}`}>
       <header className="topbar">
         <button className="ic" aria-label="Menu" onClick={() => setRail(r => !r)}>☰</button>
         <div className="spaces">
@@ -193,7 +193,7 @@ export default function App() {
       </nav>
 
       <main className="main">{main}</main>
-      {space === 'accel' && <Side {...ctx} />}
+      {space === 'accel' && cur !== 'courses' && <Side {...ctx} />}
 
       <nav className="tabbar">
         {(space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>

@@ -462,10 +462,11 @@ html,#root,.main{overscroll-behavior-x:none}
 @media (max-width:900px){.railh{min-height:48px;font-size:12.5px;padding:8px 8px 8px 12px}.railh i{width:34px;height:34px;font-size:16px}}
 
 /* boutons sous les leçons (comme Circle) */
-.lessonbtns{display:flex;flex-direction:column;gap:8px;align-items:flex-start;margin:4px 0 10px}
-.lbtn{display:inline-flex;align-items:center;gap:10px;background:#0060ff;color:#fff;font-weight:700;font-size:14px;text-decoration:none;padding:12px 18px;border-radius:10px;max-width:100%;transition:opacity .15s}
+.lessonbtns{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:14px auto 4px;max-width:820px}
+.lbtn{display:inline-flex;align-items:center;gap:6px;background:#0060ff;color:#fff;font-weight:600;font-size:12.5px;line-height:1.2;text-decoration:none;padding:8px 13px;border-radius:999px;max-width:100%;transition:opacity .15s,transform .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbtn:hover{transform:translateY(-1px)}
 .lbtn:hover{opacity:.9}
-.lbtn span{opacity:.8;font-size:13px}
+.lbtn span{opacity:.8;font-size:11px}
 .lbtn.file{background:var(--panel-2);color:var(--fg);border:1px solid var(--line-2)}
 .btnrow{display:grid;grid-template-columns:1fr 1.4fr auto auto;gap:6px;margin-bottom:6px}
 @media (max-width:600px){.btnrow{grid-template-columns:1fr auto auto}.btnrow input:nth-child(2){grid-column:1/-1;grid-row:2}}
@@ -526,3 +527,11 @@ html,#root,.main{overscroll-behavior-x:none}
 .lback{align-self:flex-start;background:none;border:0;color:var(--muted);font:inherit;font-size:14px;cursor:pointer;padding:8px 0;margin-top:8px}
 @keyframes lin{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
 .leadcard a.btn{text-decoration:none;text-align:center}
+
+/* page leçon : vidéo au maximum, le reste centré */
+.lessonbody{max-width:1180px;margin:0 auto;width:100%}
+.lessonbody .lessontext{max-width:820px;margin:12px auto 0;text-align:center}
+.lessonbody .lessontext p{font-size:14px}
+.lessonbody .lessonnav{max-width:820px;margin:14px auto 0}
+.lessonbody .watchbar{max-width:820px;margin:10px auto 0}
+@media (max-width:900px){.lessonbody{padding-left:0;padding-right:0}.lessonbody .video,.lessonbody .novideo{border-radius:0}.lessonbody>*:not(.video):not(.novideo){margin-left:14px;margin-right:14px}}
