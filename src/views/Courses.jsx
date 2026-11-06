@@ -112,9 +112,9 @@ export default function Courses({ me, isStaff, toast, go, settings, scope }) {
           <div className="grid2"><input defaultValue={lesson.title} onBlur={e => e.target.value !== lesson.title && save('lessons', lesson.id, { title: e.target.value })} /><input defaultValue={lesson.duration} placeholder="Durée (13:13)" onBlur={e => e.target.value !== lesson.duration && save('lessons', lesson.id, { duration: e.target.value })} /></div>
           <textarea defaultValue={lesson.body} rows={4} placeholder="Texte sous la vidéo : consignes, liens, outils à installer…" onBlur={e => e.target.value !== lesson.body && save('lessons', lesson.id, { body: e.target.value })} />
         </div>}
-        {lesson.body && <div className="post lessontext">{lesson.body.split('\n').map((t, k) => <p key={k}>{linkify(t)}</p>)}</div>}
         {Array.isArray(lesson.resources) && lesson.resources.length > 0 && <div className="lessonbtns">{lesson.resources.map((r, k) => <a key={k} className={`lbtn ${r.file ? 'file' : ''}`} href={r.url} target="_blank" rel="noreferrer" download={r.file ? '' : undefined}>{r.file ? '⬇︎ ' : ''}{r.label}{!r.file && <span>↗</span>}</a>)}</div>}
         {isStaff && edit && <ButtonsEditor key={'b' + lesson.id} lesson={lesson} onSave={resources => save('lessons', lesson.id, { resources })} />}
+        {lesson.body && <div className="post lessontext">{lesson.body.split('\n').map((t, k) => <p key={k}>{linkify(t)}</p>)}</div>}
         <div className="lessonnav">
           <button className="btn ghost" disabled={!prev} onClick={() => setLessonId(prev.id)}>‹ Précédente</button>
           <button className={`btn ${done[lesson.id] ? 'ghost' : ''}`} disabled={!done[lesson.id] && !canFinish(lesson)} onClick={() => toggleDone(lesson)}>{done[lesson.id] ? 'Terminée ✓' : next ? 'Terminer et continuer →' : 'Terminer le module ✓'}</button>
