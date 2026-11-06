@@ -1,6 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import LeadForm from './views/LeadForm'
 import { ToastProvider } from './lib/ui'
 import './styles.css'
 import { registerSW } from 'virtual:pwa-register'
@@ -20,6 +21,6 @@ const updateSW = registerSW({
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ToastProvider><App /></ToastProvider>
+    <ToastProvider>{location.pathname.replace(/\/$/, '') === '/bienvenue' ? <LeadForm /> : <App />}</ToastProvider>
   </React.StrictMode>
 )

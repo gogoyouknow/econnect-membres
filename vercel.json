@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/((?!api/|methode/).*)",
+      "source": "/((?!api/|methode/|fichiers/).*)",
       "destination": "/index.html"
     }
   ],

@@ -28,7 +28,7 @@ export default defineConfig({
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
         ]
       },
-      injectManifest: { globPatterns: ['**/*.{js,css,html,png,svg,woff2}'], globIgnores: ['methode/**'] }
+      injectManifest: { globPatterns: ['**/*.{js,css,html,png,svg,woff2}'], globIgnores: ['methode/**', 'fichiers/**'] }
     })
   ],
   server: { port: 5173 }
