@@ -1,0 +1,29 @@
+name: Fichiers des leçons → app
+on:
+  push:
+    paths: ['videos/fichiers-*.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Télécharger
+        run: |
+          mkdir -p public/fichiers
+          for l in videos/fichiers-*.json; do
+            n=$(jq length "$l")
+            for i in $(seq 0 $((n-1))); do
+              f=$(jq -r ".[$i].file" "$l"); u=$(jq -r ".[$i].url" "$l")
+              [ -f "public/fichiers/$f" ] && continue
+              code=$(curl -sSL -o "public/fichiers/$f" -w "%{http_code}" "$u") || true
+              echo "$f : HTTP $code $(stat -c %s "public/fichiers/$f" 2>/dev/null) o"
+              [ "$code" = "200" ] || rm -f "public/fichiers/$f"
+            done
+          done
+      - name: Enregistrer
+        run: |
+          git config user.name "robot-fichiers" && git config user.email "robot@theambitiousman.fr"
+          git add public/fichiers && git commit -m "Fichiers des leçons (repris de Circle)" && git push || echo "rien"

@@ -113,7 +113,8 @@ export default function Courses({ me, isStaff, toast, go, settings, scope }) {
           <textarea defaultValue={lesson.body} rows={4} placeholder="Texte sous la vidéo : consignes, liens, outils à installer…" onBlur={e => e.target.value !== lesson.body && save('lessons', lesson.id, { body: e.target.value })} />
         </div>}
         {lesson.body && <div className="post lessontext">{lesson.body.split('\n').map((t, k) => <p key={k}>{linkify(t)}</p>)}</div>}
-        {Array.isArray(lesson.resources) && lesson.resources.length > 0 && <div className="post"><b>Ressources</b>{lesson.resources.map((r, k) => <a key={k} className="res" href={r.url} target="_blank" rel="noreferrer">📎 {r.label}</a>)}</div>}
+        {Array.isArray(lesson.resources) && lesson.resources.length > 0 && <div className="lessonbtns">{lesson.resources.map((r, k) => <a key={k} className={`lbtn ${r.file ? 'file' : ''}`} href={r.url} target="_blank" rel="noreferrer" download={r.file ? '' : undefined}>{r.file ? '⬇︎ ' : ''}{r.label}{!r.file && <span>↗</span>}</a>)}</div>}
+        {isStaff && edit && <ButtonsEditor key={'b' + lesson.id} lesson={lesson} onSave={resources => save('lessons', lesson.id, { resources })} />}
         <div className="lessonnav">
           <button className="btn ghost" disabled={!prev} onClick={() => setLessonId(prev.id)}>‹ Précédente</button>
           <button className={`btn ${done[lesson.id] ? 'ghost' : ''}`} disabled={!done[lesson.id] && !canFinish(lesson)} onClick={() => toggleDone(lesson)}>{done[lesson.id] ? 'Terminée ✓' : next ? 'Terminer et continuer →' : 'Terminer le module ✓'}</button>
@@ -180,6 +181,17 @@ function Thumb({ srcs, className, extra }) {
   const [i, setI] = useState(0)
   if (!list.length || i >= list.length) return className === 'th' ? <span className="th empty">▶</span> : null
   return <span className={className}><img src={list[i]} alt="" loading="lazy" onError={() => setI(i + 1)} />{extra}</span>
+}
+
+/** Boutons sous la vidéo (liens et fichiers), modifiables par l'équipe */
+function ButtonsEditor({ lesson, onSave }) {
+  const [list, setList] = useState(Array.isArray(lesson.resources) ? lesson.resources : [])
+  const upd = (i, k, v) => setList(l => l.map((x, j) => j === i ? { ...x, [k]: v } : x))
+  const changed = JSON.stringify(list) !== JSON.stringify(lesson.resources || [])
+  return <div className="post"><b>Boutons sous la vidéo</b><small className="muted" style={{ display: 'block', margin: '2px 0 8px' }}>Un bouton = un texte + un lien (site, outil, fichier à télécharger).</small>
+    {list.map((r, i) => <div key={i} className="btnrow"><input value={r.label} placeholder="Texte du bouton" onChange={e => upd(i, 'label', e.target.value)} /><input value={r.url} placeholder="https://…" onChange={e => upd(i, 'url', e.target.value)} /><button className="btn ghost sm" title="Monter" disabled={!i} onClick={() => setList(l => { const n = [...l]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n })}>↑</button><button className="btn ghost sm danger" onClick={() => setList(l => l.filter((_, j) => j !== i))}>✕</button></div>)}
+    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><button className="btn ghost sm" onClick={() => setList(l => [...l, { label: '', url: '' }])}>+ Bouton</button>{changed && <button className="btn sm" onClick={() => onSave(list.filter(x => x.label.trim() && /^https?:\/\//.test(x.url.trim())).map(x => ({ ...x, label: x.label.trim(), url: x.url.trim() })))}>Enregistrer les boutons</button>}</div>
+  </div>
 }
 
 function linkify(t) {

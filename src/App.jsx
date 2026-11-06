@@ -19,6 +19,8 @@ import Tracking from './views/Tracking'
 import { Mark } from './lib/Logo'
 import Onboarding from './views/Onboarding'
 import Profile from './views/Profile'
+import Messages from './views/Messages'
+import Leads from './views/Leads'
 
 // Espaces de l'app : chacun a ses propres accès (profiles.methode / profiles.accel)
 const SPACES = {
@@ -41,8 +43,10 @@ const VIEWS = [
   { id: 'demarrage', k: '🚀', label: 'Démarrage', group: 'Groupes' },
   { id: 'acceleration', k: '⚡', label: 'Accélération', group: 'Groupes', tier: 2 },
   { id: 'members', k: '👥', label: 'Membres', group: 'Communauté' },
+  { id: 'messages', k: '✉️', label: 'Messages', group: 'Communauté', sp: 'both', needDm: true },
   { id: 'notifs', k: '🔔', label: 'Notifications', group: 'Communauté', sp: 'both' },
   { id: 'profile', k: '👤', label: 'Mon profil', group: 'Communauté', sp: 'both' },
+  { id: 'leads', k: '🎯', label: 'Prospects', group: 'Gestion', staff: true },
   { id: 'tracking', k: '📊', label: 'Suivi des élèves', group: 'Gestion', staff: true },
   { id: 'moderation', k: '🛡️', label: 'Modération', group: 'Gestion', staff: true },
   { id: 'admin', k: '⚙️', label: 'Administration', group: 'Gestion', admin: true, sp: 'both' },
@@ -124,14 +128,15 @@ export default function App() {
     setSpacePref(s); setView(SPACES[s].home)
   }
   const go = (v) => setView(v)
-  const visible = VIEWS.filter(v => inSpace(v, space) && (!v.staff || isStaff) && (!v.admin || isAdmin) && (!v.memberOnly || !isStaff) && (!v.noAccel || !owns.accel))
+  const visible = VIEWS.filter(v => inSpace(v, space) && (!v.staff || isStaff) && (!v.admin || isAdmin) && (!v.memberOnly || !isStaff) && (!v.noAccel || !owns.accel) && (!v.needDm || isStaff || me.dm_enabled))
   const cur = visible.some(v => v.id === view) || (view === 'acceleration' && space === 'accel') ? view : SPACES[space].home
   const groups = [...new Set(visible.map(v => v.group))]
 
   let main
   if (space === 'methode') {
     if (cur === 'offre') main = <AccelOffer {...ctx} />
-    else if (cur === 'mwins') main = <Feed key="mwins" space="wins" {...ctx} />
+    else if (cur === 'mwins') main = <Feed key="mwins" space="mwins" canPost={isStaff} {...ctx} />
+    else if (cur === 'messages') main = <Messages {...ctx} />
     else if (cur === 'mlives') main = <Lives {...ctx} />
     else if (cur === 'mchat') main = owns.accel ? <Chat key="mchat" space="general" {...ctx} /> : <AccelOffer {...ctx} reason="chat" />
     else if (cur === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
@@ -150,6 +155,8 @@ export default function App() {
   else if (cur === 'courses') main = <Courses {...ctx} />
   else if (cur === 'tracking' && isStaff) main = <Tracking {...ctx} />
   else if (cur === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
+  else if (cur === 'messages') main = <Messages {...ctx} />
+  else if (cur === 'leads' && isStaff) main = <Leads {...ctx} />
   else if (cur === 'moderation' && isStaff) main = <Moderation {...ctx} />
   else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
   else main = <Chat key="general" space="general" {...ctx} />

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { uploadPhoto, friendlyError } from '../lib/data'
 import { Avatar, NameTag, ago, Lightbox } from '../lib/ui'
 
-export default function Feed({ space, me, profiles, settings, isStaff, toast }) {
+export default function Feed({ space, me, profiles, settings, isStaff, toast, canPost = true }) {
   const [posts, setPosts] = useState([])
   const [likes, setLikes] = useState({})     // post_id -> {count, mine}
   const [replies, setReplies] = useState({}) // post_id -> []
@@ -13,7 +13,7 @@ export default function Feed({ space, me, profiles, settings, isStaff, toast }) 
   const [busy, setBusy] = useState(false)
   const [zoom, setZoom] = useState(null)
   const fileRef = useRef(null)
-  const isWins = space === 'wins'
+  const isWins = space === 'wins' || space === 'mwins'
 
   async function load() {
     const { data } = await supabase.from('posts').select('*').eq('space_id', space).order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(100)
@@ -62,9 +62,9 @@ export default function Feed({ space, me, profiles, settings, isStaff, toast }) 
   async function delReply(r) { await supabase.from('replies').delete().eq('id', r.id) }
 
   return <>
-    <div className="head"><div style={{ flex: 1, minWidth: 0 }}><h2>{isWins ? 'Résultats' : 'Fil & questions'}</h2><small>{isWins ? 'Les avancées des membres : des actions, pas des chiffres' : 'Questions, partages, réponses des coachs'}</small></div></div>
+    <div className="head"><div style={{ flex: 1, minWidth: 0 }}><h2>{isWins ? 'Résultats' : 'Fil & questions'}</h2><small>{space === 'mwins' ? 'Les résultats des élèves E-Connect, partagés par Clément' : isWins ? 'Les avancées des membres : des actions, pas des chiffres' : 'Questions, partages, réponses des coachs'}</small></div></div>
     <div className="body">
-      <div className="post newpost"><Avatar p={me} />
+      {canPost && <div className="post newpost"><Avatar p={me} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <textarea placeholder={isWins ? 'Partage une avancée (une action, une étape franchie)…' : 'Pose ta question ou partage une avancée…'} value={text} onChange={e => setText(e.target.value)} />
           {pending && <div className="preview"><img src={pending.url} alt="" /><span>{pending.file.name}</span><button onClick={() => setPending(null)}>✕</button></div>}
@@ -74,8 +74,8 @@ export default function Feed({ space, me, profiles, settings, isStaff, toast }) 
             <button className="btn" onClick={publish} disabled={busy || !text.trim()}>{isWins ? 'Partager' : 'Publier'}</button>
           </div>
         </div>
-      </div>
-      {posts.length === 0 && <div className="sys">Rien pour l'instant. Sois le premier à publier.</div>}
+      </div>}
+      {posts.length === 0 && <div className="sys">{canPost ? "Rien pour l'instant. Sois le premier à publier." : 'Les premiers résultats arrivent bientôt.'}</div>}
       {posts.map(p => {
         const u = profiles.map[p.user_id]; const lk = likes[p.id] || { count: 0, mine: false }; const rs = replies[p.id] || []
         return <article key={p.id} className={`post ${p.pinned ? 'pin' : ''} ${!p.approved ? 'pending' : ''}`}>
@@ -94,9 +94,9 @@ export default function Feed({ space, me, profiles, settings, isStaff, toast }) 
           </div>
           {open[p.id] && <div className="replies">
             {rs.map(r => { const ru = profiles.map[r.user_id]; return <div key={r.id} className="reply"><Avatar p={ru} /><div><b><NameTag p={ru} /></b><div>{r.body}</div></div>{(isStaff || r.user_id === me.id) && <button className="x" onClick={() => delReply(r)}>✕</button>}</div> })}
-            <form className="replybox" onSubmit={e => { e.preventDefault(); const i = e.target.elements.r; const v = i.value.trim(); if (!v) return; reply(p, v); i.value = '' }}>
+            {canPost && <form className="replybox" onSubmit={e => { e.preventDefault(); const i = e.target.elements.r; const v = i.value.trim(); if (!v) return; reply(p, v); i.value = '' }}>
               <input name="r" placeholder="Répondre…" aria-label="Répondre" /><button className="btn">Envoyer</button>
-            </form>
+            </form>}
           </div>}
         </article>
       })}
