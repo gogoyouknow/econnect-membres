@@ -21,7 +21,10 @@ export default function Leads({ toast }) {
   useEffect(() => { load() }, [])
   const upd = async (l, patch) => { const { error } = await supabase.from('leads').update(patch).eq('id', l.id); if (error) return toast(friendlyError(error), true); setRows(r => r.map(x => x.id === l.id ? { ...x, ...patch } : x)) }
   const list = rows.filter(l => f === 'tous' || (f === 'chauds' ? hot(l) && !['close', 'perdu'].includes(l.status) : l.status === f))
-  const [bk, setBk] = useState([]); const [hours, setHours] = useState([])
+  const [bk, setBk] = useState([]); const [hours, setHours] = useState([]); const [gcal, setGcal] = useState(null)
+  const loadGcal = () => supabase.rpc('gcal_status').then(({ data }) => setGcal(data))
+  useEffect(() => { loadGcal() }, [])
+  const saveGcal = async (e) => { e.preventDefault(); const v = e.target.ics.value.trim(); const { error } = await supabase.rpc('set_gcal_ics', { p_url: v }); if (error) return toast(friendlyError(error), true); e.target.reset(); toast(v ? 'Agenda connecté, synchro en cours…' : 'Agenda déconnecté'); setTimeout(loadGcal, 4000) }
   const loadBk = () => Promise.all([supabase.from('bookings').select('*').gte('starts_at', new Date(Date.now() - 3600000).toISOString()).neq('status', 'annule').order('starts_at'), supabase.from('booking_hours').select('*').order('weekday')]).then(([a, b]) => { setBk(a.data || []); setHours(b.data || []) })
   useEffect(() => { loadBk() }, [])
   const updBk = async (b, patch) => { const { error } = await supabase.from('bookings').update(patch).eq('id', b.id); if (error) return toast(friendlyError(error), true); loadBk() }
@@ -37,6 +40,11 @@ export default function Leads({ toast }) {
         {!bk.length && <p className="muted" style={{ fontSize: 13 }}>Aucun appel réservé pour l'instant. Les prospects qui veulent être accompagnés et ont le budget choisissent un créneau juste après le formulaire.</p>}
         {bk.map(b => <div key={b.id} className="bkrow"><div><b>{fmt(b.starts_at)}</b> · {b.name || b.email}<small>{b.email}{b.phone ? ` · ${b.phone}` : ''}</small></div><div className="bkact">{b.phone && <a className="btn ghost sm" href={wa(b.phone)} target="_blank" rel="noreferrer">WhatsApp</a>}<select value={b.status} onChange={e => updBk(b, { status: e.target.value })}><option value="confirme">Confirmé</option><option value="fait">Fait</option><option value="absent">Absent</option><option value="annule">Annulé</option></select></div></div>)}
         <details style={{ marginTop: 10 }}><summary className="muted" style={{ cursor: 'pointer', fontSize: 13 }}>Mes disponibilités (heure de Paris, créneaux de 30 min, proposés sur 48 h)</summary>
+          <form onSubmit={saveGcal} className="gcal">
+            <label className="lq">Mon Google Agenda {gcal?.set ? <span className="pill gold">connecté · {gcal.busy} événement(s) à venir{gcal.synced_at ? ` · synchro ${new Date(gcal.synced_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : ''}</span> : <span className="pill">pas connecté</span>}</label>
+            <small className="muted">Google Agenda → ⚙️ Paramètres → ton agenda → « Adresse secrète au format iCal » → copie-colle ici. Tes événements bloquent les créneaux (synchro toutes les 10 min), et chaque rendez-vous t'arrive par email avec l'invitation à ajouter.</small>
+            <div style={{ display: 'flex', gap: 6 }}><input name="ics" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" style={{ flex: 1 }} /><button className="btn ghost sm">{gcal?.set ? 'Changer' : 'Connecter'}</button>{gcal?.set && <button type="button" className="btn ghost sm" onClick={async () => { await supabase.rpc('set_gcal_ics', { p_url: '' }); loadGcal() }}>Retirer</button>}</div>
+          </form>
           <div className="hours">{hours.map(h => <div key={h.weekday} className={h.active ? '' : 'off'}><label><input type="checkbox" checked={h.active} onChange={e => updH(h, { active: e.target.checked })} /> {DAYN[h.weekday]}</label><input type="time" value={h.start_time.slice(0, 5)} onChange={e => updH(h, { start_time: e.target.value })} /><span>→</span><input type="time" value={h.end_time.slice(0, 5)} onChange={e => updH(h, { end_time: e.target.value })} /></div>)}</div>
         </details>
       </div>
