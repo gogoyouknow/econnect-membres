@@ -42,7 +42,7 @@ const VIEWS = [
   { id: 'wins', k: '🏆', label: 'Résultats', group: 'Espaces' },
   { id: 'demarrage', k: '🚀', label: 'Démarrage', group: 'Groupes' },
   { id: 'acceleration', k: '⚡', label: 'Accélération', group: 'Groupes', tier: 2 },
-  { id: 'members', k: '👥', label: 'Membres', group: 'Communauté' },
+  { id: 'members', k: '👥', label: 'Membres', group: 'Gestion', staff: true },
   { id: 'messages', k: '✉️', label: 'Messages', group: 'Communauté', sp: 'both', needDm: true },
   { id: 'notifs', k: '🔔', label: 'Notifications', group: 'Communauté', sp: 'both' },
   { id: 'profile', k: '👤', label: 'Mon profil', group: 'Communauté', sp: 'both' },
@@ -155,7 +155,7 @@ export default function App() {
   else if (cur === 'feed') main = <Feed key="feed" space="feed" {...ctx} />
   else if (cur === 'wins') main = <Feed key="wins" space="wins" {...ctx} />
   else if (cur === 'lives') main = <Lives {...ctx} />
-  else if (cur === 'members') main = <Members {...ctx} />
+  else if (cur === 'members' && isStaff) main = <Members {...ctx} />
   else if (cur === 'profile') main = <Profile {...ctx} />
   else if (cur === 'journey') main = <Journey {...ctx} />
   else if (cur === 'courses') main = <Courses {...ctx} />
@@ -206,7 +206,7 @@ export default function App() {
       {space === 'accel' && <Side {...ctx} />}
 
       <nav className="tabbar">
-        {(space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']]).map(([id, k, l]) =>
+        {(space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]).map(([id, k, l]) =>
           <button key={id} className={cur === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
         <button className={rail ? 'on' : ''} onClick={() => setRail(r => !r)}><span>☰</span>Plus</button>
       </nav>
