@@ -5,6 +5,8 @@ import { friendlyError } from '../lib/data'
 import { TIER_LABEL } from '../lib/ui'
 
 /** Lecteur + mesure du visionnage réel (onTick) */
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, '') } catch { return 'lien' } }
+
 export function Player({ url, onTick, seen }) {
   const box = useRef(null)
   const u = (url || '').trim()
@@ -113,7 +115,7 @@ export default function Courses({ me, isStaff, toast, go, settings, scope }) {
           <textarea defaultValue={lesson.body} rows={4} placeholder="Texte sous la vidéo : consignes, liens, outils à installer…" onBlur={e => e.target.value !== lesson.body && save('lessons', lesson.id, { body: e.target.value })} />
         </div>}
         {lesson.body && <div className="post lessontext">{lesson.body.split('\n').map((t, k) => <p key={k}>{linkify(t)}</p>)}</div>}
-        {Array.isArray(lesson.resources) && lesson.resources.length > 0 && <div className="lessonbtns">{lesson.resources.map((r, k) => <a key={k} className={`lbtn ${r.file ? 'file' : ''}`} href={r.url} target="_blank" rel="noreferrer" download={r.file ? '' : undefined}>{r.file ? '⬇︎ ' : ''}{r.label}{!r.file && <span>↗</span>}</a>)}</div>}
+        {Array.isArray(lesson.resources) && lesson.resources.length > 0 && <div className="lessonbtns"><span className="cap">{lesson.resources.length > 1 ? `Liens de la leçon · ${lesson.resources.length}` : 'Lien de la leçon'}</span><div className="lessonlist">{lesson.resources.map((r, k) => <a key={k} className={`lbtn ${r.file ? 'file' : ''}`} href={r.url} target="_blank" rel="noreferrer" download={r.file ? '' : undefined}><i className="k">{r.file ? '⬇︎' : '🔗'}</i><div className="t">{r.label}<small>{r.file ? 'Fichier à télécharger' : hostOf(r.url)}</small></div><span>↗</span></a>)}</div></div>}
         {isStaff && edit && <ButtonsEditor key={'b' + lesson.id} lesson={lesson} onSave={resources => save('lessons', lesson.id, { resources })} />}
         <div className="lessonnav">
           <button className="btn ghost" disabled={!prev} onClick={() => setLessonId(prev.id)}>‹ Précédente</button>
