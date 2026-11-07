@@ -54,7 +54,9 @@ const VIEWS = [
 
 export default function App() {
   const [session, setSession] = useState(undefined)
-  const [me, setMe] = useState(null)
+  const [meReal, setMe] = useState(null)
+  const [viewAs, setViewAsState] = useState(() => { try { return localStorage.getItem('viewAs') || '' } catch { return '' } })
+  const setViewAs = (v) => { setViewAsState(v); try { v ? localStorage.setItem('viewAs', v) : localStorage.removeItem('viewAs') } catch {} }
   const [profiles, setProfiles] = useState({ list: [], map: {} })
   const [settings, setSettings] = useState(null)
   const [view, setView] = useState(() => (location.hash || '#general').slice(1))
@@ -108,7 +110,11 @@ export default function App() {
 
   if (session === undefined) return <div className="center">Chargement…</div>
   if (!session) return <Login />
-  if (!me || !settings) return <div className="center">Chargement de ton espace…</div>
+  if (!meReal || !settings) return <div className="center">Chargement de ton espace…</div>
+  // Vue élève : un admin/modérateur voit l'app exactement comme un client (verrouillages, visionnage obligatoire, menus)
+  const realStaff = meReal.role !== 'member'
+  const VIEW_AS = { methode: { label: 'Élève Méthode (97 €)', patch: { tier: 1, methode: true, accel: false } }, start: { label: 'Abonné Démarrage (250 €)', patch: { tier: 1, methode: false, accel: true } }, accel: { label: 'Abonné Accélération (450 €)', patch: { tier: 2, methode: false, accel: true } } }
+  const me = realStaff && VIEW_AS[viewAs] ? { ...meReal, role: 'member', ...VIEW_AS[viewAs].patch } : meReal
   if (!me.active) return <section className="login"><div className="card"><div className="logo"><Mark size={34} /><b>E-CONNECT</b></div><h1>Ton accès est en pause</h1><p>Ton abonnement n'est plus actif. Relance-le pour retrouver le groupe, ou écris-nous à {settings.cancel_email || 'contact@theambitiousman.fr'}.</p><button className="btn ghost" onClick={() => supabase.auth.signOut()}>Se déconnecter</button></div></section>
   if (!me.onboarded) return <Onboarding me={me} toast={toast} onDone={refresh} />
 
@@ -166,10 +172,13 @@ export default function App() {
       <header className="topbar">
         <button className="ic" aria-label="Menu" onClick={() => setRail(r => !r)}>☰</button>
         <div className="spaces">
-          <button className="spbtn" onClick={() => spaceList.length > 1 && setSpaceMenu(m => !m)} aria-haspopup={spaceList.length > 1}><Mark size={24} /><span><b className="full">{SPACES[space].name}</b><b className="short">{SPACES[space].short}</b><small>{SPACES[space].sub}</small></span>{spaceList.length > 1 && <i>▾</i>}</button>
+          <button className="spbtn" onClick={() => (spaceList.length > 1 || realStaff) && setSpaceMenu(m => !m)} aria-haspopup={spaceList.length > 1 || realStaff}><Mark size={24} /><span><b className="full">{SPACES[space].name}</b><b className="short">{SPACES[space].short}</b><small>{SPACES[space].sub}</small></span>{(spaceList.length > 1 || realStaff) && <i>▾</i>}</button>
           {spaceMenu && <><div className="spscrim" onClick={() => setSpaceMenu(false)} /><div className="spmenu">
             <small>Tes espaces</small>
             {spaceList.map(s => <button key={s} className={s === space ? 'on' : ''} onClick={() => switchSpace(s)}><span><b>{SPACES[s].name}</b><small>{owns[s] ? SPACES[s].sub : 'Accompagnement · 160 €/mois'}</small></span><em>{s === space ? '✓' : owns[s] ? '' : '🔒'}</em></button>)}
+            {realStaff && <><small>Voir comme un élève</small>
+              {Object.entries(VIEW_AS).map(([k, v]) => <button key={k} className={viewAs === k ? 'on' : ''} onClick={() => { setSpaceMenu(false); setViewAs(k); setView(k === 'methode' ? 'mcours' : 'courses') }}><span><b>{v.label}</b><small>Même écran que lui, sans se déconnecter</small></span><em>{viewAs === k ? '✓' : ''}</em></button>)}
+              {viewAs && <button onClick={() => { setSpaceMenu(false); setViewAs('') }}><span><b>Revenir en admin</b></span><em>↩</em></button>}</>}
           </div></>}
         </div>
         <div className="sp" />
@@ -177,6 +186,7 @@ export default function App() {
         <div className="me" style={{ cursor: 'pointer' }} onClick={() => go('profile')}><Avatar p={me} /><div><b>{me.name}</b><small>{ROLE_LABEL[me.role]}</small></div></div>
         <button className="ic" aria-label="Se déconnecter" title="Se déconnecter" onClick={() => supabase.auth.signOut()}>⎋</button>
       </header>
+      {realStaff && VIEW_AS[viewAs] && <div className="viewas"><span>👁 Vue élève · {VIEW_AS[viewAs].label}</span><button onClick={() => setViewAs('')}>Revenir en admin</button></div>}
 
       {live && space === 'accel' && <div className="livebar"><span className="ld" /><div style={{ minWidth: 0 }}><b>Live en cours · {live.title}</b><small>avec {live.host}</small></div>{live.link ? <a href={live.link} target="_blank" rel="noreferrer">Rejoindre</a> : <button className="btn sm" style={{ marginLeft: 'auto' }} onClick={() => go('lives')}>Voir</button>}</div>}
       {rail && <div className="scrim" onClick={() => setRail(false)} />}
