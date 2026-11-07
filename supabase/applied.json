@@ -16,5 +16,6 @@
   "0015_methode_espaces.sql",
   "0016_messages_prospects.sql",
   "0017_push.sql",
-  "0018_stripe_upgrade.sql"
+  "0018_stripe_upgrade.sql",
+  "0019_analytics.sql"
 ]
