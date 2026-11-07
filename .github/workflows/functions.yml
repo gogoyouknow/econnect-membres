@@ -17,7 +17,7 @@ jobs:
           REF=$(jq -r .supabase_ref videos/keys.json)
           for d in supabase/functions/*/; do
             n=$(basename "$d"); echo "=== $n"
-            supabase functions deploy "$n" --project-ref "$REF" --no-verify-jwt
+            supabase functions deploy "$n" --project-ref "$REF" --no-verify-jwt --yes
           done
       - name: Initialiser les clés push
         if: always()
@@ -25,5 +25,10 @@ jobs:
           PAT: ${{ secrets.SUPABASE_PAT }}
         run: |
           REF=$(jq -r .supabase_ref videos/keys.json)
-          q='select net.http_post(url := ''https://jfournnrqewntnfyptic.supabase.co/functions/v1/send-push'', headers := jsonb_build_object(''Content-Type'',''application/json'',''x-push-token'',(select value from private.secrets where key = ''push_token'')), body := ''{"setup":true}''::jsonb)'
-          curl -sS -X POST "https://api.supabase.com/v1/projects/$REF/database/query" -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" -d "$(jq -n --arg q "$q" '{query:$q}')" || true
+          cat > /tmp/init.sql <<'SQL'
+          select net.http_post(
+            url := 'https://jfournnrqewntnfyptic.supabase.co/functions/v1/send-push',
+            headers := jsonb_build_object('Content-Type', 'application/json', 'x-push-token', (select value from private.secrets where key = 'push_token')),
+            body := '{"setup":true}'::jsonb);
+          SQL
+          curl -sS -X POST "https://api.supabase.com/v1/projects/$REF/database/query" -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" -d "$(jq -Rs '{query: .}' /tmp/init.sql)" || true
