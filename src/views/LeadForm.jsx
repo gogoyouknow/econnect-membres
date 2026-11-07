@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Logo from '../lib/Logo'
-import { SITUATIONS, COACHING, BUDGETS, CAPITAL } from './Leads'
+import { SITUATIONS, COACHING, BUDGETS, BUDGET_OK, CAPITAL } from './Leads'
+import Booking from './Booking'
 
 /** Page affichée juste après le paiement Stripe : /bienvenue?session_id=cs_…
  *  Une question par page. */
@@ -11,6 +12,8 @@ export default function LeadForm() {
   const [f, setF] = useState({ email: '', first_name: '', last_name: '', phone: '', situation: '', wants_coaching: '', budget: '', has_capital: '' })
   const [i, setI] = useState(0)
   const [done, setDone] = useState(false)
+  const [booked, setBooked] = useState(null)   // { when } une fois le rendez-vous pris
+  const hot = f.wants_coaching === 'oui' && BUDGET_OK.includes(f.budget) && f.has_capital !== 'non'
   const [busy, setBusy] = useState(false); const [err, setErr] = useState('')
   const set = (k, v) => setF(x => ({ ...x, [k]: v }))
 
@@ -32,7 +35,7 @@ export default function LeadForm() {
   const steps = [
     { k: 'situation', q: "C'est quoi ta situation aujourd'hui ?", opts: SITUATIONS },
     { k: 'wants_coaching', q: 'Tu aimerais être accompagné(e) ?', opts: COACHING },
-    { k: 'budget', q: 'Quel budget peux-tu mettre dans ton projet aujourd\'hui ?', sub: 'Publicité ou accompagnement.', opts: BUDGETS.map(b => [b, b]) },
+    { k: 'budget', q: 'Combien peux-tu investir dans ton business aujourd\'hui ?', sub: 'Coche la case qui te correspond. Ça comprend la publicité (10 € par jour pour tester) et, si tu le souhaites, l\'accompagnement. Pas de bonne ou mauvaise réponse.', opts: BUDGETS.map(b => [b, b]) },
     { k: 'has_capital', q: 'Est-ce que tu as ce capital aujourd\'hui ?', sub: 'Sois honnête : le but, c\'est que personne ne perde son temps. Ta réponse ne change rien à ton accès.', opts: CAPITAL },
     { k: 'contact', q: 'Dernière étape : où te joindre ?' },
   ]
@@ -53,7 +56,13 @@ export default function LeadForm() {
 
   return <section className="leadpage"><div className="leadcard">
     <div className="leadhead"><Logo size={26} /><div className="paid">✓ Paiement validé</div></div>
-    {done ? <div className="lstep" key="done">
+    {done && hot && !booked ? <div className="lstep" key="book">
+      <h1>{f.first_name ? `${f.first_name}, ` : ''}on s'appelle quand ?</h1>
+      <p>Tu veux être accompagné(e) et tu as le budget : réserve un appel de 30 minutes avec moi dans les 48 h. On regarde ta situation et on voit si l'accompagnement est fait pour toi. Heure de Paris.</p>
+      <Booking lead={{ email: f.email, name: `${f.first_name} ${f.last_name}`.trim(), phone: f.phone, session_id: sid }} onBooked={r => { setBooked(r); window.scrollTo(0, 0) }} />
+      <button type="button" className="lback" onClick={() => setBooked({ skipped: true })}>Plus tard, je veux d'abord accéder à la formation ›</button>
+    </div> : done ? <div className="lstep" key="done">
+      {booked?.when && <div className="paid" style={{ marginBottom: 12 }}>📅 Appel confirmé : {booked.when}</div>}
       <h1>Merci{f.first_name ? ` ${f.first_name}` : ''}, c'est noté 🙌</h1>
       <p>Ton accès arrive par email dans quelques minutes{pre?.email || f.email ? <> à <b>{pre?.email || f.email}</b></> : null}. Tu peux aussi le créer tout de suite avec cette adresse.</p>
       <a className="btn big" href="/#signup">Créer mon accès à la formation</a>
