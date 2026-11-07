@@ -150,7 +150,6 @@ export default function App() {
     else if (cur === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
     else if (cur === 'profile') main = <Profile {...ctx} />
     else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
-  else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
     else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
     else main = <Courses key="methode" scope="methode" {...ctx} />
   }
@@ -169,6 +168,7 @@ export default function App() {
   else if (cur === 'leads' && isStaff) main = <Leads {...ctx} />
   else if (cur === 'moderation' && isStaff) main = <Moderation {...ctx} />
   else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
+  else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
   else main = <Chat key="general" space="general" {...ctx} />
 
   return (
