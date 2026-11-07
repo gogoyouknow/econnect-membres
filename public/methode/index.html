@@ -300,6 +300,9 @@ footer p + p { margin-top: 6px; }
   .guar img { max-width: 200px; margin: 0 auto; }
   .s4 { grid-template-columns: minmax(0, 1fr); gap: 12px; }
 }
+.o-price .o-3x{display:block;font-style:normal;font-size:11px;font-weight:600;color:var(--gold);opacity:.9;margin-top:2px;white-space:nowrap}
+.o-pay{display:flex;align-items:center;justify-content:center;gap:10px;margin:12px 0 0;font-size:13px;color:#ddd;text-align:left;line-height:1.4}.o-pay b{color:#fff}
+.o-3x-badge{display:inline-grid;place-items:center;width:30px;height:22px;border-radius:7px;background:var(--gold);color:#1a1400;font-weight:800;font-size:12px;flex:none}
 </style>
 </head>
 <body>
@@ -601,14 +604,15 @@ footer p + p { margin-top: 6px; }
         <span class="o-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
         <img src="img/hero.webp" alt="">
         <span class="o-txt"><small>Le plus vendu</small><b>La Méthode E-Connect</b><em>4 modules + 3 bonus · accès immédiat</em></span>
-        <span class="o-price">97 €</span>
+        <span class="o-price">97 €<i class="o-3x">ou 3 × 32,33 €</i></span>
       </label>
     </div>
     <div class="o-total">
       <div class="o-row"><span>Total aujourd'hui</span><b id="total">97 €</b></div>
       <a class="o-btn" id="buy" href="https://buy.stripe.com/fZu8wP3VR9xl5vDal8fIs03" target="_blank" rel="noopener">Accéder maintenant</a>
     </div>
-    <p class="o-safe">🔒 Paiement sécurisé · Accès immédiat · Garantie résultats 30 jours</p>
+    <p class="o-pay"><span class="o-3x-badge">3×</span><span>Payez en <b>3 fois sans frais</b> avec Klarna : 3 × 32,33 €, directement à la caisse.</span></p>
+    <p class="o-safe">🔒 Paiement sécurisé par carte, Apple Pay ou Klarna · Accès immédiat · Garantie résultats 30 jours</p>
   </div>
 </section>
 
