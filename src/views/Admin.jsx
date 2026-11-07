@@ -3,14 +3,15 @@ import { supabase } from '../lib/supabase'
 import { saveSettings, friendlyError } from '../lib/data'
 import { Avatar, ROLE_LABEL } from '../lib/ui'
 import Rules from './Rules'
+import { callUpgrade } from './Upsell'
 
 export default function Admin({ me, profiles, settings, toast }) {
   const [allowed, setAllowed] = useState([])
   const [stats, setStats] = useState({ week: 0, msgs: 0 })
   const [stripe, setStripe] = useState({ set: false, events: [] })
   const loadStripe = async () => {
-    const [{ data: s }, { data: ev }] = await Promise.all([supabase.rpc('stripe_secret_set'), supabase.from('stripe_events').select('received_at,type,email,status').order('id', { ascending: false }).limit(6)])
-    setStripe({ set: !!s, events: ev || [] })
+    const [{ data: s }, { data: ev }, { data: k }] = await Promise.all([supabase.rpc('stripe_secret_set'), supabase.from('stripe_events').select('received_at,type,email,status').order('id', { ascending: false }).limit(6), supabase.rpc('stripe_key_set')])
+    setStripe({ set: !!s, key: !!k, events: ev || [] })
   }
   useEffect(() => { loadStripe() }, [])
   const hookUrl = `${import.meta.env.VITE_SUPABASE_URL || ''}/functions/v1/stripe-webhook`
@@ -65,6 +66,8 @@ export default function Admin({ me, profiles, settings, toast }) {
       <div className="post"><b>Paiements Stripe · Méthode E-Connect</b>
         <div className="row col"><label>Adresse du webhook<small>À coller dans Stripe → Développeurs → Webhooks. Événements : checkout.session.completed, customer.subscription.deleted, charge.refunded, charge.dispute.created</small></label><input readOnly value={hookUrl} onFocus={e => e.target.select()} /></div>
         <form className="row" onSubmit={saveSecret}><label>Secret de signature<small>{stripe.set ? 'Enregistré ✓ (tu peux le remplacer)' : 'Commence par whsec_, affiché dans Stripe sur la page du webhook'}</small></label><div style={{ display: 'flex', gap: 6 }}><input name="whsec" type="password" placeholder="whsec_…" style={{ maxWidth: 180 }} /><button className="btn ghost sm">Enregistrer</button></div></form>
+        <form className="row" onSubmit={async e => { e.preventDefault(); const v = e.target.sk.value.trim(); if (!v) return; const { error } = await supabase.rpc('set_stripe_key', { p_key: v }); if (error) return toast(friendlyError(error), true); e.target.reset(); toast('Clé enregistrée, préparation…'); try { const j = await callUpgrade('setup'); toast(`Prêt : tarif 160 €/mois créé, ${j.links_fixed} lien(s) 97 € enregistrent la carte`); } catch (err) { toast(err.message, true) } loadStripe() }}><label>Clé secrète Stripe<small>{stripe.key ? 'Enregistrée ✓ — sert à débiter la carte enregistrée pour le passage à 160 €/mois' : 'Stripe → Développeurs → Clés API → clé secrète (sk_live_…). Permet le passage à l\'accompagnement en un clic, sans ressaisir la carte.'}</small></label><div style={{ display: 'flex', gap: 6 }}><input name="sk" type="password" placeholder="sk_live_…" style={{ maxWidth: 180 }} /><button className="btn ghost sm">Enregistrer</button></div></form>
+        {stripe.key && <div className="row"><label>Passage en un clic<small>Vérifie le tarif 160 €/mois et l'enregistrement de la carte sur le lien 97 €</small></label><button className="btn ghost sm" onClick={async () => { try { const j = await callUpgrade('setup'); toast(`OK · tarif ${j.price} · ${j.links_fixed} lien(s) mis à jour`) } catch (e) { toast(e.message, true) } }}>Vérifier</button></div>}
         <div className="row col"><label>Lien Stripe de l'accompagnement seul<small>160 €/mois, proposé aux élèves de la Méthode dans l'app. Vide = « écris-nous ».</small></label><input defaultValue={settings.accel_url} placeholder="https://buy.stripe.com/…" onBlur={e => e.target.value !== settings.accel_url && set({ accel_url: e.target.value.trim() })} /></div>
         {stripe.events.length > 0 && <div style={{ marginTop: 8 }}>{stripe.events.map((ev, i) => <div key={i} className="row"><label>{ev.email || '—'}<small>{new Date(ev.received_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {ev.type}</small></label><span className={`pill ${/granted/.test(ev.status) ? 'gold' : ''}`}>{ev.status}</span></div>)}</div>}
       </div>

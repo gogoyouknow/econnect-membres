@@ -538,3 +538,8 @@ html,#root,.main{overscroll-behavior-x:none}
 .viewas{display:flex;align-items:center;justify-content:center;gap:12px;background:var(--gold);color:var(--gold-ink);font-size:12.5px;font-weight:600;padding:6px 12px}
 .viewas button{background:var(--gold-ink);color:var(--gold);border:0;border-radius:8px;padding:4px 10px;font:inherit;font-weight:700;cursor:pointer}
 .spmenu>small+small,.spmenu button+small{margin-top:6px;border-top:1px solid var(--line);padding-top:8px}
+
+/* confirmation de paiement */
+.confirm-scrim{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px}
+.confirm{width:100%;max-width:400px;background:var(--bg-2);border:1px solid var(--line-2);border-radius:18px;padding:22px 20px;text-align:center;display:flex;flex-direction:column;gap:10px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.confirm h3{margin:4px 0 0;font-size:20px}.confirm p{margin:0 0 6px;color:var(--fg-2);line-height:1.5}.confirm .pill{align-self:center}
