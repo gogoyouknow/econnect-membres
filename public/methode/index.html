@@ -603,20 +603,9 @@ footer p + p { margin-top: 6px; }
         <span class="o-txt"><small>Le plus vendu</small><b>La Méthode E-Connect</b><em>4 modules + 3 bonus · accès immédiat</em></span>
         <span class="o-price">97 €</span>
       </label>
-      <label class="o-item bump" for="bump">
-        <span class="o-tag">🔥 Recommandé</span>
-        <span class="o-arrow" aria-hidden="true">→</span>
-        <input type="checkbox" id="bump">
-        <span class="o-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
-        <span class="o-txt"><b>Je veux être accompagné</b>
-          <ul><li>Le groupe avec moi, un coach et les élèves</li><li>Des lives chaque semaine</li><li>Des retours sur vos campagnes</li></ul>
-        </span>
-        <span class="o-price">160 €<i>/ mois</i></span>
-      </label>
     </div>
     <div class="o-total">
       <div class="o-row"><span>Total aujourd'hui</span><b id="total">97 €</b></div>
-      <p class="o-sub" id="total-sub" hidden>dont 160 € pour le 1er mois d'accompagnement, puis 160 € par mois, sans engagement</p>
       <a class="o-btn" id="buy" href="https://buy.stripe.com/fZu8wP3VR9xl5vDal8fIs03" target="_blank" rel="noopener">Accéder maintenant</a>
     </div>
     <p class="o-safe">🔒 Paiement sécurisé · Accès immédiat · Garantie résultats 30 jours</p>
@@ -648,10 +637,7 @@ footer p + p { margin-top: 6px; }
   // Liens de paiement : à remplacer par les vrais liens Hotmart / systeme.io
   var PAY_SEUL = 'https://buy.stripe.com/fZu8wP3VR9xl5vDal8fIs03';          // Méthode E-Connect seule (97 €)
   var PAY_AVEC_ACCOMP = 'https://buy.stripe.com/eVq4gz0JF4d10bj78WfIs04';   // Méthode + accompagnement (97 € + 160 €/mois)
-  var bump = document.getElementById('bump'), buy = document.getElementById('buy'), sub = document.getElementById('total-sub');
-  var total = document.getElementById('total');
-  function upd() { buy.href = bump.checked ? PAY_AVEC_ACCOMP : PAY_SEUL; sub.hidden = !bump.checked; total.textContent = bump.checked ? '257 €' : '97 €'; }
-  bump.addEventListener('change', upd); upd();
+  var buy = document.getElementById('buy'); buy.href = PAY_SEUL;   // accompagnement proposé après l'achat, dans l'app
 })();
 </script>
 
