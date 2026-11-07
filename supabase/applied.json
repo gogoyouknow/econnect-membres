@@ -19,5 +19,6 @@
   "0018_stripe_upgrade.sql",
   "0019_analytics.sql",
   "0020_rdv.sql",
-  "0021_gcal.sql"
+  "0021_gcal.sql",
+  "0022_notif_ventes.sql"
 ]
