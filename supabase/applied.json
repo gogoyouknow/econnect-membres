@@ -18,5 +18,6 @@
   "0017_push.sql",
   "0018_stripe_upgrade.sql",
   "0019_analytics.sql",
-  "0020_rdv.sql"
+  "0020_rdv.sql",
+  "0021_gcal.sql"
 ]
