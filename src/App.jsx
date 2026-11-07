@@ -11,6 +11,7 @@ import Members from './views/Members'
 import Notifs from './views/Notifs'
 import Moderation from './views/Moderation'
 import Admin from './views/Admin'
+import Analytics from './views/Analytics'
 import Side from './views/Side'
 import Upsell, { AccelOffer } from './views/Upsell'
 import Journey from './views/Journey'
@@ -49,6 +50,7 @@ const VIEWS = [
   { id: 'leads', k: '🎯', label: 'Prospects', group: 'Gestion', staff: true },
   { id: 'tracking', k: '📊', label: 'Suivi des élèves', group: 'Gestion', staff: true },
   { id: 'moderation', k: '🛡️', label: 'Modération', group: 'Gestion', staff: true },
+  { id: 'analytics', k: '📈', label: 'Analytics', group: 'Gestion', admin: true, sp: 'both' },
   { id: 'admin', k: '⚙️', label: 'Administration', group: 'Gestion', admin: true, sp: 'both' },
 ]
 
@@ -148,6 +150,8 @@ export default function App() {
     else if (cur === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
     else if (cur === 'profile') main = <Profile {...ctx} />
     else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
+  else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
+    else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
     else main = <Courses key="methode" scope="methode" {...ctx} />
   }
   else if (cur === 'acceleration' && me.tier < 2 && !isStaff) main = <Upsell {...ctx} />
