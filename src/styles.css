@@ -386,7 +386,8 @@ html,#root,.main{overscroll-behavior-x:none}
 .steprow{display:grid;gap:6px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 
 /* cours */
-.video{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden}
+.video{position:relative;width:100%;flex:none;background:#000;border-radius:14px;overflow:hidden}
+.video::before{content:"";display:block;padding-top:56.25%}
 .video iframe,.video video{position:absolute;inset:0;width:100%;height:100%;border:0}
 .novideo{aspect-ratio:16/9;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,#141414,#0d0d0d);border:1px dashed var(--line-2,#2a2a2a);color:var(--muted,#888);font-size:14px}
 .lessonbody .post{margin-top:12px}
