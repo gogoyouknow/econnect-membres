@@ -2,6 +2,19 @@
 --  • lecture : l'adresse iCal secrète de son agenda est synchronisée toutes les 10 min (fonction Edge gcal-sync) → table busy_times → créneaux exclus
 --  • écriture : chaque rendez-vous envoie une invitation .ics (Gmail l'ajoute à l'agenda) + lien « Ajouter à Google Agenda »
 
+-- occupations venues de l'agenda
+create table if not exists public.busy_times (
+  id bigserial primary key,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  title text,
+  synced_at timestamptz not null default now()
+);
+create index if not exists busy_times_range on public.busy_times (starts_at, ends_at);
+alter table public.busy_times enable row level security;
+drop policy if exists "busy: staff" on public.busy_times;
+create policy "busy: staff" on public.busy_times for select to authenticated using (public.is_staff());
+
 -- adresse iCal (admin)
 create or replace function public.set_gcal_ics(p_url text) returns boolean
 language plpgsql security definer set search_path = public, private as $$
@@ -17,19 +30,6 @@ create or replace function public.gcal_status() returns jsonb language sql stabl
 $$ select jsonb_build_object('set', exists (select 1 from private.secrets where key = 'gcal_ics'), 'synced_at', (select max(synced_at) from public.busy_times), 'busy', (select count(*) from public.busy_times where ends_at > now())) $$;
 revoke all on function public.set_gcal_ics(text), public.gcal_status() from public, anon;
 grant execute on function public.set_gcal_ics(text), public.gcal_status() to authenticated;
-
--- occupations venues de l'agenda
-create table if not exists public.busy_times (
-  id bigserial primary key,
-  starts_at timestamptz not null,
-  ends_at timestamptz not null,
-  title text,
-  synced_at timestamptz not null default now()
-);
-create index if not exists busy_times_range on public.busy_times (starts_at, ends_at);
-alter table public.busy_times enable row level security;
-drop policy if exists "busy: staff" on public.busy_times;
-create policy "busy: staff" on public.busy_times for select to authenticated using (public.is_staff());
 
 -- pour la fonction Edge (service_role) : lire l'adresse, remplacer les occupations
 create or replace function public.gcal_ics_for_fn() returns text language sql security definer stable set search_path = public, private as
