@@ -1,9 +1,19 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
+import { registerRoute, NavigationRoute } from 'workbox-routing'
+import { NetworkFirst } from 'workbox-strategies'
 import { clientsClaim } from 'workbox-core'
 
 self.skipWaiting()
 clientsClaim()
 cleanupOutdatedCaches()
+
+// Les ouvertures de page passent d'abord par le réseau (jamais par le cache des fichiers) :
+// évite l'écran « code source » d'iOS quand son cache mélange les fichiers, et garantit la dernière version.
+registerRoute(new NavigationRoute(new NetworkFirst({
+  cacheName: 'pages',
+  networkTimeoutSeconds: 4,
+  plugins: [{ cacheWillUpdate: async ({ response }) => (response && response.ok && /text\/html/.test(response.headers.get('content-type') || '')) ? response : null }]
+})))
 precacheAndRoute(self.__WB_MANIFEST)
 
 // Notifications push (Web Push). Le serveur envoie { title, body, url }.
