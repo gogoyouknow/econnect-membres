@@ -227,7 +227,7 @@ export function CoStudentHome({ me, profiles, toast, go, isStaff, viewStudent })
 /* ───────── réception coach / admin ───────── */
 export function CoInbox({ me, profiles, toast, isAdmin }) {
   const [rows, setRows] = useState(null); const [cur, setCur] = useState(null); const [f, setF] = useState('todo'); const [status, setStatus] = useState(null); const [q, setQ] = useState('')
-  const load = async () => { const { data, error } = await supabase.rpc('co_inbox'); if (error) return toast(friendlyError(error), true); setRows(data || []) }
+  const load = async () => { await supabase.rpc('co_ensure_threads'); const { data, error } = await supabase.rpc('co_inbox'); if (error) return toast(friendlyError(error), true); setRows(data || []) }
   const loadStatus = () => supabase.from('coach_status').select('*').eq('user_id', me.id).maybeSingle().then(({ data }) => setStatus(data || { user_id: me.id, available: true, hours: { start: '09:00', end: '20:00', days: [1, 2, 3, 4, 5, 6] }, sla_min: 120 }))
   useEffect(() => { load(); loadStatus(); const ch = supabase.channel('co:inbox').on('postgres_changes', { event: '*', schema: 'public', table: 'co_messages' }, () => load()).subscribe(); return () => supabase.removeChannel(ch) }, [])
   useEffect(() => { const h = () => { const m = location.hash.match(/^#co\/(\d+)/); if (m && rows) { const t = rows.find(x => String(x.id) === m[1]); if (t) setCur(t) } }; h(); window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h) }, [rows])

@@ -612,3 +612,4 @@ html,#root,.main{overscroll-behavior-x:none}
 .coinput.rec{background:rgba(249,220,92,.06)}.recbar{flex:1;display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:22px;background:var(--glass2);border:1px solid rgba(249,220,92,.35);font-size:13px}.recbar .dot{width:10px;height:10px;border-radius:50%;background:var(--warn);animation:coPulse 1s infinite}.recbar em{margin-left:auto;font-style:normal;color:var(--muted);font-size:11px}
 @keyframes coPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
 .main > .co{flex:1;min-height:0}
+@media (min-width:901px){.co .cobody,.co .cohead,.co .coinput,.co .cosched{width:100%;max-width:760px;margin-left:auto;margin-right:auto}.co .cohead{position:static}.co .cohead.main .t{text-align:left}}
