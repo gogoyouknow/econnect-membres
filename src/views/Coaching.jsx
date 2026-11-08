@@ -329,7 +329,7 @@ export function CoStudentHome({ me, profiles, toast, go, isStaff, viewStudent })
           <div className={`coav ${t.kind === 'coach' && coach && !away ? 'ring' : ''} ${t.kind === 'ai' ? 'aiav' : ''}`}>{t.kind === 'ai' ? I.spark : t.kind === 'team' ? I.users : av?.avatar_url ? <img src={av.avatar_url} alt="" /> : initials(av?.name || k.label)}</div>
           <div className="t"><b>{name}</b><small>{last ? (last.kind === 'voice' ? '🎤 Message vocal' : last.kind === 'image' ? '📷 Photo' : last.kind === 'video' ? '🎬 Vidéo' : last.body) : k.sub}</small></div>
           <div className="m">{last ? ago(last.sent_at) : ''}</div>
-        </button></div>
+        </button>
       })}
     </div>
   </div>
@@ -450,7 +450,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh, go }) {
           <div className="t"><b>{r.student_name}{r.kind !== 'coach' && <span className="kind"> · {KIND[r.kind].label}</span>}</b><small>{r.last ? (r.last.kind === 'voice' ? '🎤 Vocal' : r.last.kind === 'image' ? '📷 Photo' : r.last.kind === 'video' ? '🎬 Vidéo' : r.last.body) : 'Pas encore de message'}</small>
             <span className="tags">{tag && <em className={`cotag ${tag.cls}`}>{tag.txt}</em>}{inact && <em className="cotag warn">inactif {ago(r.last_student_at)}</em>}{(slabels[r.student_id] || []).map(id => { const l = labels.find(x => x.id === id); return l ? <em key={id} className="cotag lab" style={{ '--c': l.color }}>{l.name}</em> : null })}</span></div>
           <div className="m">{pinned && <span className="pinic">📌</span>}{r.waiting_since ? <span className={wait > sla ? 'w' : ''}>{ago(r.waiting_since)}</span> : r.last ? ago(r.last.sent_at) : ''}{r.unread > 0 && <span className="n">{r.unread}</span>}</div>
-        </button>
+        </button></div>
       })}
     </div>
   </div>
