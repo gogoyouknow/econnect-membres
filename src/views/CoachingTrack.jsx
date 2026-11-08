@@ -34,12 +34,11 @@ export default function CoTrack({ me, settings, isAdmin, toast, go, refresh }) {
           {d.students.map(s => {
             const waiting = s.waiting_since && (Date.now() - new Date(s.waiting_since)) / 60000
             const inact = s.inactive_h
-            const status = waiting ? { cls: waiting > sla ? 'warn' : 'gold', txt: `attend ${ago(s.waiting_since)}` } : inact > 168 ? { cls: 'warn', txt: `inactif 7 j+` } : inact > 72 ? { cls: 'warn', txt: `inactif ${Math.floor(inact / 24)} j` } : inact > 24 ? { cls: 'gold', txt: `silence ${Math.floor(inact)} h` } : s.msgs >= 10 ? { cls: 'ok', txt: '🔥 très actif' } : { cls: 'ok', txt: 'à jour' }
+            const status = waiting ? { cls: waiting > sla ? 'warn' : 'gold', txt: `attend ${ago(s.waiting_since)}` } : inact > 168 ? { cls: 'warn', txt: `inactif 7 j+` } : inact > 72 ? { cls: 'warn', txt: `inactif ${Math.floor(inact / 24)} j` } : inact > 24 ? { cls: 'gold', txt: `silence ${Math.floor(inact)} h` } : null
             return <button key={s.id} className="corow" onClick={() => open(s)}>
               <div className="coav">{s.avatar ? <img src={s.avatar} alt="" /> : initials(s.name)}</div>
-              <div className="t"><b>{s.name}</b><small>{s.coach ? `Coach ${s.coach}` : 'Pas de coach'}{s.next?.step ? ` · ${s.next.step}` : ''}</small>
-                <div className="meta"><Spark v={s.spark} /><span>{s.msgs} msg</span><span>dernier {ago(s.last_student_at)}</span><span>réponse {mins(s.avg_resp)}</span>{s.relances > 0 && <span>{s.relances} relance{s.relances > 1 ? 's' : ''}</span>}</div></div>
-              <em className={`cotag ${status.cls}`}>{status.txt}</em>
+              <div className="t"><b>{s.name}</b><small>{s.coach ? `Coach ${s.coach}` : 'Pas de coach'}{s.next?.step ? ` · ${s.next.step}` : ''}</small></div>
+              {status && <em className={`cotag ${status.cls}`}>{status.txt}</em>}
             </button>
           })}
         </div>}
@@ -56,11 +55,13 @@ export default function CoTrack({ me, settings, isAdmin, toast, go, refresh }) {
             <div className="codays">{DAYS.map((l, i) => <button key={i} className={(st.hours?.days || []).includes(i) ? 'on' : ''} onClick={() => { const cur = st.hours?.days || []; saveSt({ hours: { ...st.hours, days: cur.includes(i) ? cur.filter(x => x !== i) : [...cur, i].sort() } }) }}>{l}</button>)}</div>
             <div className="cohours"><label>de <input type="time" value={st.hours?.start || '09:00'} onChange={e => saveSt({ hours: { ...st.hours, start: e.target.value } })} /></label><label>à <input type="time" value={st.hours?.end || '20:00'} onChange={e => saveSt({ hours: { ...st.hours, end: e.target.value } })} /></label></div>
             <small className="muted">En dehors, tes élèves reçoivent automatiquement « te répond à partir de … » quand ils t'écrivent.</small>
+            {isAdmin && <label className="corowopt"><span><b>Recevoir l'alerte « élève qui attend »</b><small>Ton réglage perso (le seuil est dans « Règles de l'équipe »)</small></span><button className={`cosw ${st.alert_waiting !== false ? 'on' : ''}`} onClick={() => saveSt({ alert_waiting: st.alert_waiting === false })} aria-label="Mon alerte" /></label>}
             <label className="corowopt"><span><b>Coach IA prend le relais quand je suis indisponible</b><small>Étape 3 · il répond avec ta méthode, tu relis à ton retour</small></span><button className={`cosw ${st.ai_relay ? 'on' : ''}`} onClick={() => saveSt({ ai_relay: !st.ai_relay })} aria-label="Relais IA" /></label>
           </div>
           {isAdmin && <div className="cocard"><b className="h">Règles de l'équipe</b>
             <label className="cofieldrow"><span>Objectif de réponse</span><select value={settings.co_sla_min || 120} onChange={e => saveSettings({ co_sla_min: +e.target.value })}>{[30, 60, 120, 180, 240, 480].map(v => <option key={v} value={v}>{mins(v)}</option>)}</select></label>
-            <label className="cofieldrow"><span>Alerte Clément & Jérémy si sans réponse depuis</span><select value={settings.co_alert_admin_h || 24} onChange={e => saveSettings({ co_alert_admin_h: +e.target.value })}>{[6, 12, 24, 48].map(v => <option key={v} value={v}>{v} h</option>)}</select></label>
+            <label className="corowopt"><span><b>Alerter les admins quand un élève attend</b><small>Notification à Clément & Jérémy dès que la réponse tarde</small></span><button className={`cosw ${settings.co_alert_admin_on !== false ? 'on' : ''}`} onClick={() => saveSettings({ co_alert_admin_on: settings.co_alert_admin_on === false })} aria-label="Alerte attente" /></label>
+            {settings.co_alert_admin_on !== false && <label className="cofieldrow"><span>Alerter au bout de</span><select value={settings.co_alert_admin_h || 5} onChange={e => saveSettings({ co_alert_admin_h: +e.target.value })}>{[1, 2, 3, 5, 8, 12, 24, 48].map(v => <option key={v} value={v}>{v} h</option>)}</select></label>}
             <label className="corowopt"><span><b>Relances automatiques des élèves silencieux</b><small>24 h puis 72 h, en semaine 9 h–20 h, envoyées au nom du coach · alerte à 7 j</small></span><button className={`cosw ${settings.co_relance_on !== false ? 'on' : ''}`} onClick={() => saveSettings({ co_relance_on: settings.co_relance_on === false })} aria-label="Relances" /></label>
             <label className="cotext"><span>Message à 24 h <small>{'{prenom}'} et {'{action}'} sont remplacés</small></span><textarea defaultValue={settings.co_relance_24h || ''} rows={3} onBlur={e => e.target.value !== (settings.co_relance_24h || '') && saveSettings({ co_relance_24h: e.target.value })} /></label>
             <label className="cotext"><span>Message à 72 h</span><textarea defaultValue={settings.co_relance_72h || ''} rows={3} onBlur={e => e.target.value !== (settings.co_relance_72h || '') && saveSettings({ co_relance_72h: e.target.value })} /></label>

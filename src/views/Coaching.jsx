@@ -437,7 +437,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh, go }) {
         return <button key={r.id} className={`coconv ${wait > sla ? 'hot' : ''}`} {...holdRow(r)} onClick={() => { if (tagFor) return; setCur(r); history.replaceState(null, '', '#co/' + r.id) }}>
           <div className="coav">{r.student_avatar ? <img src={r.student_avatar} alt="" /> : initials(r.student_name)}</div>
           <div className="t"><b>{r.student_name}{r.kind !== 'coach' && <span className="kind"> · {KIND[r.kind].label}</span>}</b><small>{r.last ? (r.last.kind === 'voice' ? '🎤 Vocal' : r.last.kind === 'image' ? '📷 Photo' : r.last.kind === 'video' ? '🎬 Vidéo' : r.last.body) : 'Pas encore de message'}</small>
-            <span className="tags">{tag && <em className={`cotag ${tag.cls}`}>{tag.txt}</em>}{inact && <em className="cotag warn">inactif {ago(r.last_student_at)}</em>}{r.msgs7 >= 10 && <em className="cotag ok">très actif · {r.msgs7} msg / 7 j</em>}{(slabels[r.student_id] || []).map(id => { const l = labels.find(x => x.id === id); return l ? <em key={id} className="cotag lab" style={{ '--c': l.color }}>{l.name}</em> : null })}</span></div>
+            <span className="tags">{tag && <em className={`cotag ${tag.cls}`}>{tag.txt}</em>}{inact && <em className="cotag warn">inactif {ago(r.last_student_at)}</em>}{(slabels[r.student_id] || []).map(id => { const l = labels.find(x => x.id === id); return l ? <em key={id} className="cotag lab" style={{ '--c': l.color }}>{l.name}</em> : null })}</span></div>
           <div className="m">{r.waiting_since ? <span className={wait > sla ? 'w' : ''}>{ago(r.waiting_since)}</span> : r.last ? ago(r.last.sent_at) : ''}{r.unread > 0 && <span className="n">{r.unread}</span>}</div>
         </button>
       })}
