@@ -35,7 +35,9 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = (event.notification.data && event.notification.data.url) || '/'
+  const raw = (event.notification.data && event.notification.data.url) || '/'
+  // résolu contre la racine de l'app (sinon « #co/12 » devenait « /sw.js#co/12 » : le code du service worker s'affichait)
+  const url = new URL(raw.startsWith('#') ? '/' + raw : raw, self.registration.scope).href
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const c of list) { if ('focus' in c) { c.navigate(url); return c.focus() } }
