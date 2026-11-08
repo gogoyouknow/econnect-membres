@@ -20,5 +20,6 @@
   "0019_analytics.sql",
   "0020_rdv.sql",
   "0021_gcal.sql",
-  "0022_notif_ventes.sql"
+  "0022_notif_ventes.sql",
+  "0023_accompagnement.sql"
 ]
