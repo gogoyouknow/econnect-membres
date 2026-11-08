@@ -20,6 +20,11 @@ const I = {
   spark: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" /></svg>,
   users: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3" /></svg>,
   x: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>,
+  search: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></svg>,
+  grid: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></svg>,
+  tag: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13.5 13.5 20 4 10.5V4h6.5z" /><circle cx="8.5" cy="8.5" r="1.2" /></svg>,
+  reply: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 7 4 12l5 5M4 12h10a6 6 0 0 1 6 6v1" /></svg>,
+  thread: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v10H9l-4 4z" /></svg>,
   info: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5M12 8h.01" /></svg>,
 }
 export const CoIcon = ({ n, className }) => <span className={`coi ${className || ''}`}>{I[n]}</span>
@@ -29,6 +34,7 @@ const fmtTime = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit'
 const fmtDay = (d) => { const x = new Date(d), t = new Date(); const diff = Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate()) - new Date(x.getFullYear(), x.getMonth(), x.getDate())) / 864e5); return diff === 0 ? "Aujourd'hui" : diff === 1 ? 'Hier' : x.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) }
 const ago = (d) => { if (!d) return ''; const s = (Date.now() - new Date(d)) / 1000; if (s < 60) return "à l'instant"; if (s < 3600) return `${Math.floor(s / 60)} min`; if (s < 86400) return `${Math.floor(s / 3600)} h`; return `${Math.floor(s / 86400)} j` }
 const dur = (s) => `${Math.floor((s || 0) / 60)}:${String((s || 0) % 60).padStart(2, '0')}`
+const hl = (t, q) => { q = (q || '').trim(); if (!t || q.length < 2) return t; const i = t.toLowerCase().indexOf(q.toLowerCase()); if (i < 0) return t; return <>{t.slice(0, i)}<mark>{t.slice(i, i + q.length)}</mark>{t.slice(i + q.length)}</> }
 const initials = (n) => (n || '?').split(' ').map(x => x[0]).join('').slice(0, 2).toUpperCase()
 
 /* ───────── média (liens signés, cache) ───────── */
@@ -92,29 +98,39 @@ const compress = (file) => new Promise((res) => { if (!file.type.startsWith('ima
 export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const [msgs, setMsgs] = useState([]); const [text, setText] = useState(''); const [busy, setBusy] = useState(false); const [sched, setSched] = useState(null)
   const [status, setStatus] = useState(null)
+  const [sub, setSub] = useState(null)            // fil de réponses ouvert (message parent)
+  const [search, setSearch] = useState(null)      // null = fermé, '' = ouvert
+  const [panel, setPanel] = useState(null)        // 'media' | 'labels'
+  const [counts, setCounts] = useState({})
+  const [labels, setLabels] = useState([]); const [myLabels, setMyLabels] = useState([])
   const end = useRef(null); const fileIn = useRef(null); const R = useRecorder()
   const student = profiles.map?.[thread.student_id] || {}
   const coach = student.coach_id ? profiles.map?.[student.coach_id] : null
   const mineThread = thread.student_id === me.id
   const title = mineThread ? (thread.kind === 'coach' ? (coach?.name || 'Ton coach') : KIND[thread.kind].label) : `${student.name || 'Élève'}${thread.kind !== 'coach' ? ' · ' + KIND[thread.kind].label : ''}`
-  const load = async () => { const { data } = await supabase.from('co_messages').select('*').eq('thread_id', thread.id).order('created_at').limit(400); setMsgs(data || []); markRead() }
+  const load = async () => { const { data } = await supabase.from('co_messages').select('*').eq('thread_id', thread.id).order('created_at').limit(600); setMsgs(data || []); markRead(); loadCounts() }
+  const loadCounts = async () => { const { data } = await supabase.rpc('co_reply_counts', { p_thread: thread.id }); const c = {}; (data || []).forEach(r => { c[r.parent] = r }); setCounts(c) }
+  const loadLabels = async () => { if (!isStaff) return; const [{ data: all }, { data: mine }] = await Promise.all([supabase.from('co_labels').select('*').order('id'), supabase.from('co_student_labels').select('label_id').eq('student_id', thread.student_id)]); setLabels(all || []); setMyLabels((mine || []).map(x => x.label_id)) }
+  const toggleLabel = async (l) => { const on = myLabels.includes(l.id); const { error } = on ? await supabase.from('co_student_labels').delete().eq('student_id', thread.student_id).eq('label_id', l.id) : await supabase.from('co_student_labels').insert({ student_id: thread.student_id, label_id: l.id, added_by: me.id }); if (error) return toast(friendlyError(error), true); setMyLabels(x => on ? x.filter(i => i !== l.id) : [...x, l.id]) }
+  const addLabel = async () => { const name = prompt('Nom de la nouvelle étiquette (emoji bienvenu)'); if (!name?.trim()) return; const colors = ['#F9DC5C', '#ff8a65', '#34d399', '#b7a3ff', '#FFF1B8', '#7dd3fc']; const { data, error } = await supabase.from('co_labels').insert({ name: name.trim(), color: colors[labels.length % colors.length], created_by: me.id }).select().single(); if (error) return toast(friendlyError(error), true); setLabels(x => [...x, data]); toggleLabel(data) }
   const markRead = () => supabase.from('co_reads').upsert({ thread_id: thread.id, user_id: me.id, last_read_at: new Date().toISOString() })
   useEffect(() => {
-    load()
+    load(); loadLabels()
     if (coach?.id) supabase.from('coach_status').select('*').eq('user_id', coach.id).maybeSingle().then(({ data }) => setStatus(data))
     const ch = supabase.channel('co:' + thread.id)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'co_messages', filter: `thread_id=eq.${thread.id}` }, ({ new: m }) => { setMsgs(l => l.find(x => x.id === m.id) ? l : [...l, m]); markRead() })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'co_messages', filter: `thread_id=eq.${thread.id}` }, ({ new: m }) => { setMsgs(l => l.find(x => x.id === m.id) ? l : [...l, m]); markRead(); if (m.reply_to) loadCounts() })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'co_messages', filter: `thread_id=eq.${thread.id}` }, ({ new: m }) => setMsgs(l => l.map(x => x.id === m.id ? m : x)))
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'co_messages' }, ({ old }) => setMsgs(l => l.filter(x => x.id !== old.id)))
       .subscribe()
     return () => supabase.removeChannel(ch)
   }, [thread.id])
-  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }) }, [msgs.length])
+  useEffect(() => { if (!search) end.current?.scrollIntoView({ block: 'end' }) }, [msgs.length, sub])
   useEffect(() => { document.body.classList.add('co-thread-open'); return () => document.body.classList.remove('co-thread-open') }, [])
 
   const send = async (payload) => {
     setBusy(true)
     const row = { thread_id: thread.id, sender_id: me.id, ...payload }
+    if (sub) row.reply_to = sub.id
     if (sched) { row.scheduled_at = sched; row.sent_at = null }
     const { error } = await supabase.from('co_messages').insert(row)
     setBusy(false)
@@ -144,33 +160,59 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const cancelScheduled = async (m) => { const { error } = await supabase.from('co_messages').delete().eq('id', m.id); if (error) toast(friendlyError(error), true) }
 
   const away = status && (!status.available || (status.away_until && new Date(status.away_until) > new Date()))
-  const sub = mineThread && thread.kind === 'coach' ? (!coach ? 'Un coach va t\'être attribué' : away ? `indisponible · reprend ${status.away_until ? 'à ' + fmtTime(status.away_until) : 'bientôt'}` : 'disponible') : mineThread ? KIND[thread.kind].sub : `${student.email || ''}`
+  const subline = mineThread && thread.kind === 'coach' ? (!coach ? 'Un coach va t\'être attribué' : away ? `indisponible · reprend ${status.away_until ? 'à ' + fmtTime(status.away_until) : 'bientôt'}` : 'disponible') : mineThread ? KIND[thread.kind].sub : `${student.email || ''}`
+  const media = msgs.filter(m => ['image', 'video', 'voice'].includes(m.kind) && m.sent_at)
+  const q = (search || '').trim().toLowerCase()
+  const shown = sub ? msgs.filter(m => m.id === sub.id || m.reply_to === sub.id) : msgs.filter(m => !m.reply_to && (!q || q.length < 2 || (m.body || '').toLowerCase().includes(q) || (m.transcript || '').toLowerCase().includes(q)))
   let lastDay = ''
   const canSchedule = isStaff && !mineThread
   return <div className="co cothread">
     <div className="cohead">
       <button className="coic" onClick={onBack}>{I.back}</button>
       <div className={`coav ${!away && coach ? 'ring' : ''}`}>{thread.kind === 'ai' && mineThread ? <span className="ai">{I.spark}</span> : (mineThread ? (coach?.avatar_url ? <img src={coach.avatar_url} alt="" /> : initials(coach?.name || KIND[thread.kind].label)) : (student.avatar_url ? <img src={student.avatar_url} alt="" /> : initials(student.name)))}</div>
-      <div className="t"><b>{title}</b><small className={away ? 'away' : ''}>{sub}</small></div>
-      {!mineThread && <button className="coic" title="Fiche élève" onClick={() => toast(`${student.name} · ${student.email}`)}>{I.info}</button>}
+      <div className="t"><b>{sub ? 'Fil de discussion' : title}</b><small className={away ? 'away' : ''}>{sub ? `${(counts[sub.id]?.n || 0)} réponse${(counts[sub.id]?.n || 0) > 1 ? 's' : ''} · ${title}` : subline}</small></div>
+      {sub ? <button className="coic" onClick={() => setSub(null)}>{I.x}</button> : <>
+        <button className={`coic ${search !== null ? 'on' : ''}`} title="Rechercher" onClick={() => setSearch(search === null ? '' : null)}>{I.search}</button>
+        <button className={`coic ${panel === 'media' ? 'on' : ''}`} title="Photos, vidéos, vocaux" onClick={() => setPanel(panel === 'media' ? null : 'media')}>{I.grid}</button>
+        {isStaff && !mineThread && <button className={`coic ${panel === 'labels' ? 'on' : ''}`} title="Étiquettes" onClick={() => setPanel(panel === 'labels' ? null : 'labels')}>{I.tag}</button>}
+      </>}
     </div>
+    {search !== null && !sub && <div className="cosearchbar"><span>{I.search}</span><input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher dans la conversation" /><em>{search.length >= 2 ? `${shown.length} résultat${shown.length > 1 ? 's' : ''}` : ''}</em><button type="button" onClick={() => setSearch(null)}>{I.x}</button></div>}
+    {isStaff && !mineThread && myLabels.length > 0 && !sub && <div className="colabels">{labels.filter(l => myLabels.includes(l.id)).map(l => <em key={l.id} style={{ '--c': l.color }}>{l.name}</em>)}</div>}
+    {panel === 'media' && <div className="copanel">
+      <div className="ph"><b>Photos, vidéos et vocaux</b><button type="button" onClick={() => setPanel(null)}>{I.x}</button></div>
+      {!media.length ? <p className="muted">Rien d'envoyé pour l'instant.</p> : <>
+        <div className="cogrid">{media.filter(m => m.kind === 'image' || m.kind === 'video').map(m => <div key={m.id}>{m.kind === 'image' ? <Pic m={m} /> : <Vid m={m} />}<small>{new Date(m.sent_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</small></div>)}</div>
+        {media.filter(m => m.kind === 'voice').map(m => <div key={m.id} className="cobub" style={{ maxWidth: '100%', marginTop: 8 }}><span className="who">{m.sender_id === me.id ? 'Toi' : profiles.map?.[m.sender_id]?.name || 'Coach IA'} · {new Date(m.sent_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span><Voice m={m} mine={false} /></div>)}
+      </>}
+    </div>}
+    {panel === 'labels' && <div className="copanel">
+      <div className="ph"><b>Étiquettes de {student.name}</b><button type="button" onClick={() => setPanel(null)}>{I.x}</button></div>
+      <div className="colabelpick">{labels.map(l => <button key={l.id} type="button" className={myLabels.includes(l.id) ? 'on' : ''} style={{ '--c': l.color }} onClick={() => toggleLabel(l)}>{l.name}</button>)}<button type="button" className="new" onClick={addLabel}>+ Nouvelle</button></div>
+      <small className="muted">Visibles par l'équipe seulement, dans la réception et le suivi.</small>
+    </div>}
     <div className="cobody">
-      {thread.kind === 'ai' && <div className="cosys ai">Coach IA arrive dans l'étape suivante : pour l'instant, ce fil garde tes questions, ton coach les voit.</div>}
-      {msgs.map(m => {
+      {thread.kind === 'ai' && !sub && <div className="cosys ai">Coach IA arrive dans l'étape suivante : pour l'instant, ce fil garde tes questions, ton coach les voit.</div>}
+      {sub && <div className="cosys">Les réponses restent groupées sous ce message, comme sur Slack.</div>}
+      {shown.map(m => {
         const day = fmtDay(m.sent_at || m.created_at); const showDay = day !== lastDay; lastDay = day
         const mine = m.sender_id === me.id; const who = m.sender_id ? profiles.map?.[m.sender_id] : null
         const scheduled = !m.sent_at && m.scheduled_at
-        return <div key={m.id} className="cowrap">
+        const rc = counts[m.id]; const isParent = sub && m.id === sub.id
+        return <div key={m.id} className={`cowrap ${isParent ? 'parent' : ''}`}>
           {showDay && <div className="coday"><span>{day}</span></div>}
           {m.kind === 'system' ? <div className="cosys gold">{m.body}</div> :
             <div className={`cobub ${mine ? 'me' : ''} ${m.ai ? 'ai' : ''} ${m.kind === 'image' || m.kind === 'video' ? 'media' : ''} ${scheduled ? 'sched' : ''}`}>
               {!mine && (thread.kind !== 'coach' || !mineThread) && <span className="who">{m.ai ? 'Coach IA' : who?.name || 'Membre'}</span>}
-              {m.kind === 'voice' ? <Voice m={m} mine={mine} /> : m.kind === 'image' ? <Pic m={m} /> : m.kind === 'video' ? <Vid m={m} /> : <span className="txt">{m.body}</span>}
+              {m.kind === 'voice' ? <Voice m={m} mine={mine} /> : m.kind === 'image' ? <Pic m={m} /> : m.kind === 'video' ? <Vid m={m} /> : <span className="txt">{hl(m.body, search)}</span>}
               <small>{scheduled ? <>{I.clock} programmé {new Date(m.scheduled_at).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} <button type="button" onClick={() => cancelScheduled(m)}>annuler</button></> : <>{fmtTime(m.sent_at)} {mine && <span className="ck">{I.checks}</span>}</>}</small>
+              {!scheduled && !sub && !isParent && m.kind !== 'system' && <button type="button" className="coreply" title="Répondre dans un fil" onClick={() => { setSub(m); setSearch(null) }}>{I.reply}</button>}
             </div>}
+          {rc && !sub && <button type="button" className={`cothreadchip ${mine ? 'me' : ''}`} onClick={() => setSub(m)}>{I.thread}<b>{rc.n} réponse{rc.n > 1 ? 's' : ''}</b><span>· dernière {ago(rc.last_at)}</span></button>}
         </div>
       })}
-      {!msgs.length && <div className="coempty"><div className="coav big">{mineThread ? initials(coach?.name || KIND[thread.kind].label) : initials(student.name)}</div><b>{title}</b><p>{mineThread ? (thread.kind === 'coach' ? 'Pose ta question, envoie une capture ou un vocal : ton coach te répond dans la journée.' : KIND[thread.kind].sub) : 'Démarre la conversation.'}</p></div>}
+      {!shown.length && search && search.length >= 2 && <div className="coempty"><p>Aucun message ne contient « {search} ».</p></div>}
+      {!msgs.length && !search && <div className="coempty"><div className="coav big">{mineThread ? initials(coach?.name || KIND[thread.kind].label) : initials(student.name)}</div><b>{title}</b><p>{mineThread ? (thread.kind === 'coach' ? 'Pose ta question, envoie une capture ou un vocal : ton coach te répond dans la journée.' : KIND[thread.kind].sub) : 'Démarre la conversation.'}</p></div>}
       <div ref={end} />
     </div>
     {sched && <div className="cosched">{I.clock}<span>Sera envoyé <b>{new Date(sched).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</b></span><button type="button" onClick={() => setSched(null)}>{I.x}</button></div>}
@@ -181,7 +223,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
     </div> : <form className="coinput" onSubmit={sendText}>
       <button type="button" className="coic" onClick={() => fileIn.current?.click()} disabled={busy}>{I.camera}</button>
       <input ref={fileIn} type="file" accept="image/*,video/*" hidden onChange={onFile} />
-      <div className="cofield"><input value={text} onChange={e => setText(e.target.value)} placeholder={busy ? 'Envoi…' : 'Message'} disabled={busy} />
+      <div className="cofield"><input value={text} onChange={e => setText(e.target.value)} placeholder={busy ? 'Envoi…' : sub ? 'Répondre dans le fil' : 'Message'} disabled={busy} />
         {canSchedule && <button type="button" className={`inic ${sched ? 'on' : ''}`} title="Programmer" onClick={() => { const d = new Date(Date.now() + 3600e3); d.setMinutes(0, 0, 0); const v = prompt('Envoyer quand ? (JJ/MM HH:MM)', `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:00`); if (!v) return; const m = v.match(/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/); if (!m) return toast('Format : JJ/MM HH:MM', true); const t = new Date(); const dt = new Date(t.getFullYear(), +m[2] - 1, +m[1], +m[3], +m[4]); if (dt < t) dt.setFullYear(dt.getFullYear() + 1); setSched(dt.toISOString()) }}>{I.clock}</button>}
       </div>
       {text.trim() ? <button type="submit" className="cosend" disabled={busy}>{I.send}</button> : <button type="button" className="cosend mic" onClick={R.start} disabled={busy}>{I.mic}</button>}
@@ -229,13 +271,15 @@ export function CoStudentHome({ me, profiles, toast, go, isStaff, viewStudent })
 export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
   if (mode === 'students') return <CoStudents me={me} profiles={profiles} toast={toast} isAdmin={isAdmin} refresh={refresh} />
   const [rows, setRows] = useState(null); const [cur, setCur] = useState(null); const [f, setF] = useState('todo'); const [status, setStatus] = useState(null); const [q, setQ] = useState('')
-  const load = async () => { await supabase.rpc('co_ensure_threads'); const { data, error } = await supabase.rpc('co_inbox'); if (error) return toast(friendlyError(error), true); setRows(data || []) }
+  const [labels, setLabels] = useState([]); const [slabels, setSlabels] = useState({}); const [lab, setLab] = useState(null); const [hits, setHits] = useState(null)
+  const load = async () => { await supabase.rpc('co_ensure_threads'); const [{ data, error }, { data: ls }, { data: sl }] = await Promise.all([supabase.rpc('co_inbox'), supabase.from('co_labels').select('*').order('id'), supabase.from('co_student_labels').select('student_id,label_id')]); if (error) return toast(friendlyError(error), true); setRows(data || []); setLabels(ls || []); const m = {}; (sl || []).forEach(x => { (m[x.student_id] ||= []).push(x.label_id) }); setSlabels(m) }
+  useEffect(() => { if (q.trim().length < 2) { setHits(null); return } const t = setTimeout(async () => { const { data } = await supabase.rpc('co_search', { p_q: q.trim() }); setHits(data || []) }, 350); return () => clearTimeout(t) }, [q])
   const loadStatus = () => supabase.from('coach_status').select('*').eq('user_id', me.id).maybeSingle().then(({ data }) => setStatus(data || { user_id: me.id, available: true, hours: { start: '09:00', end: '20:00', days: [1, 2, 3, 4, 5, 6] }, sla_min: 120 }))
   useEffect(() => { load(); loadStatus(); const ch = supabase.channel('co:inbox').on('postgres_changes', { event: '*', schema: 'public', table: 'co_messages' }, () => load()).subscribe(); return () => supabase.removeChannel(ch) }, [])
   useEffect(() => { const h = () => { const m = location.hash.match(/^#co\/(\d+)/); if (m && rows) { const t = rows.find(x => String(x.id) === m[1]); if (t) setCur(t) } }; h(); window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h) }, [rows])
   const saveStatus = async (patch) => { const next = { ...status, ...patch, user_id: me.id, updated_at: new Date().toISOString() }; setStatus(next); const { error } = await supabase.from('coach_status').upsert(next); if (error) toast(friendlyError(error), true) }
   if (cur) return <CoThread me={me} thread={cur} profiles={profiles} toast={toast} isStaff onBack={() => { setCur(null); load(); if (location.hash.startsWith('#co/')) history.replaceState(null, '', '#co') }} />
-  const list = (rows || []).filter(r => r.kind === 'coach' || r.kind === 'team' || r.kind === 'clement').filter(r => !q || (r.student_name || '').toLowerCase().includes(q.toLowerCase()))
+  const list = (rows || []).filter(r => r.kind === 'coach' || r.kind === 'team' || r.kind === 'clement').filter(r => !q || (r.student_name || '').toLowerCase().includes(q.toLowerCase())).filter(r => !lab || (slabels[r.student_id] || []).includes(lab))
   const todo = list.filter(r => r.waiting_since), inactive = list.filter(r => r.kind === 'coach' && (!r.last_student_at || Date.now() - new Date(r.last_student_at) > 864e5))
   const shown = f === 'todo' ? todo : f === 'inactive' ? inactive : list
   const away = status && (!status.available || (status.away_until && new Date(status.away_until) > new Date()))
@@ -249,7 +293,11 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
       </div>}
       <div className="cokp"><div><small>À répondre</small><b className="g">{todo.length}</b></div><div><small>Inactifs 24 h</small><b>{inactive.length}</b></div></div>
       <div className="cochips"><button className={f === 'todo' ? 'on' : ''} onClick={() => setF('todo')}>À répondre · {todo.length}</button><button className={f === 'inactive' ? 'on' : ''} onClick={() => setF('inactive')}>Inactifs 24 h · {inactive.length}</button><button className={f === 'all' ? 'on' : ''} onClick={() => setF('all')}>Tous · {list.length}</button></div>
-      <input className="cosearch" placeholder="Rechercher un élève" value={q} onChange={e => setQ(e.target.value)} />
+      <input className="cosearch" placeholder="Rechercher un élève ou un message" value={q} onChange={e => setQ(e.target.value)} />
+      {labels.length > 0 && <div className="cochips small"><button className={!lab ? 'on' : ''} onClick={() => setLab(null)}>Toutes</button>{labels.map(l => <button key={l.id} className={lab === l.id ? 'on' : ''} style={{ '--c': l.color }} onClick={() => setLab(lab === l.id ? null : l.id)}>{l.name} · {Object.values(slabels).filter(a => a.includes(l.id)).length}</button>)}</div>}
+      {hits && <div className="cocard"><b className="h">{hits.length ? `${hits.length} message${hits.length > 1 ? 's' : ''} trouvé${hits.length > 1 ? 's' : ''}` : 'Aucun message trouvé'}</b>
+        {hits.slice(0, 20).map(h => <button key={h.id} className="corow" onClick={() => { const t = rows.find(r => r.id === h.thread_id); if (t) { setCur(t); history.replaceState(null, '', '#co/' + t.id) } }}><div className="t"><b>{h.student_name} <span className="kind">· {ago(h.sent_at)}</span></b><small style={{ whiteSpace: 'normal' }}>{hl(h.kind === 'voice' ? `🎤 ${h.transcript || 'vocal'}` : h.body, q)}</small></div></button>)}
+      </div>}
       {rows === null ? <div className="coempty"><p>Chargement…</p></div> : !shown.length ? <div className="coempty"><p>{f === 'todo' ? 'Tout est répondu ✓' : 'Rien ici.'}</p></div> : shown.map(r => {
         const wait = r.waiting_since ? Date.now() - new Date(r.waiting_since) : 0
         const tag = r.waiting_since ? { cls: wait > sla ? 'warn' : 'gold', txt: `attend depuis ${ago(r.waiting_since)}` } : r.last && r.last.sender_id !== r.student_id ? { cls: 'ok', txt: 'répondu' } : null
@@ -257,7 +305,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
         return <button key={r.id} className={`coconv ${wait > sla ? 'hot' : ''}`} onClick={() => { setCur(r); history.replaceState(null, '', '#co/' + r.id) }}>
           <div className="coav">{r.student_avatar ? <img src={r.student_avatar} alt="" /> : initials(r.student_name)}</div>
           <div className="t"><b>{r.student_name}{r.kind !== 'coach' && <span className="kind"> · {KIND[r.kind].label}</span>}</b><small>{r.last ? (r.last.kind === 'voice' ? '🎤 Vocal' : r.last.kind === 'image' ? '📷 Photo' : r.last.kind === 'video' ? '🎬 Vidéo' : r.last.body) : 'Pas encore de message'}</small>
-            <span className="tags">{tag && <em className={`cotag ${tag.cls}`}>{tag.txt}</em>}{inact && <em className="cotag warn">inactif {ago(r.last_student_at)}</em>}{r.msgs7 >= 10 && <em className="cotag ok">très actif · {r.msgs7} msg / 7 j</em>}</span></div>
+            <span className="tags">{tag && <em className={`cotag ${tag.cls}`}>{tag.txt}</em>}{inact && <em className="cotag warn">inactif {ago(r.last_student_at)}</em>}{r.msgs7 >= 10 && <em className="cotag ok">très actif · {r.msgs7} msg / 7 j</em>}{(slabels[r.student_id] || []).map(id => { const l = labels.find(x => x.id === id); return l ? <em key={id} className="cotag lab" style={{ '--c': l.color }}>{l.name}</em> : null })}</span></div>
           <div className="m">{r.last ? ago(r.last.sent_at) : ''}{r.unread > 0 && <span className="n">{r.unread}</span>}</div>
         </button>
       })}
