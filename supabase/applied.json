@@ -23,5 +23,6 @@
   "0022_notif_ventes.sql",
   "0023_accompagnement.sql",
   "0024_co_threads_all.sql",
-  "0025_co_threads_self.sql"
+  "0025_co_threads_self.sql",
+  "0026_co_suivi.sql"
 ]
