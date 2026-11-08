@@ -358,7 +358,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
   if (mode === 'students') return <CoStudents me={me} profiles={profiles} toast={toast} isAdmin={isAdmin} refresh={refresh} />
   const [rows, setRows] = useState(null); const [cur, setCur] = useState(null); const [f, setF] = useState('todo'); const [status, setStatus] = useState(null); const [q, setQ] = useState('')
   const [labels, setLabels] = useState([]); const [slabels, setSlabels] = useState({}); const [lab, setLab] = useState(null); const [hits, setHits] = useState(null)
-  const [labSheet, setLabSheet] = useState(false); const [tagFor, setTagFor] = useState(null)
+  const [labSheet, setLabSheet] = useState(false); const [tagFor, setTagFor] = useState(null); const [hoursOpen, setHoursOpen] = useState(false); const [awayOpen, setAwayOpen] = useState(false)
   const holdT = useRef(null); const holdMoved = useRef(false)
   const holdRow = (r) => ({
     onTouchStart: () => { holdMoved.current = false; clearTimeout(holdT.current); holdT.current = setTimeout(() => { if (!holdMoved.current) { try { navigator.vibrate?.(10) } catch {} setTagFor(r) } }, 420) },
@@ -380,27 +380,31 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
   const shown = f === 'todo' ? todo : f === 'inactive' ? inactive : list
   const away = status && (!status.available || (status.away_until && new Date(status.away_until) > new Date()))
   const sla = (status?.sla_min || 120) * 60e3
+  const dayN = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
+  const hoursTxt = status ? `${(status.hours?.start || '09:00').replace(':00', ' h').replace(':', ' h ')} – ${(status.hours?.end || '20:00').replace(':00', ' h').replace(':', ' h ')}` : ''
+  const daysTxt = (() => { const d = status?.hours?.days || []; if (d.length === 7) return 'tous les jours'; if (JSON.stringify(d) === '[1,2,3,4,5,6]') return 'lun–sam'; if (JSON.stringify(d) === '[1,2,3,4,5]') return 'lun–ven'; return d.map(i => ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'][i]).join(' ') })()
+  const shownList = f === 'todo' ? todo : inactive
   return <div className="co">
-    <div className="cohead main"><div className="t"><b>Réception</b><small>{todo.length} à répondre · {list.length} conversations</small></div></div>
+    <div className="cohead main"><div className="t"><b>Réception</b></div>
+      <button type="button" className={`coic ${lab ? 'on' : ''}`} title="Étiquettes" onClick={() => setLabSheet(true)}>{I.tag}</button></div>
     <div className="cobody list">
-      {status && <div className={`costatus ${away ? 'off' : ''}`}>
-        <div className="t"><b>{away ? `Indisponible${status.away_until && new Date(status.away_until) > new Date() ? ` jusqu'à ${fmtTime(status.away_until)}` : ''}` : 'Je suis disponible'}</b><small>{away ? 'Tes élèves sont prévenus automatiquement dans le fil' : `Heures de réponse ${status.hours?.start?.replace(':', 'h')} – ${status.hours?.end?.replace(':', 'h')} · objectif ${status.sla_min} min`}</small></div>
-        <button type="button" className={`cosw ${away ? '' : 'on'}`} onClick={() => { if (away) saveStatus({ available: true, away_until: null, away_note: '' }); else { const v = prompt("Indisponible jusqu'à quelle heure ? (HH:MM, vide = jusqu'à nouvel ordre)", '14:00'); if (v === null) return; let until = null; const m = v.match(/(\d{1,2})[:h](\d{2})?/); if (m) { until = new Date(); until.setHours(+m[1], +(m[2] || 0), 0, 0); if (until < new Date()) until.setDate(until.getDate() + 1) } saveStatus({ available: false, away_until: until ? until.toISOString() : null }) } }} aria-label="Disponibilité" />
+      {status && <div className={`costat ${away ? 'off' : ''}`}>
+        <button type="button" className="cs-main" onClick={() => setHoursOpen(true)}>
+          <i className="dot" /><b>{away ? `Indisponible${status.away_until && new Date(status.away_until) > new Date() ? ` jusqu'à ${fmtTime(status.away_until)}` : ''}` : 'Disponible'}</b><span>· {hoursTxt} · {daysTxt}</span>
+        </button>
+        <button type="button" className={`cosw ${away ? '' : 'on'}`} aria-label="Disponibilité" onClick={() => away ? saveStatus({ available: true, away_until: null, away_note: '' }) : setAwayOpen(true)} />
       </div>}
-      <div className="cokp"><div><small>À répondre</small><b className="g">{todo.length}</b></div><div><small>Inactifs 24 h</small><b>{inactive.length}</b></div></div>
-      <div className="cochips"><button className={f === 'todo' ? 'on' : ''} onClick={() => setF('todo')}>À répondre · {todo.length}</button><button className={f === 'inactive' ? 'on' : ''} onClick={() => setF('inactive')}>Inactifs 24 h · {inactive.length}</button><button className={f === 'all' ? 'on' : ''} onClick={() => setF('all')}>Tous · {list.length}</button></div>
       <input className="cosearch" placeholder="Rechercher un élève ou un message" value={q} onChange={e => setQ(e.target.value)} />
-      <div className="colabelbar">
-        <button type="button" className={`colabelbtn ${lab ? 'on' : ''}`} style={lab ? { '--c': labels.find(l => l.id === lab)?.color } : undefined} onClick={() => setLabSheet(true)}><CoIcon n="tag" />{lab ? labels.find(l => l.id === lab)?.name : 'Étiquettes'}<i>▾</i></button>
-        {lab && <button type="button" className="colabelclear" onClick={() => setLab(null)}>Tout afficher</button>}
-        <small className="muted">Appui long sur une conversation pour étiqueter</small>
-      </div>
+      <div className="cotwo"><button type="button" className={f === 'todo' ? 'on' : ''} onClick={() => setF('todo')}>À répondre · {todo.length}</button><button type="button" className={f === 'inactive' ? 'on' : ''} onClick={() => setF('inactive')}>Silencieux 24 h · {inactive.length}</button></div>
+      {lab && <div className="colabelbar"><span className="cotag lab" style={{ '--c': labels.find(l => l.id === lab)?.color }}>{labels.find(l => l.id === lab)?.name}</span><button type="button" className="colabelclear" onClick={() => setLab(null)}>Tout afficher</button></div>}
+      {hoursOpen && <HoursSheet status={status} onClose={() => setHoursOpen(false)} onSave={(h) => { saveStatus({ hours: h }); setHoursOpen(false) }} />}
+      {awayOpen && <AwaySheet onClose={() => setAwayOpen(false)} onPick={(until) => { saveStatus({ available: false, away_until: until }); setAwayOpen(false) }} />}
       {labSheet && <LabelSheet title="Filtrer par étiquette" sub="Touche une étiquette pour ne voir que ces élèves" labels={labels} counts={labelCounts} selected={lab ? [lab] : []} onSelect={(l) => { setLab(lab === l.id ? null : l.id); setLabSheet(false) }} onCreate={createLabel} onClose={() => setLabSheet(false)} />}
       {tagFor && <LabelSheet title={tagFor.student_name} sub="Coche les étiquettes de cet élève" labels={labels} selected={slabels[tagFor.student_id] || []} onSelect={(l) => toggleStudentLabel(tagFor.student_id, l)} onCreate={async (n, c) => { const l = await createLabel(n, c); if (l) toggleStudentLabel(tagFor.student_id, l) }} onClose={() => setTagFor(null)} />}
       {hits && <div className="cocard"><b className="h">{hits.length ? `${hits.length} message${hits.length > 1 ? 's' : ''} trouvé${hits.length > 1 ? 's' : ''}` : 'Aucun message trouvé'}</b>
         {hits.slice(0, 20).map(h => <button key={h.id} className="corow" onClick={() => { const t = rows.find(r => r.id === h.thread_id); if (t) { setCur(t); history.replaceState(null, '', '#co/' + t.id) } }}><div className="t"><b>{h.student_name} <span className="kind">· {ago(h.sent_at)}</span></b><small style={{ whiteSpace: 'normal' }}>{hl(h.kind === 'voice' ? `🎤 ${h.transcript || 'vocal'}` : h.body, q)}</small></div></button>)}
       </div>}
-      {rows === null ? <div className="coempty"><p>Chargement…</p></div> : !shown.length ? <div className="coempty"><p>{f === 'todo' ? 'Tout est répondu ✓' : 'Rien ici.'}</p></div> : shown.map(r => {
+      {rows === null ? <div className="coempty"><p>Chargement…</p></div> : !shownList.length ? <div className="coempty"><p>{f === 'todo' ? 'Tout est répondu ✓' : 'Personne en silence, bravo.'}</p></div> : shownList.map(r => {
         const wait = r.waiting_since ? Date.now() - new Date(r.waiting_since) : 0
         const tag = r.waiting_since ? { cls: wait > sla ? 'warn' : 'gold', txt: `attend depuis ${ago(r.waiting_since)}` } : r.last && r.last.sender_id !== r.student_id ? { cls: 'ok', txt: 'répondu' } : null
         const inact = r.kind === 'coach' && r.last_student_at && Date.now() - new Date(r.last_student_at) > 864e5
@@ -408,11 +412,46 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
           <div className="coav">{r.student_avatar ? <img src={r.student_avatar} alt="" /> : initials(r.student_name)}</div>
           <div className="t"><b>{r.student_name}{r.kind !== 'coach' && <span className="kind"> · {KIND[r.kind].label}</span>}</b><small>{r.last ? (r.last.kind === 'voice' ? '🎤 Vocal' : r.last.kind === 'image' ? '📷 Photo' : r.last.kind === 'video' ? '🎬 Vidéo' : r.last.body) : 'Pas encore de message'}</small>
             <span className="tags">{tag && <em className={`cotag ${tag.cls}`}>{tag.txt}</em>}{inact && <em className="cotag warn">inactif {ago(r.last_student_at)}</em>}{r.msgs7 >= 10 && <em className="cotag ok">très actif · {r.msgs7} msg / 7 j</em>}{(slabels[r.student_id] || []).map(id => { const l = labels.find(x => x.id === id); return l ? <em key={id} className="cotag lab" style={{ '--c': l.color }}>{l.name}</em> : null })}</span></div>
-          <div className="m">{r.last ? ago(r.last.sent_at) : ''}{r.unread > 0 && <span className="n">{r.unread}</span>}</div>
+          <div className="m">{r.waiting_since ? <span className={wait > sla ? 'w' : ''}>{ago(r.waiting_since)}</span> : r.last ? ago(r.last.sent_at) : ''}{r.unread > 0 && <span className="n">{r.unread}</span>}</div>
         </button>
       })}
     </div>
   </div>
+}
+
+/* ───────── feuilles : heures de réponse (roues) et absence (roue jusqu'à…) ───────── */
+const HOURS30 = Array.from({ length: 48 }, (_, i) => { const h = Math.floor(i / 2), m = i % 2 ? '30' : '00'; return { v: `${String(h).padStart(2, '0')}:${m}`, l: <>{h}<small>h {m}</small></> } })
+export function HoursSheet({ status, onClose, onSave }) {
+  const [days, setDays] = useState(status?.hours?.days || [1, 2, 3, 4, 5, 6]); const [start, setStart] = useState(status?.hours?.start || '09:00'); const [end, setEnd] = useState(status?.hours?.end || '20:00')
+  const ok = start < end && days.length > 0
+  return <div className="cosheet-scrim" onClick={onClose}><div className="cosheet" onClick={e => e.stopPropagation()}>
+    <div className="grab" /><b>Mes heures de réponse</b><small>Hors de ces heures, tes élèves sont prévenus automatiquement</small>
+    <div className="codaysrow">{['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((l, i) => <button key={i} type="button" className={days.includes(i) ? 'on' : ''} onClick={() => setDays(d => d.includes(i) ? d.filter(x => x !== i) : [...d, i].sort())}>{l}</button>)}</div>
+    <div className="seglbl"><span>De</span><span>À</span></div>
+    <div className="wheels two"><div className="sel" /><span className="arrow">→</span><Wheel key={'s' + start} items={HOURS30} value={start} onChange={setStart} /><Wheel key={'e' + end} items={HOURS30} value={end} onChange={setEnd} /></div>
+    {!ok && <div className="when">L'heure de fin doit être après le début</div>}
+    <button type="button" className="cobtn" disabled={!ok} onClick={() => onSave({ start, end, days })}>Enregistrer</button>
+    <button type="button" className="cobtn ghost" onClick={onClose}>Annuler</button>
+  </div></div>
+}
+export function AwaySheet({ onClose, onPick }) {
+  const now = new Date(); const base = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const days = Array.from({ length: 15 }, (_, i) => { const d = new Date(base); d.setDate(d.getDate() + i); return { v: i, l: i === 0 ? "Aujourd'hui" : i === 1 ? 'Demain' : `${DAYS_FR[d.getDay()]} ${d.getDate()} ${MON_FR[d.getMonth()]}` } })
+  const hours = Array.from({ length: 24 }, (_, i) => ({ v: i, l: String(i).padStart(2, '0') })); const mins = Array.from({ length: 12 }, (_, i) => ({ v: i * 5, l: String(i * 5).padStart(2, '0') }))
+  const init = new Date(now.getTime() + 3600e3); init.setMinutes(Math.ceil(init.getMinutes() / 5) * 5 % 60, 0, 0)
+  const [d, setD] = useState(0); const [h, setH] = useState(init.getHours()); const [mi, setMi] = useState(init.getMinutes()); const [forever, setForever] = useState(false)
+  const when = () => { const x = new Date(base); x.setDate(x.getDate() + d); x.setHours(h, mi, 0, 0); return x }
+  const past = !forever && when() <= now
+  const preset = (fn) => { setForever(false); const x = fn(); setD(Math.round((new Date(x.getFullYear(), x.getMonth(), x.getDate()) - base) / 864e5)); setH(x.getHours()); setMi(x.getMinutes() - x.getMinutes() % 5) }
+  return <div className="cosheet-scrim" onClick={onClose}><div className="cosheet" onClick={e => e.stopPropagation()}>
+    <div className="grab" /><b>Je m'absente</b><small>Tes élèves sont prévenus dans le fil · Coach IA prend le relais quand il sera actif</small>
+    <div className="awayrow"><span>🕑</span><div><b>Jusqu'à</b><small>{forever ? 'nouvel ordre' : days[d].l.toLowerCase()}</small></div><em>{forever ? '—' : `${String(h).padStart(2, '0')} h ${String(mi).padStart(2, '0')}`}</em></div>
+    {!forever && <div className="wheels"><div className="sel" /><Wheel key={'d' + d} items={days} value={d} onChange={setD} /><Wheel key={'h' + h} items={hours} value={h} onChange={setH} /><Wheel key={'m' + mi} items={mins} value={mi} onChange={setMi} /></div>}
+    <div className="presets"><button type="button" onClick={() => preset(() => new Date(now.getTime() + 3600e3))}>+1 h</button><button type="button" onClick={() => preset(() => { const x = new Date(base); x.setHours(19, 0); if (x <= now) x.setDate(x.getDate() + 1); return x })}>Ce soir</button><button type="button" onClick={() => preset(() => { const x = new Date(base); x.setDate(x.getDate() + 1); x.setHours(9, 0); return x })}>Demain 9 h</button><button type="button" className={forever ? 'on' : ''} onClick={() => setForever(true)}>Jusqu'à nouvel ordre</button></div>
+    {past && <div className="when">Choisis un moment à venir</div>}
+    <button type="button" className="cobtn" disabled={past} onClick={() => onPick(forever ? null : when().toISOString())}>Me mettre indisponible</button>
+    <button type="button" className="cobtn ghost" onClick={onClose}>Annuler</button>
+  </div></div>
 }
 
 /* ───────── élèves : tous les membres, démarrer une conversation, attribuer un coach ───────── */
