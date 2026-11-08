@@ -110,6 +110,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
     return () => supabase.removeChannel(ch)
   }, [thread.id])
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }) }, [msgs.length])
+  useEffect(() => { document.body.classList.add('co-thread-open'); return () => document.body.classList.remove('co-thread-open') }, [])
 
   const send = async (payload) => {
     setBusy(true)
@@ -282,6 +283,9 @@ export function CoStudents({ me, profiles, toast, isAdmin, refresh }) {
   return <div className="co">
     <div className="cohead main"><div className="t"><b>Élèves</b><small>{members.length} membre{members.length > 1 ? 's' : ''} · touche un nom pour lui écrire</small></div></div>
     <div className="cobody list">
+      <button type="button" className="coconv" disabled={busy} onClick={async () => { setBusy(true); const { data, error } = await supabase.rpc('co_my_threads'); setBusy(false); if (error) return toast(friendlyError(error), true); const t = (data || []).find(x => x.kind === 'coach') || (data || [])[0]; if (t) { setCur(t); history.replaceState(null, '', '#co/' + t.id) } }}>
+        <div className="coav ring">{initials(me.name)}</div><div className="t"><b>Tester avec moi-même</b><small>Une conversation d'essai où tu es l'élève : vocaux, photos, programmation…</small></div><div className="m">›</div>
+      </button>
       <input className="cosearch" placeholder="Rechercher un élève" value={q} onChange={e => setQ(e.target.value)} />
       {members.map(p => <div key={p.id} className="coconv static">
         <div className="coav">{p.avatar_url ? <img src={p.avatar_url} alt="" /> : initials(p.name)}</div>
