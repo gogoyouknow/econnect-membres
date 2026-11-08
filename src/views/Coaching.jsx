@@ -383,7 +383,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
   const dayN = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
   const hoursTxt = status ? `${(status.hours?.start || '09:00').replace(':00', ' h').replace(':', ' h ')} – ${(status.hours?.end || '20:00').replace(':00', ' h').replace(':', ' h ')}` : ''
   const daysTxt = (() => { const d = status?.hours?.days || []; if (d.length === 7) return 'tous les jours'; if (JSON.stringify(d) === '[1,2,3,4,5,6]') return 'lun–sam'; if (JSON.stringify(d) === '[1,2,3,4,5]') return 'lun–ven'; return d.map(i => ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'][i]).join(' ') })()
-  const shownList = f === 'todo' ? todo : inactive
+  const shownList = f === 'todo' ? todo : list
   return <div className="co">
     <div className="cohead hd"><div className="t"><b>Réception</b></div>
       <button type="button" className={`coic ${lab ? 'on' : ''}`} title="Étiquettes" onClick={() => setLabSheet(true)}>{I.tag}</button></div>
@@ -395,7 +395,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
         <button type="button" className={`cosw ${away ? '' : 'on'}`} aria-label="Disponibilité" onClick={() => away ? saveStatus({ available: true, away_until: null, away_note: '' }) : setAwayOpen(true)} />
       </div>}
       <input className="cosearch" placeholder="Rechercher un élève ou un message" value={q} onChange={e => setQ(e.target.value)} />
-      <div className="cotwo"><button type="button" className={f === 'todo' ? 'on' : ''} onClick={() => setF('todo')}>À répondre · {todo.length}</button><button type="button" className={f === 'inactive' ? 'on' : ''} onClick={() => setF('inactive')}>Silencieux 24 h · {inactive.length}</button></div>
+      <div className="cotwo"><button type="button" className={f === 'todo' ? 'on' : ''} onClick={() => setF('todo')}>À répondre · {todo.length}</button><button type="button" className={f === 'all' ? 'on' : ''} onClick={() => setF('all')}>Tous · {list.length}</button></div>
       {lab && <div className="colabelbar"><span className="cotag lab" style={{ '--c': labels.find(l => l.id === lab)?.color }}>{labels.find(l => l.id === lab)?.name}</span><button type="button" className="colabelclear" onClick={() => setLab(null)}>Tout afficher</button></div>}
       {hoursOpen && <HoursSheet status={status} onClose={() => setHoursOpen(false)} onSave={(h) => { saveStatus({ hours: h }); setHoursOpen(false) }} />}
       {awayOpen && <AwaySheet onClose={() => setAwayOpen(false)} onPick={(until) => { saveStatus({ available: false, away_until: until }); setAwayOpen(false) }} />}
@@ -404,7 +404,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
       {hits && <div className="cocard"><b className="h">{hits.length ? `${hits.length} message${hits.length > 1 ? 's' : ''} trouvé${hits.length > 1 ? 's' : ''}` : 'Aucun message trouvé'}</b>
         {hits.slice(0, 20).map(h => <button key={h.id} className="corow" onClick={() => { const t = rows.find(r => r.id === h.thread_id); if (t) { setCur(t); history.replaceState(null, '', '#co/' + t.id) } }}><div className="t"><b>{h.student_name} <span className="kind">· {ago(h.sent_at)}</span></b><small style={{ whiteSpace: 'normal' }}>{hl(h.kind === 'voice' ? `🎤 ${h.transcript || 'vocal'}` : h.body, q)}</small></div></button>)}
       </div>}
-      {rows === null ? <div className="coempty"><p>Chargement…</p></div> : !shownList.length ? <div className="coempty"><p>{f === 'todo' ? 'Tout est répondu ✓' : 'Personne en silence, bravo.'}</p></div> : shownList.map(r => {
+      {rows === null ? <div className="coempty"><p>Chargement…</p></div> : !shownList.length ? <div className="coempty"><p>{f === 'todo' ? 'Tout est répondu ✓' : 'Aucune conversation.'}</p></div> : shownList.map(r => {
         const wait = r.waiting_since ? Date.now() - new Date(r.waiting_since) : 0
         const tag = r.waiting_since ? { cls: wait > sla ? 'warn' : 'gold', txt: `attend depuis ${ago(r.waiting_since)}` } : r.last && r.last.sender_id !== r.student_id ? { cls: 'ok', txt: 'répondu' } : null
         const inact = r.kind === 'coach' && r.last_student_at && Date.now() - new Date(r.last_student_at) > 864e5
