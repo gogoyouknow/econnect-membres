@@ -13,6 +13,7 @@ import Moderation from './views/Moderation'
 import Admin from './views/Admin'
 import Analytics from './views/Analytics'
 import { CoStudentHome, CoInbox } from './views/Coaching'
+import CoTrack from './views/CoachingTrack'
 import Side from './views/Side'
 import Upsell, { AccelOffer } from './views/Upsell'
 import Journey from './views/Journey'
@@ -33,6 +34,8 @@ const SPACES = {
 
 const VIEWS = [
   { id: 'co', k: '💬', label: 'Messages', group: 'Accompagnement', sp: 'accomp' },
+  { id: 'cosuivi', k: '📊', label: 'Suivi', group: 'Accompagnement', sp: 'accomp', staff: true },
+  { id: 'coeleves', k: '👥', label: 'Élèves', group: 'Accompagnement', sp: 'accomp', staff: true },
   { id: 'mcours', k: '🎓', label: 'Ma formation', group: 'Méthode E-Connect', sp: 'methode' },
   { id: 'mwins', k: '🏆', label: 'Résultats', group: 'Méthode E-Connect', sp: 'methode' },
   { id: 'mlives', k: '🔴', label: 'Lives & replays', group: 'Méthode E-Connect', sp: 'methode' },
@@ -174,6 +177,8 @@ export default function App() {
   else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
   else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
   else if (cur === 'co') main = isStaff ? <CoInbox {...ctx} /> : <CoStudentHome {...ctx} />
+  else if (cur === 'cosuivi' && isStaff) main = <CoTrack {...ctx} />
+  else if (cur === 'coeleves' && isStaff) main = <CoInbox {...ctx} mode="students" />
   else main = <Chat key="general" space="general" {...ctx} />
 
   return (
@@ -215,7 +220,7 @@ export default function App() {
       {space === 'accel' && <Side {...ctx} />}
 
       <nav className="tabbar">
-        {(space === 'accomp' ? (isStaff ? [['co', '💬', 'Réception'], ['tracking', '📊', 'Suivi'], ['members', '👥', 'Élèves'], ['lives', '🔴', 'Lives'], ['admin', '⚙️', 'Admin']] : [['co', '💬', 'Messages'], ['journey', '🧭', 'Parcours'], ['courses', '🎓', 'Formation'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]) : space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]).map(([id, k, l]) =>
+        {(space === 'accomp' ? (isStaff ? [['co', '💬', 'Réception'], ['cosuivi', '📊', 'Suivi'], ['coeleves', '👥', 'Élèves']] : [['co', '💬', 'Messages'], ['journey', '🧭', 'Parcours'], ['courses', '🎓', 'Formation'], ['profile', '👤', 'Profil']]) : space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]).map(([id, k, l]) =>
           <button key={id} className={cur === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
         <button className={rail ? 'on' : ''} onClick={() => setRail(r => !r)}><span>☰</span>Plus</button>
       </nav>

@@ -225,7 +225,8 @@ export function CoStudentHome({ me, profiles, toast, go, isStaff, viewStudent })
 }
 
 /* ───────── réception coach / admin ───────── */
-export function CoInbox({ me, profiles, toast, isAdmin }) {
+export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
+  if (mode === 'students') return <CoStudents me={me} profiles={profiles} toast={toast} isAdmin={isAdmin} refresh={refresh} />
   const [rows, setRows] = useState(null); const [cur, setCur] = useState(null); const [f, setF] = useState('todo'); const [status, setStatus] = useState(null); const [q, setQ] = useState('')
   const load = async () => { await supabase.rpc('co_ensure_threads'); const { data, error } = await supabase.rpc('co_inbox'); if (error) return toast(friendlyError(error), true); setRows(data || []) }
   const loadStatus = () => supabase.from('coach_status').select('*').eq('user_id', me.id).maybeSingle().then(({ data }) => setStatus(data || { user_id: me.id, available: true, hours: { start: '09:00', end: '20:00', days: [1, 2, 3, 4, 5, 6] }, sla_min: 120 }))
@@ -259,6 +260,39 @@ export function CoInbox({ me, profiles, toast, isAdmin }) {
           <div className="m">{r.last ? ago(r.last.sent_at) : ''}{r.unread > 0 && <span className="n">{r.unread}</span>}</div>
         </button>
       })}
+    </div>
+  </div>
+}
+
+/* ───────── élèves : tous les membres, démarrer une conversation, attribuer un coach ───────── */
+export function CoStudents({ me, profiles, toast, isAdmin, refresh }) {
+  const [q, setQ] = useState(''); const [cur, setCur] = useState(null); const [busy, setBusy] = useState(false)
+  const members = (profiles.list || []).filter(p => p.role === 'member' && p.active !== false && (!q || (p.name || '').toLowerCase().includes(q.toLowerCase()) || (p.email || '').toLowerCase().includes(q.toLowerCase())))
+  const coaches = (profiles.list || []).filter(p => p.role === 'coach' || p.role === 'admin')
+  const openWith = async (p, kind) => {
+    setBusy(true)
+    const { data, error } = await supabase.rpc('co_my_threads', { p_student: p.id }); setBusy(false)
+    if (error) return toast(friendlyError(error), true)
+    const t = (data || []).find(x => x.kind === kind) || (data || [])[0]
+    if (!t) return toast('Impossible d\'ouvrir la conversation', true)
+    setCur(t); history.replaceState(null, '', '#co/' + t.id)
+  }
+  const setCoach = async (p, coach_id) => { const { error } = await supabase.from('profiles').update({ coach_id: coach_id || null }).eq('id', p.id); if (error) return toast(friendlyError(error), true); toast('Coach attribué'); refresh?.() }
+  if (cur) return <CoThread me={me} thread={cur} profiles={profiles} toast={toast} isStaff onBack={() => { setCur(null); if (location.hash.startsWith('#co/')) history.replaceState(null, '', '#coeleves') }} />
+  return <div className="co">
+    <div className="cohead main"><div className="t"><b>Élèves</b><small>{members.length} membre{members.length > 1 ? 's' : ''} · touche un nom pour lui écrire</small></div></div>
+    <div className="cobody list">
+      <input className="cosearch" placeholder="Rechercher un élève" value={q} onChange={e => setQ(e.target.value)} />
+      {members.map(p => <div key={p.id} className="coconv static">
+        <div className="coav">{p.avatar_url ? <img src={p.avatar_url} alt="" /> : initials(p.name)}</div>
+        <div className="t"><b>{p.name}</b><small>{p.accel ? (p.tier >= 2 ? 'Accompagnement personnalisé' : 'Accompagnement') : p.methode ? 'Méthode 97 €' : 'Membre'}{p.coach_id ? ` · coach ${profiles.map?.[p.coach_id]?.name || ''}` : ''}</small>
+          <span className="tags">
+            <button type="button" className="cotag gold" disabled={busy} onClick={() => openWith(p, me.role === 'coach' ? 'coach' : 'clement')}>Écrire</button>
+            <button type="button" className="cotag" disabled={busy} onClick={() => openWith(p, 'team')}>Groupe équipe</button>
+            {isAdmin && <select className="cotag" value={p.coach_id || ''} onChange={e => setCoach(p, e.target.value)}><option value="">Coach : aucun</option>{coaches.map(c => <option key={c.id} value={c.id}>Coach : {c.name}</option>)}</select>}
+          </span></div>
+      </div>)}
+      {!members.length && <div className="coempty"><p>Aucun membre trouvé.</p></div>}
     </div>
   </div>
 }
