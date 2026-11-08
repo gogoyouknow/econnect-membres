@@ -20,6 +20,12 @@ const updateSW = registerSW({
   },
 })
 
+// Clavier iPhone : la zone visible se réduit au lieu de laisser un trou entre le champ et le clavier
+if (window.visualViewport) {
+  const fit = () => { const vv = window.visualViewport; document.documentElement.style.setProperty('--vvh', Math.round(vv.height) + 'px'); document.body.style.top = Math.round(vv.offsetTop) + 'px'; if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) setTimeout(() => document.activeElement?.scrollIntoView?.({ block: 'nearest' }), 50) }
+  window.visualViewport.addEventListener('resize', fit); window.visualViewport.addEventListener('scroll', fit); fit()
+}
+
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary><ToastProvider>{location.pathname.replace(/\/$/, '') === '/bienvenue' ? <LeadForm /> : <App />}</ToastProvider></ErrorBoundary>
