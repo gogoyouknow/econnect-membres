@@ -12,7 +12,7 @@ import Notifs from './views/Notifs'
 import Moderation from './views/Moderation'
 import Admin from './views/Admin'
 import Analytics from './views/Analytics'
-import { CoStudentHome, CoInbox } from './views/Coaching'
+import { CoStudentHome, CoInbox, CoLabels } from './views/Coaching'
 import CoTrack from './views/CoachingTrack'
 import Side from './views/Side'
 import Upsell, { AccelOffer } from './views/Upsell'
@@ -36,6 +36,7 @@ const VIEWS = [
   { id: 'co', k: '💬', label: 'Messages', group: 'Accompagnement', sp: 'accomp' },
   { id: 'cosuivi', k: '📊', label: 'Suivi', group: 'Accompagnement', sp: 'accomp', staff: true },
   { id: 'coeleves', k: '👥', label: 'Élèves', group: 'Accompagnement', sp: 'accomp', staff: true },
+  { id: 'colabels', k: '🏷️', label: 'Étiquettes', group: 'Accompagnement', sp: 'accomp', staff: true },
   { id: 'mcours', k: '🎓', label: 'Ma formation', group: 'Méthode E-Connect', sp: 'methode' },
   { id: 'mwins', k: '🏆', label: 'Résultats', group: 'Méthode E-Connect', sp: 'methode' },
   { id: 'mlives', k: '🔴', label: 'Lives & replays', group: 'Méthode E-Connect', sp: 'methode' },
@@ -179,6 +180,7 @@ export default function App() {
   else if (cur === 'co') main = isStaff ? <CoInbox {...ctx} /> : <CoStudentHome {...ctx} />
   else if (cur === 'cosuivi' && isStaff) main = <CoTrack {...ctx} />
   else if (cur === 'coeleves' && isStaff) main = <CoInbox {...ctx} mode="students" />
+  else if (cur === 'colabels' && isStaff) main = <CoLabels {...ctx} />
   else main = <Chat key="general" space="general" {...ctx} />
 
   return (

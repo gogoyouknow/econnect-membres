@@ -337,7 +337,7 @@ export function CoStudentHome({ me, profiles, toast, go, isStaff, viewStudent })
 
 /* ───────── feuille d'étiquettes (filtre ou attribution à un élève) ───────── */
 const LABEL_COLORS = ['#F9DC5C', '#ff8a65', '#34d399', '#b7a3ff', '#7dd3fc', '#f472b6', '#FFF1B8', '#a3e635']
-export function LabelSheet({ labels, counts, selected, onSelect, onCreate, onClose, title, sub, onDelete }) {
+export function LabelSheet({ labels, counts, selected, onSelect, onCreate, onClose, title, sub, onManage, doneLabel }) {
   const [creating, setCreating] = useState(false); const [name, setName] = useState(''); const [color, setColor] = useState(LABEL_COLORS[0])
   return <div className="cosheet-scrim" onClick={onClose}><div className="cosheet labels" onClick={e => e.stopPropagation()}>
     <div className="grab" /><b>{title}</b>{sub && <small>{sub}</small>}
@@ -345,16 +345,42 @@ export function LabelSheet({ labels, counts, selected, onSelect, onCreate, onClo
       {labels.map(l => <button key={l.id} type="button" className={selected.includes(l.id) ? 'on' : ''} style={{ '--c': l.color }} onClick={() => onSelect(l)}><i /><span>{l.name}</span>{counts && <em>{counts[l.id] || 0}</em>}{selected.includes(l.id) && <strong>✓</strong>}</button>)}
       {!labels.length && <p className="muted">Aucune étiquette pour l'instant.</p>}
     </div>
+    {onManage && <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}><button type="button" className="cobtn ghost" style={{ marginTop: 0 }} onClick={onManage}>✎ Gérer les étiquettes</button></div>}
     {creating ? <div className="labelnew">
       <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nom de l'étiquette (emoji bienvenu)" maxLength={40} />
       <div className="swatches">{LABEL_COLORS.map(c => <button key={c} type="button" className={c === color ? 'on' : ''} style={{ background: c }} onClick={() => setColor(c)} aria-label={c} />)}</div>
       <div style={{ display: 'flex', gap: 8 }}><button type="button" className="cobtn" disabled={!name.trim()} onClick={async () => { await onCreate(name.trim(), color); setName(''); setCreating(false) }}>Créer</button><button type="button" className="cobtn ghost" style={{ marginTop: 0 }} onClick={() => setCreating(false)}>Annuler</button></div>
-    </div> : <button type="button" className="cobtn ghost" onClick={() => setCreating(true)}>+ Nouvelle étiquette</button>}
+    </div> : <div style={{ display: 'flex', gap: 8 }}><button type="button" className="cobtn ghost" style={{ marginTop: 0, flex: 1 }} onClick={() => setCreating(true)}>+ Nouvelle</button><button type="button" className="cobtn" style={{ marginTop: 0, flex: 1 }} onClick={onClose}>{doneLabel || 'Terminé'}</button></div>}
   </div></div>
 }
 
+/* ───────── page Étiquettes : renommer, couleur, supprimer ───────── */
+export function CoLabels({ me, toast, go }) {
+  const [labels, setLabels] = useState([]); const [counts, setCounts] = useState({}); const [edit, setEdit] = useState(null); const [name, setName] = useState(''); const [color, setColor] = useState(LABEL_COLORS[0]); const [creating, setCreating] = useState(false)
+  const load = async () => { const [{ data: ls }, { data: sl }] = await Promise.all([supabase.from('co_labels').select('*').order('id'), supabase.from('co_student_labels').select('label_id')]); setLabels(ls || []); const c = {}; (sl || []).forEach(x => { c[x.label_id] = (c[x.label_id] || 0) + 1 }); setCounts(c) }
+  useEffect(() => { load() }, [])
+  const open = (l) => { setEdit(l.id); setName(l.name); setColor(l.color); setCreating(false) }
+  const save = async () => { if (!name.trim()) return; const { error } = await supabase.from('co_labels').update({ name: name.trim(), color }).eq('id', edit); if (error) return toast(friendlyError(error), true); setEdit(null); load() }
+  const create = async () => { if (!name.trim()) return; const { error } = await supabase.from('co_labels').insert({ name: name.trim(), color, created_by: me.id }); if (error) return toast(friendlyError(error), true); setCreating(false); setName(''); load() }
+  const del = async (l) => { if (!confirm(`Supprimer « ${l.name} » ? Elle sera retirée de ${counts[l.id] || 0} élève(s).`)) return; const { error } = await supabase.from('co_labels').delete().eq('id', l.id); if (error) return toast(friendlyError(error), true); setEdit(null); load() }
+  const Editor = ({ onOk, onCancel, onDel }) => <div className="lrow edit">
+    <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nom (emoji bienvenu)" maxLength={40} onKeyDown={e => e.key === 'Enter' && onOk()} />
+    <div className="swatches">{LABEL_COLORS.map(c => <button key={c} type="button" className={c === color ? 'on' : ''} style={{ background: c }} onClick={() => setColor(c)} aria-label={c} />)}</div>
+    <div className="lbtns">{onDel && <button type="button" className="del" onClick={onDel}>Supprimer</button>}<button type="button" className="gh" onClick={onCancel}>Annuler</button><button type="button" className="ok" disabled={!name.trim()} onClick={onOk}>Enregistrer</button></div>
+  </div>
+  return <div className="co">
+    <div className="cohead hd"><button className="coic" onClick={() => go('co')}>{I.back}</button><div className="t"><b>Étiquettes</b><small>Touche une étiquette pour la modifier</small></div><button type="button" className="conew" onClick={() => { setEdit(null); setCreating(true); setName(''); setColor(LABEL_COLORS[labels.length % LABEL_COLORS.length]) }}>+ Nouvelle</button></div>
+    <div className="cobody list">
+      {creating && <Editor onOk={create} onCancel={() => setCreating(false)} />}
+      {labels.map(l => edit === l.id ? <Editor key={l.id} onOk={save} onCancel={() => setEdit(null)} onDel={() => del(l)} /> :
+        <button key={l.id} type="button" className="lrow" style={{ '--c': l.color }} onClick={() => open(l)}><i className="dot" /><div className="t"><b>{l.name}</b><small>{counts[l.id] || 0} élève{(counts[l.id] || 0) > 1 ? 's' : ''}</small></div><span className="pen">✎</span></button>)}
+      {!labels.length && !creating && <div className="coempty"><p>Aucune étiquette. Crée la première avec « + Nouvelle ».</p></div>}
+    </div>
+  </div>
+}
+
 /* ───────── réception coach / admin ───────── */
-export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
+export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh, go }) {
   if (mode === 'students') return <CoStudents me={me} profiles={profiles} toast={toast} isAdmin={isAdmin} refresh={refresh} />
   const [rows, setRows] = useState(null); const [cur, setCur] = useState(null); const [f, setF] = useState('todo'); const [status, setStatus] = useState(null); const [q, setQ] = useState('')
   const [labels, setLabels] = useState([]); const [slabels, setSlabels] = useState({}); const [lab, setLab] = useState(null); const [hits, setHits] = useState(null)
@@ -399,7 +425,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
       {lab && <div className="colabelbar"><span className="cotag lab" style={{ '--c': labels.find(l => l.id === lab)?.color }}>{labels.find(l => l.id === lab)?.name}</span><button type="button" className="colabelclear" onClick={() => setLab(null)}>Tout afficher</button></div>}
       {hoursOpen && <HoursSheet status={status} onClose={() => setHoursOpen(false)} onSave={(h) => { saveStatus({ hours: h }); setHoursOpen(false) }} />}
       {awayOpen && <AwaySheet onClose={() => setAwayOpen(false)} onPick={(until) => { saveStatus({ available: false, away_until: until }); setAwayOpen(false) }} />}
-      {labSheet && <LabelSheet title="Filtrer par étiquette" sub="Touche une étiquette pour ne voir que ces élèves" labels={labels} counts={labelCounts} selected={lab ? [lab] : []} onSelect={(l) => { setLab(lab === l.id ? null : l.id); setLabSheet(false) }} onCreate={createLabel} onClose={() => setLabSheet(false)} />}
+      {labSheet && <LabelSheet title="Étiquettes" sub="Touche une étiquette pour filtrer la réception" labels={labels} counts={labelCounts} selected={lab ? [lab] : []} onSelect={(l) => { setLab(lab === l.id ? null : l.id); setLabSheet(false) }} onCreate={createLabel} onClose={() => setLabSheet(false)} onManage={() => { setLabSheet(false); go?.('colabels') }} doneLabel="Fermer" />}
       {tagFor && <LabelSheet title={tagFor.student_name} sub="Coche les étiquettes de cet élève" labels={labels} selected={slabels[tagFor.student_id] || []} onSelect={(l) => toggleStudentLabel(tagFor.student_id, l)} onCreate={async (n, c) => { const l = await createLabel(n, c); if (l) toggleStudentLabel(tagFor.student_id, l) }} onClose={() => setTagFor(null)} />}
       {hits && <div className="cocard"><b className="h">{hits.length ? `${hits.length} message${hits.length > 1 ? 's' : ''} trouvé${hits.length > 1 ? 's' : ''}` : 'Aucun message trouvé'}</b>
         {hits.slice(0, 20).map(h => <button key={h.id} className="corow" onClick={() => { const t = rows.find(r => r.id === h.thread_id); if (t) { setCur(t); history.replaceState(null, '', '#co/' + t.id) } }}><div className="t"><b>{h.student_name} <span className="kind">· {ago(h.sent_at)}</span></b><small style={{ whiteSpace: 'normal' }}>{hl(h.kind === 'voice' ? `🎤 ${h.transcript || 'vocal'}` : h.body, q)}</small></div></button>)}
