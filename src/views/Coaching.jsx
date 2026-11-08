@@ -94,6 +94,35 @@ async function upload(threadId, blob, type, ext) {
 }
 const compress = (file) => new Promise((res) => { if (!file.type.startsWith('image/')) return res(file); const img = new Image(); const u = URL.createObjectURL(file); img.onload = () => { const max = 1600; const k = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); c.toBlob(b => { URL.revokeObjectURL(u); res(b || file) }, 'image/jpeg', .85) }; img.onerror = () => res(file); img.src = u })
 
+/* ───────── roue de date façon iPhone (sans saisie) ───────── */
+function Wheel({ items, value, onChange }) {
+  const ref = useRef(null); const H = 40; const t = useRef(null)
+  useEffect(() => { const i = items.findIndex(x => x.v === value); if (ref.current && i >= 0) ref.current.scrollTop = i * H }, [])
+  const onScroll = () => { clearTimeout(t.current); t.current = setTimeout(() => { const el = ref.current; if (!el) return; const i = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollTop / H))); if (items[i] && items[i].v !== value) onChange(items[i].v) }, 90) }
+  return <div className="wheel" ref={ref} onScroll={onScroll}><div className="pad" />{items.map(x => <div key={x.v} className={`wi ${x.v === value ? 'on' : ''}`} onClick={() => { ref.current.scrollTo({ top: items.indexOf(x) * H, behavior: 'smooth' }); onChange(x.v) }}>{x.l}</div>)}<div className="pad" /></div>
+}
+const DAYS_FR = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'], MON_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+export function SchedulePicker({ onPick, onClose }) {
+  const now = new Date(); const base = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const days = Array.from({ length: 61 }, (_, i) => { const d = new Date(base); d.setDate(d.getDate() + i); return { v: i, l: i === 0 ? "Aujourd'hui" : i === 1 ? 'Demain' : `${DAYS_FR[d.getDay()]} ${d.getDate()} ${MON_FR[d.getMonth()]}` } })
+  const hours = Array.from({ length: 24 }, (_, i) => ({ v: i, l: String(i).padStart(2, '0') }))
+  const mins = Array.from({ length: 12 }, (_, i) => ({ v: i * 5, l: String(i * 5).padStart(2, '0') }))
+  const init = new Date(now.getTime() + 3600e3); init.setMinutes(Math.ceil(init.getMinutes() / 5) * 5, 0, 0)
+  const [d, setD] = useState(Math.round((new Date(init.getFullYear(), init.getMonth(), init.getDate()) - base) / 864e5)); const [h, setH] = useState(init.getHours()); const [mi, setMi] = useState(init.getMinutes() % 60)
+  const when = () => { const x = new Date(base); x.setDate(x.getDate() + d); x.setHours(h, mi, 0, 0); return x }
+  const past = when() <= now
+  const preset = (fn) => { const x = fn(); setD(Math.round((new Date(x.getFullYear(), x.getMonth(), x.getDate()) - base) / 864e5)); setH(x.getHours()); setMi(x.getMinutes() - x.getMinutes() % 5) }
+  const nextDow = (dow, hh) => { const x = new Date(base); x.setDate(x.getDate() + ((dow - x.getDay() + 7) % 7 || 7)); x.setHours(hh, 0, 0, 0); return x }
+  return <div className="cosheet-scrim" onClick={onClose}><div className="cosheet" onClick={e => e.stopPropagation()}>
+    <div className="grab" /><b>Envoyer plus tard</b><small>Jusqu'à 2 mois à l'avance · heure de Paris</small>
+    <div className="presets"><button type="button" onClick={() => preset(() => new Date(now.getTime() + 3600e3))}>Dans 1 h</button><button type="button" onClick={() => preset(() => { const x = new Date(base); x.setHours(19, 0); if (x <= now) x.setDate(x.getDate() + 1); return x })}>Ce soir 19 h</button><button type="button" onClick={() => preset(() => { const x = new Date(base); x.setDate(x.getDate() + 1); x.setHours(9, 0); return x })}>Demain 9 h</button><button type="button" onClick={() => preset(() => nextDow(1, 9))}>Lundi 9 h</button></div>
+    <div className="wheels"><div className="sel" /><Wheel key={'d' + d} items={days} value={d} onChange={setD} /><Wheel key={'h' + h} items={hours} value={h} onChange={setH} /><Wheel key={'m' + mi} items={mins} value={mi} onChange={setMi} /></div>
+    <div className="when">{past ? 'Choisis un moment à venir' : `${days[d].l} à ${String(h).padStart(2, '0')}h${String(mi).padStart(2, '0')}`}</div>
+    <button type="button" className="cobtn" disabled={past} onClick={() => onPick(when().toISOString())}>Programmer</button>
+    <button type="button" className="cobtn ghost" onClick={onClose}>Annuler</button>
+  </div></div>
+}
+
 /* ───────── fil de conversation ───────── */
 export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const [msgs, setMsgs] = useState([]); const [text, setText] = useState(''); const [busy, setBusy] = useState(false); const [sched, setSched] = useState(null)
@@ -101,7 +130,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const [sub, setSub] = useState(null)            // fil de réponses ouvert (message parent)
   const [search, setSearch] = useState(null)      // null = fermé, '' = ouvert
   const [panel, setPanel] = useState(null)        // 'media' | 'labels'
-  const [counts, setCounts] = useState({})
+  const [counts, setCounts] = useState({}); const [pickOpen, setPickOpen] = useState(false)
   const [labels, setLabels] = useState([]); const [myLabels, setMyLabels] = useState([])
   const end = useRef(null); const fileIn = useRef(null); const R = useRecorder()
   const student = profiles.map?.[thread.student_id] || {}
@@ -215,6 +244,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
       {!msgs.length && !search && <div className="coempty"><div className="coav big">{mineThread ? initials(coach?.name || KIND[thread.kind].label) : initials(student.name)}</div><b>{title}</b><p>{mineThread ? (thread.kind === 'coach' ? 'Pose ta question, envoie une capture ou un vocal : ton coach te répond dans la journée.' : KIND[thread.kind].sub) : 'Démarre la conversation.'}</p></div>}
       <div ref={end} />
     </div>
+    {pickOpen && <SchedulePicker onClose={() => setPickOpen(false)} onPick={(iso) => { setSched(iso); setPickOpen(false) }} />}
     {sched && <div className="cosched">{I.clock}<span>Sera envoyé <b>{new Date(sched).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</b></span><button type="button" onClick={() => setSched(null)}>{I.x}</button></div>}
     {R.state === 'rec' ? <div className="coinput rec">
       <button type="button" className="coic danger" onClick={R.cancel}>{I.trash}</button>
@@ -224,7 +254,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
       <button type="button" className="coic" onClick={() => fileIn.current?.click()} disabled={busy}>{I.camera}</button>
       <input ref={fileIn} type="file" accept="image/*,video/*" hidden onChange={onFile} />
       <div className="cofield"><input value={text} onChange={e => setText(e.target.value)} placeholder={busy ? 'Envoi…' : sub ? 'Répondre dans le fil' : 'Message'} disabled={busy} />
-        {canSchedule && <button type="button" className={`inic ${sched ? 'on' : ''}`} title="Programmer" onClick={() => { const d = new Date(Date.now() + 3600e3); d.setMinutes(0, 0, 0); const v = prompt('Envoyer quand ? (JJ/MM HH:MM)', `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:00`); if (!v) return; const m = v.match(/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/); if (!m) return toast('Format : JJ/MM HH:MM', true); const t = new Date(); const dt = new Date(t.getFullYear(), +m[2] - 1, +m[1], +m[3], +m[4]); if (dt < t) dt.setFullYear(dt.getFullYear() + 1); setSched(dt.toISOString()) }}>{I.clock}</button>}
+        {canSchedule && <button type="button" className={`inic ${sched ? 'on' : ''}`} title="Programmer" onClick={() => sched ? setSched(null) : setPickOpen(true)}>{I.clock}</button>}
       </div>
       {text.trim() ? <button type="submit" className="cosend" disabled={busy}>{I.send}</button> : <button type="button" className="cosend mic" onClick={R.start} disabled={busy}>{I.mic}</button>}
     </form>}
