@@ -132,6 +132,11 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const [panel, setPanel] = useState(null)        // 'media' | 'labels'
   const [counts, setCounts] = useState({}); const [pickOpen, setPickOpen] = useState(false)
   const [menu, setMenu] = useState(null)          // message sous le doigt (appui long)
+  const [reacts, setReacts] = useState({})        // message_id -> [{emoji,user_id}]
+  const [present, setPresent] = useState([])      // ids des personnes dans la conversation
+  const [emojiFor, setEmojiFor] = useState(null)  // sélecteur complet d'emoji
+  const loadReacts = async () => { const ids = msgs.map(m => m.id); if (!ids.length) return; const { data } = await supabase.from('co_reactions').select('*').in('message_id', ids.slice(-400)); const r = {}; (data || []).forEach(x => { (r[x.message_id] ||= []).push(x) }); setReacts(r) }
+  const react = async (m, emoji) => { const mine = (reacts[m.id] || []).find(x => x.user_id === me.id && x.emoji === emoji); const { error } = mine ? await supabase.from('co_reactions').delete().eq('message_id', m.id).eq('user_id', me.id).eq('emoji', emoji) : await supabase.from('co_reactions').insert({ message_id: m.id, user_id: me.id, emoji }); if (error) toast(friendlyError(error), true); setMenu(null); setEmojiFor(null) }
   const holdT = useRef(null); const holdMoved = useRef(false)
   const hold = (m) => (m.kind === 'system' || (!m.sent_at && m.scheduled_at)) ? {} : {
     onTouchStart: () => { holdMoved.current = false; clearTimeout(holdT.current); holdT.current = setTimeout(() => { if (!holdMoved.current) { try { navigator.vibrate?.(10) } catch {} setMenu(m) } }, 420) },
@@ -151,6 +156,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const toggleLabel = async (l) => { const on = myLabels.includes(l.id); const { error } = on ? await supabase.from('co_student_labels').delete().eq('student_id', thread.student_id).eq('label_id', l.id) : await supabase.from('co_student_labels').insert({ student_id: thread.student_id, label_id: l.id, added_by: me.id }); if (error) return toast(friendlyError(error), true); setMyLabels(x => on ? x.filter(i => i !== l.id) : [...x, l.id]) }
   const addLabel = async () => { const name = prompt('Nom de la nouvelle étiquette (emoji bienvenu)'); if (!name?.trim()) return; const colors = ['#F9DC5C', '#ff8a65', '#34d399', '#b7a3ff', '#FFF1B8', '#7dd3fc']; const { data, error } = await supabase.from('co_labels').insert({ name: name.trim(), color: colors[labels.length % colors.length], created_by: me.id }).select().single(); if (error) return toast(friendlyError(error), true); setLabels(x => [...x, data]); toggleLabel(data) }
   const markRead = () => supabase.from('co_reads').upsert({ thread_id: thread.id, user_id: me.id, last_read_at: new Date().toISOString() })
+  useEffect(() => { loadReacts() }, [msgs.length])
   useEffect(() => {
     load(); loadLabels()
     if (coach?.id) supabase.from('coach_status').select('*').eq('user_id', coach.id).maybeSingle().then(({ data }) => setStatus(data))
@@ -158,8 +164,12 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'co_messages', filter: `thread_id=eq.${thread.id}` }, ({ new: m }) => { setMsgs(l => l.find(x => x.id === m.id) ? l : [...l, m]); markRead(); if (m.reply_to) loadCounts() })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'co_messages', filter: `thread_id=eq.${thread.id}` }, ({ new: m }) => setMsgs(l => l.map(x => x.id === m.id ? m : x)))
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'co_messages' }, ({ old }) => setMsgs(l => l.filter(x => x.id !== old.id)))
-      .subscribe()
-    return () => supabase.removeChannel(ch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'co_reactions' }, () => loadReacts())
+      .on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); setPresent(Object.values(st).flat().map(x => x.uid).filter(u => u && u !== me.id)) })
+      .subscribe(async (st) => { if (st === 'SUBSCRIBED') { try { await ch.track({ uid: me.id, at: Date.now() }) } catch {} } })
+    const vis = () => { if (document.visibilityState === 'visible') ch.track({ uid: me.id, at: Date.now() }).catch(() => {}); else ch.untrack().catch(() => {}) }
+    document.addEventListener('visibilitychange', vis)
+    return () => { document.removeEventListener('visibilitychange', vis); supabase.removeChannel(ch) }
   }, [thread.id])
   useEffect(() => { if (!search) end.current?.scrollIntoView({ block: 'end' }) }, [msgs.length, sub])
   useEffect(() => { document.body.classList.add('co-thread-open'); return () => document.body.classList.remove('co-thread-open') }, [])
@@ -200,14 +210,14 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const subline = mineThread && thread.kind === 'coach' ? (!coach ? 'Un coach va t\'être attribué' : away ? `indisponible · reprend ${status.away_until ? 'à ' + fmtTime(status.away_until) : 'bientôt'}` : 'disponible') : mineThread ? KIND[thread.kind].sub : `${student.email || ''}`
   const media = msgs.filter(m => ['image', 'video'].includes(m.kind) && m.sent_at)
   const q = (search || '').trim().toLowerCase()
-  const shown = sub ? msgs.filter(m => m.id === sub.id || m.reply_to === sub.id) : msgs.filter(m => !m.reply_to && (!q || q.length < 2 || (m.body || '').toLowerCase().includes(q) || (m.transcript || '').toLowerCase().includes(q)))
+  const shown = sub ? msgs.filter(m => m.reply_to === sub.id) : msgs.filter(m => !m.reply_to && (!q || q.length < 2 || (m.body || '').toLowerCase().includes(q) || (m.transcript || '').toLowerCase().includes(q)))
   let lastDay = ''
   const canSchedule = isStaff && !mineThread
   return <div className="co cothread">
     <div className="cohead">
       <button className="coic" onClick={onBack}>{I.back}</button>
-      <div className={`coav ${!away && coach ? 'ring' : ''}`}>{thread.kind === 'ai' && mineThread ? <span className="ai">{I.spark}</span> : (mineThread ? (coach?.avatar_url ? <img src={coach.avatar_url} alt="" /> : initials(coach?.name || KIND[thread.kind].label)) : (student.avatar_url ? <img src={student.avatar_url} alt="" /> : initials(student.name)))}</div>
-      <div className="t"><b>{sub ? 'Fil de discussion' : title}</b><small className={away ? 'away' : ''}>{sub ? `${(counts[sub.id]?.n || 0)} réponse${(counts[sub.id]?.n || 0) > 1 ? 's' : ''} · ${title}` : subline}</small></div>
+      {!sub && <div className={`coav ${!away && coach ? 'ring' : ''}`}>{thread.kind === 'ai' && mineThread ? <span className="ai">{I.spark}</span> : (mineThread ? (coach?.avatar_url ? <img src={coach.avatar_url} alt="" /> : initials(coach?.name || KIND[thread.kind].label)) : (student.avatar_url ? <img src={student.avatar_url} alt="" /> : initials(student.name)))}{present.length > 0 && <i className="on" title="Dans la conversation" />}</div>}
+      <div className={`t ${sub ? 'filpill' : ''}`}><b>{sub ? 'Fil' : title}</b><small className={away ? 'away' : present.length ? 'here' : ''}>{sub ? <>👤 {title}</> : present.length ? 'dans la conversation' : subline}</small></div>
       {sub ? <button className="coic" onClick={() => setSub(null)}>{I.x}</button> : <>
         <button className={`coic ${search !== null ? 'on' : ''}`} title="Rechercher" onClick={() => setSearch(search === null ? '' : null)}>{I.search}</button>
         <button className={`coic ${panel === 'media' ? 'on' : ''}`} title="Photos, vidéos, vocaux" onClick={() => setPanel(panel === 'media' ? null : 'media')}>{I.grid}</button>
@@ -227,7 +237,14 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
     </div>}
     <div className="cobody">
       {thread.kind === 'ai' && !sub && <div className="cosys ai">Coach IA arrive dans l'étape suivante : pour l'instant, ce fil garde tes questions, ton coach les voit.</div>}
-      {sub && <div className="cosys">Les réponses restent groupées sous ce message, comme sur Slack.</div>}
+      {sub && <div className="coparent">
+        <div className="coav">{sub.sender_id === me.id ? (me.avatar_url ? <img src={me.avatar_url} alt="" /> : initials(me.name)) : (profiles.map?.[sub.sender_id]?.avatar_url ? <img src={profiles.map[sub.sender_id].avatar_url} alt="" /> : initials(profiles.map?.[sub.sender_id]?.name || 'IA'))}</div>
+        <div className="t"><b>{sub.sender_id === me.id ? me.name : sub.ai ? 'Coach IA' : profiles.map?.[sub.sender_id]?.name || 'Membre'}</b><small>{fmtDay(sub.sent_at)} à {fmtTime(sub.sent_at)}</small>
+          <div className="pbody">{sub.kind === 'voice' ? <Voice m={sub} mine={false} /> : sub.kind === 'image' ? <Pic m={sub} /> : sub.kind === 'video' ? <Vid m={sub} /> : sub.body}</div>
+          <div className="preacts">{(reacts[sub.id] || []).length > 0 && Object.entries((reacts[sub.id] || []).reduce((a, r) => { a[r.emoji] = (a[r.emoji] || 0) + 1; return a }, {})).map(([e, n]) => <button key={e} type="button" className={(reacts[sub.id] || []).some(r => r.emoji === e && r.user_id === me.id) ? 'on' : ''} onClick={() => react(sub, e)}>{e} {n}</button>)}<button type="button" className="add" onClick={() => setEmojiFor(sub)}>☺︎+</button></div>
+        </div>
+      </div>}
+      {sub && <div className="cothreadsep"><span>{I.thread}</span>{(counts[sub.id]?.n || 0) ? `${counts[sub.id].n} réponse${counts[sub.id].n > 1 ? 's' : ''}` : 'Répondre dans le fil de discussion'}<i /></div>}
       {shown.map(m => {
         const day = fmtDay(m.sent_at || m.created_at); const showDay = day !== lastDay; lastDay = day
         const mine = m.sender_id === me.id; const who = m.sender_id ? profiles.map?.[m.sender_id] : null
@@ -241,6 +258,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
               {m.kind === 'voice' ? <Voice m={m} mine={mine} /> : m.kind === 'image' ? <Pic m={m} /> : m.kind === 'video' ? <Vid m={m} /> : <span className="txt">{hl(m.body, search)}</span>}
               <small>{scheduled ? <>{I.clock} programmé {new Date(m.scheduled_at).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} <button type="button" onClick={() => cancelScheduled(m)}>annuler</button></> : <>{fmtTime(m.sent_at)} {mine && <span className="ck">{I.checks}</span>}</>}</small>
             </div>}
+          {(reacts[m.id] || []).length > 0 && <div className={`coreacts ${mine ? 'me' : ''}`}>{Object.entries(reacts[m.id].reduce((a, r) => { a[r.emoji] = (a[r.emoji] || 0) + 1; return a }, {})).map(([e, n]) => <button key={e} type="button" className={reacts[m.id].some(r => r.emoji === e && r.user_id === me.id) ? 'on' : ''} onClick={() => react(m, e)}>{e} {n}</button>)}</div>}
           {rc && !sub && <button type="button" className={`cothreadchip ${mine ? 'me' : ''}`} onClick={() => setSub(m)}>{I.thread}<b>{rc.n} réponse{rc.n > 1 ? 's' : ''}</b><span>· dernière {ago(rc.last_at)}</span></button>}
         </div>
       })}
@@ -250,12 +268,16 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
     </div>
     {menu && <div className="cosheet-scrim" onClick={() => setMenu(null)}><div className="cosheet actions" onClick={e => e.stopPropagation()}>
       <div className="grab" />
-      <div className="preview">{menu.kind === 'voice' ? '🎤 Message vocal' : menu.kind === 'image' ? '📷 Photo' : menu.kind === 'video' ? '🎬 Vidéo' : menu.body}</div>
-      {!sub && <button type="button" className="act" onClick={() => { setSub(menu); setSearch(null); setMenu(null) }}><span>{I.thread}</span>Répondre dans un fil<small>{counts[menu.id]?.n ? `${counts[menu.id].n} réponse${counts[menu.id].n > 1 ? 's' : ''} déjà` : 'Garde les réponses groupées sous ce message'}</small></button>}
-      {menu.kind === 'text' && <button type="button" className="act" onClick={async () => { try { await navigator.clipboard.writeText(menu.body); toast('Copié') } catch {} setMenu(null) }}><span>{I.clip}</span>Copier le texte</button>}
-      {menu.kind === 'text' && <button type="button" className="act" onClick={() => { setText(t => (t ? t + ' ' : '') + `« ${menu.body.slice(0, 80)}${menu.body.length > 80 ? '…' : ''} » `); setMenu(null) }}><span>{I.reply}</span>Citer dans ma réponse</button>}
-      {menu.sender_id === me.id && isStaff && <button type="button" className="act danger" onClick={async () => { const { error } = await supabase.from('co_messages').update({ body: 'Message supprimé', kind: 'text', media_url: null }).eq('id', menu.id); if (error) toast(friendlyError(error), true); setMenu(null) }}><span>{I.trash}</span>Supprimer pour tout le monde</button>}
-      <button type="button" className="cobtn ghost" onClick={() => setMenu(null)}>Annuler</button>
+      <div className="quick">{['❤️', '✅', '🔥', '😭', '🙏'].map(e => <button key={e} type="button" className={(reacts[menu.id] || []).some(r => r.emoji === e && r.user_id === me.id) ? 'on' : ''} onClick={() => react(menu, e)}>{e}</button>)}<button type="button" className="more" onClick={() => { setEmojiFor(menu); setMenu(null) }}>☺︎<sup>+</sup></button></div>
+      <div className="tiles">
+        {!sub && <button type="button" onClick={() => { setSub(menu); setSearch(null); setMenu(null) }}><span>{I.thread}</span>Répondre</button>}
+        {menu.kind === 'text' ? <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(menu.body); toast('Copié') } catch {} setMenu(null) }}><span>{I.clip}</span>Copier</button> : <button type="button" onClick={async () => { const u = await signed(menu.media_url); if (u) window.open(u, '_blank'); setMenu(null) }}><span>{I.grid}</span>Ouvrir</button>}
+        {menu.kind === 'text' ? <button type="button" onClick={() => { setText(t => (t ? t + ' ' : '') + `« ${menu.body.slice(0, 80)}${menu.body.length > 80 ? '…' : ''} » `); setMenu(null) }}><span>{I.reply}</span>Citer</button> : null}
+        {menu.sender_id === me.id && isStaff && <button type="button" className="danger" onClick={async () => { const { error } = await supabase.from('co_messages').update({ body: 'Message supprimé', kind: 'text', media_url: null }).eq('id', menu.id); if (error) toast(friendlyError(error), true); setMenu(null) }}><span>{I.trash}</span>Supprimer</button>}
+      </div>
+    </div></div>}
+    {emojiFor && <div className="cosheet-scrim" onClick={() => setEmojiFor(null)}><div className="cosheet" onClick={e => e.stopPropagation()}><div className="grab" /><b>Réagir</b>
+      <div className="emojigrid">{['❤️', '✅', '🔥', '😭', '🙏', '👍', '👏', '😂', '😍', '🤯', '💪', '🚀', '💰', '🎯', '👀', '🤝', '✨', '😅', '🙌', '💡', '📈', '🛒', '😤', '🥳'].map(e => <button key={e} type="button" onClick={() => react(emojiFor, e)}>{e}</button>)}</div>
     </div></div>}
     {pickOpen && <SchedulePicker onClose={() => setPickOpen(false)} onPick={(iso) => { setSched(iso); setPickOpen(false) }} />}
     {sched && <div className="cosched">{I.clock}<span>Sera envoyé <b>{new Date(sched).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</b></span><button type="button" onClick={() => setSched(null)}>{I.x}</button></div>}
@@ -266,7 +288,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
     </div> : <form className="coinput" onSubmit={sendText}>
       <button type="button" className="coic" onClick={() => fileIn.current?.click()} disabled={busy}>{I.camera}</button>
       <input ref={fileIn} type="file" accept="image/*,video/*" hidden onChange={onFile} />
-      <div className="cofield"><input value={text} onChange={e => setText(e.target.value)} placeholder={busy ? 'Envoi…' : sub ? 'Répondre dans le fil' : 'Message'} disabled={busy} />
+      <div className="cofield"><input value={text} onChange={e => setText(e.target.value)} placeholder={busy ? 'Envoi…' : sub ? 'Ajoutez une réponse' : 'Message'} disabled={busy} />
         {canSchedule && <button type="button" className={`inic ${sched ? 'on' : ''}`} title="Programmer" onClick={() => sched ? setSched(null) : setPickOpen(true)}>{I.clock}</button>}
       </div>
       {text.trim() ? <button type="submit" className="cosend" disabled={busy}>{I.send}</button> : <button type="button" className="cosend mic" onClick={R.start} disabled={busy}>{I.mic}</button>}

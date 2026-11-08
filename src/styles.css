@@ -688,3 +688,15 @@ html,#root,.main{overscroll-behavior-x:none}
   .main>.co.cothread{flex:1 1 auto;min-height:0;height:auto}
   .main:has(.co.cothread){overflow:hidden}
 }
+
+/* présence, fil façon Slack, réactions, menu Slack */
+.coav .on{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:var(--ok);border:2px solid var(--bg);box-shadow:0 0 10px var(--ok)}
+.cohead .t small.here{color:var(--ok)}
+.cohead .t.filpill{background:var(--glass2);border:1px solid var(--cline);border-radius:14px;padding:6px 14px;flex:1}.cohead .t.filpill b{font-size:15px}.cohead .t.filpill small{color:var(--fg-2)}
+.coparent{display:flex;gap:12px;padding:6px 2px 12px}.coparent .t{flex:1;min-width:0}.coparent .t b{font-size:15px}.coparent .t small{display:block;color:var(--muted);font-size:11.5px;margin:1px 0 6px}.coparent .pbody{font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.preacts,.coreacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.coreacts{margin:-2px 0 4px 6px}.coreacts.me{align-self:flex-end;margin-right:6px}
+.preacts button,.coreacts button{font:inherit;font-size:12px;padding:4px 9px;border-radius:999px;background:var(--glass2);border:1px solid var(--cline);color:var(--fg);cursor:pointer}.preacts button.on,.coreacts button.on{background:rgba(249,220,92,.16);border-color:rgba(249,220,92,.5)}.preacts .add{color:var(--muted)}
+.cothreadsep{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--fg-2);padding:8px 0 10px;border-top:1px solid var(--cline)}.cothreadsep span{display:grid;color:var(--muted)}.cothreadsep span svg{width:16px;height:16px}.cothreadsep i{flex:1;border-top:1px solid var(--cline)}
+.cosheet .quick{display:flex;justify-content:space-between;gap:6px;margin:4px 0 14px}.cosheet .quick button{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);font-size:24px;cursor:pointer;display:grid;place-items:center;transition:transform .12s}.cosheet .quick button:active{transform:scale(.9)}.cosheet .quick button.on{background:rgba(249,220,92,.2);border-color:rgba(249,220,92,.5)}.cosheet .quick .more{font-size:20px;color:var(--fg)}.cosheet .quick .more sup{font-size:11px}
+.cosheet .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px}.cosheet .tiles button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;height:100px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);color:var(--fg);font:inherit;font-size:14px;font-weight:600;cursor:pointer}.cosheet .tiles button span{display:grid}.cosheet .tiles button span svg{width:28px;height:28px}.cosheet .tiles button.danger{color:var(--warn)}
+.emojigrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:10px 0 4px}.emojigrid button{height:52px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);font-size:26px;cursor:pointer}
