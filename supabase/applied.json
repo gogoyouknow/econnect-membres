@@ -29,5 +29,6 @@
   "0028_client_errors.sql",
   "0029_co_labels.sql",
   "0030_co_reactions.sql",
-  "0031_reply_counts.sql"
+  "0031_reply_counts.sql",
+  "0032_alerte_attente.sql"
 ]
