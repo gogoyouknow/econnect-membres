@@ -613,3 +613,6 @@ html,#root,.main{overscroll-behavior-x:none}
 @keyframes coPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
 .main > .co{flex:1;min-height:0}
 @media (min-width:901px){.co .cobody,.co .cohead,.co .coinput,.co .cosched{width:100%;max-width:760px;margin-left:auto;margin-right:auto}.co .cohead{position:static}.co .cohead.main .t{text-align:left}}
+.viewas{grid-column:1/-1}
+@media (min-width:901px){.app.has-viewas{grid-template-rows:60px auto 1fr}.app.has-viewas.has-live{grid-template-rows:60px auto auto 1fr}}
+@media (max-width:900px){.app.has-viewas{grid-template-rows:auto auto 1fr}.app.has-viewas.has-live{grid-template-rows:auto auto auto 1fr}}

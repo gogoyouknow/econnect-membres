@@ -177,7 +177,7 @@ export default function App() {
   else main = <Chat key="general" space="general" {...ctx} />
 
   return (
-    <div className={`app ${live && space === 'accel' ? 'has-live' : ''} ${space === 'accel' ? '' : 'noside'}`}>
+    <div className={`app ${live && space === 'accel' ? 'has-live' : ''} ${space === 'accel' ? '' : 'noside'} ${realStaff && VIEW_AS[viewAs] ? 'has-viewas' : ''}`}>
       <header className="topbar">
         <button className="ic" aria-label="Menu" onClick={() => setRail(r => !r)}>☰</button>
         <div className="spaces">
