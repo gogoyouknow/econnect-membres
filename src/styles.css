@@ -744,7 +744,7 @@ html,#root,.main{overscroll-behavior-x:none}
 .coinbox .cobody.list{gap:2px}
 
 /* Épingler (balayer vers la gauche) */
-.corowwrap{position:relative;overflow:hidden;border-radius:16px}
+.corowwrap{position:relative;overflow:hidden;border-radius:16px;width:100%;flex:none}
 .corowwrap .coconv{position:relative;touch-action:pan-y;transition:transform .22s cubic-bezier(.2,.8,.2,1);background:var(--bg,#09090b)}
 .coinbox .corowwrap .coconv.hot{background:linear-gradient(90deg,rgba(255,138,101,.1),transparent),var(--bg,#09090b)}
 .corowwrap.sw .coconv{transform:translateX(-92px)}
