@@ -567,7 +567,7 @@ html,#root,.main{overscroll-behavior-x:none}
 .coi{display:inline-grid;place-items:center;width:1em;height:1em;vertical-align:-.15em}.coi svg{width:100%;height:100%}
 .co svg{width:20px;height:20px}
 .cohead{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--cline);background:rgba(9,9,11,.6);backdrop-filter:blur(14px);position:sticky;top:0;z-index:3}
-.cohead.main{padding:14px 16px}.cohead .t{flex:1;min-width:0}.cohead .t b{display:block;font-size:16px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cohead .t small{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}.cohead .t small.away{color:var(--ch2)}
+.cohead.hd{padding:14px 16px}.cohead .t{flex:1;min-width:0}.cohead .t b{display:block;font-size:16px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cohead .t small{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}.cohead .t small.away{color:var(--ch2)}
 .coic{width:38px;height:38px;border-radius:14px;background:var(--glass);border:1px solid var(--cline);display:grid;place-items:center;color:var(--fg-2);flex:none;cursor:pointer;padding:0;transition:transform .15s,background .15s}.coic:active{transform:scale(.92)}.coic.danger{color:var(--warn)}
 .coav{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#2a2a2f,#17171a);border:1px solid var(--cline);display:grid;place-items:center;font-size:14px;font-weight:700;color:var(--fg-2);flex:none;overflow:hidden;position:relative}.coav img{width:100%;height:100%;object-fit:cover}
 .coav.ring{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ch2),0 0 20px rgba(249,220,92,.35)}
@@ -612,7 +612,7 @@ html,#root,.main{overscroll-behavior-x:none}
 .coinput.rec{background:rgba(249,220,92,.06)}.recbar{flex:1;display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:22px;background:var(--glass2);border:1px solid rgba(249,220,92,.35);font-size:13px}.recbar .dot{width:10px;height:10px;border-radius:50%;background:var(--warn);animation:coPulse 1s infinite}.recbar em{margin-left:auto;font-style:normal;color:var(--muted);font-size:11px}
 @keyframes coPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
 .main > .co{flex:1;min-height:0}
-@media (min-width:901px){.co .cobody,.co .cohead,.co .coinput,.co .cosched{width:100%;max-width:760px;margin-left:auto;margin-right:auto}.co .cohead{position:static}.co .cohead.main .t{text-align:left}}
+@media (min-width:901px){.co .cobody,.co .cohead,.co .coinput,.co .cosched{width:100%;max-width:760px;margin-left:auto;margin-right:auto}.co .cohead{position:static}.co .cohead.hd .t{text-align:left}}
 .viewas{grid-column:1/-1}
 @media (min-width:901px){.app.has-viewas{grid-template-rows:60px auto 1fr}.app.has-viewas.has-live{grid-template-rows:60px auto auto 1fr}}
 @media (max-width:900px){.app.has-viewas{grid-template-rows:auto auto 1fr}.app.has-viewas.has-live{grid-template-rows:auto auto auto 1fr}}
@@ -630,7 +630,7 @@ html,#root,.main{overscroll-behavior-x:none}
 .corowopt{display:flex;align-items:center;gap:12px;padding:12px 0 0;margin-top:10px;border-top:1px solid var(--cline);cursor:pointer}.corowopt span{flex:1}.corowopt span b{display:block;font-size:13px}.corowopt span small{display:block;color:var(--muted);font-size:11px}
 .cofieldrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--cline);font-size:13px}.cofieldrow:first-of-type{border-top:0;padding-top:0}.cofieldrow select{padding:6px 28px 6px 10px;border-radius:9px;font-size:12px}
 .cotext{display:block;padding:10px 0 0}.cotext>span{display:block;font-size:12.5px;margin-bottom:6px}.cotext>span small{color:var(--muted);font-size:11px;margin-left:6px}.cotext textarea{width:100%;background:var(--glass);border:1px solid var(--cline);border-radius:12px;color:var(--fg);font:inherit;font-size:13px;padding:10px 12px;resize:vertical}
-.cotrack .cohead.main{flex-wrap:wrap}
+.cotrack .cohead.hd{flex-wrap:wrap}
 
 /* mobile : espace Accompagnement */
 @media (max-width:900px){
@@ -717,7 +717,7 @@ html,#root,.main{overscroll-behavior-x:none}
 .costat .cs-main{flex:1;display:flex;align-items:center;gap:8px;min-width:0;background:none;border:0;color:var(--fg2);font:inherit;font-size:13px;padding:8px 0;text-align:left;cursor:pointer}.costat .cs-main b{color:var(--fg);font-weight:600}.costat .cs-main span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.costat .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);flex:none}.costat.off .dot{background:var(--ch2);box-shadow:0 0 8px var(--ch2)}
 .cotwo{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cotwo button{height:42px;border-radius:14px;font:inherit;font-size:13px;font-weight:600;background:var(--glass);border:1px solid var(--cline);color:var(--fg-2);cursor:pointer}.cotwo button.on{background:linear-gradient(135deg,var(--ch1),var(--ch3));color:var(--ink);border-color:transparent;box-shadow:0 8px 22px rgba(249,220,92,.25)}
 .coconv .m .w{color:var(--warn);font-weight:700}
-.cohead.main .coic{width:36px;height:36px;border-radius:13px}
+.cohead.hd .coic{width:36px;height:36px;border-radius:13px}
 .codaysrow{display:flex;gap:6px;justify-content:center;margin:4px 0 10px}.codaysrow button{width:38px;height:36px;border-radius:11px;font:inherit;font-size:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:var(--muted);cursor:pointer}.codaysrow button.on{background:linear-gradient(135deg,var(--ch1),var(--ch3));color:var(--ink);font-weight:700;border-color:transparent}
 .seglbl{display:flex;justify-content:space-around;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
 .wheels.two{grid-template-columns:1fr 1fr}.wheels .arrow{position:absolute;left:50%;top:88px;transform:translateX(-50%);color:var(--ch2);font-size:16px;z-index:1}

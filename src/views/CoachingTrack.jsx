@@ -20,7 +20,7 @@ export default function CoTrack({ me, settings, isAdmin, toast, go, refresh }) {
   const sla = d?.sla_min || 120
   const open = (s) => { if (s.thread) { history.replaceState(null, '', '#co/' + s.thread); go('co') } }
   return <div className="co cotrack">
-    <div className="cohead main"><div className="t"><b>Suivi</b><small>{d ? `${d.students.length} élève${d.students.length > 1 ? 's' : ''} · ${days} derniers jours` : 'Chargement…'}</small></div>
+    <div className="cohead hd"><div className="t"><b>Suivi</b><small>{d ? `${d.students.length} élève${d.students.length > 1 ? 's' : ''} · ${days} derniers jours` : 'Chargement…'}</small></div>
       <div className="cochips" style={{ margin: 0 }}>{[7, 14, 30].map(n => <button key={n} className={n === days ? 'on' : ''} onClick={() => setDays(n)}>{n} j</button>)}</div></div>
     <div className="cobody list">
       {d && <>

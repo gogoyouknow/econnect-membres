@@ -317,7 +317,7 @@ export function CoStudentHome({ me, profiles, toast, go, isStaff, viewStudent })
   if (cur) return <CoThread me={me} thread={cur} profiles={profiles} toast={toast} isStaff={isStaff} onBack={() => { setCur(null); load(); if (location.hash.startsWith('#co/')) history.replaceState(null, '', '#co') }} />
   const away = status && (!status.available || (status.away_until && new Date(status.away_until) > new Date()))
   return <div className="co">
-    <div className="cohead main"><div className="t"><b>Messages</b><small>Ton accompagnement, au même endroit</small></div></div>
+    <div className="cohead hd"><div className="t"><b>Messages</b><small>Ton accompagnement, au même endroit</small></div></div>
     <div className="cobody list">
       {coach && away && <div className="cobanner">{I.moon}<span>Ton coach <b>{coach.name}</b> est indisponible{status.away_until ? <> et te répond à partir de <b>{fmtTime(status.away_until)}</b></> : ''}. Laisse ton message, il le verra.</span></div>}
       {!coach && <div className="cobanner">{I.users}<span>Ton coach va t'être attribué par l'équipe. En attendant, écris à Clément ou au Coach IA.</span></div>}
@@ -385,7 +385,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh }) {
   const daysTxt = (() => { const d = status?.hours?.days || []; if (d.length === 7) return 'tous les jours'; if (JSON.stringify(d) === '[1,2,3,4,5,6]') return 'lun–sam'; if (JSON.stringify(d) === '[1,2,3,4,5]') return 'lun–ven'; return d.map(i => ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'][i]).join(' ') })()
   const shownList = f === 'todo' ? todo : inactive
   return <div className="co">
-    <div className="cohead main"><div className="t"><b>Réception</b></div>
+    <div className="cohead hd"><div className="t"><b>Réception</b></div>
       <button type="button" className={`coic ${lab ? 'on' : ''}`} title="Étiquettes" onClick={() => setLabSheet(true)}>{I.tag}</button></div>
     <div className="cobody list">
       {status && <div className={`costat ${away ? 'off' : ''}`}>
@@ -470,7 +470,7 @@ export function CoStudents({ me, profiles, toast, isAdmin, refresh }) {
   const setCoach = async (p, coach_id) => { const { error } = await supabase.from('profiles').update({ coach_id: coach_id || null }).eq('id', p.id); if (error) return toast(friendlyError(error), true); toast('Coach attribué'); refresh?.() }
   if (cur) return <CoThread me={me} thread={cur} profiles={profiles} toast={toast} isStaff onBack={() => { setCur(null); if (location.hash.startsWith('#co/')) history.replaceState(null, '', '#coeleves') }} />
   return <div className="co">
-    <div className="cohead main"><div className="t"><b>Élèves</b><small>{members.length} membre{members.length > 1 ? 's' : ''} · touche un nom pour lui écrire</small></div></div>
+    <div className="cohead hd"><div className="t"><b>Élèves</b><small>{members.length} membre{members.length > 1 ? 's' : ''} · touche un nom pour lui écrire</small></div></div>
     <div className="cobody list">
       <button type="button" className="coconv" disabled={busy} onClick={async () => { setBusy(true); const { data, error } = await supabase.rpc('co_my_threads'); setBusy(false); if (error) return toast(friendlyError(error), true); const t = (data || []).find(x => x.kind === 'coach') || (data || [])[0]; if (t) { setCur(t); history.replaceState(null, '', '#co/' + t.id) } }}>
         <div className="coav ring">{initials(me.name)}</div><div className="t"><b>Tester avec moi-même</b><small>Une conversation d'essai où tu es l'élève : vocaux, photos, programmation…</small></div><div className="m">›</div>
