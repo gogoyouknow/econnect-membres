@@ -113,7 +113,7 @@ export function SchedulePicker({ onPick, onClose }) {
   const past = when() <= now
   const preset = (fn) => { const x = fn(); setD(Math.round((new Date(x.getFullYear(), x.getMonth(), x.getDate()) - base) / 864e5)); setH(x.getHours()); setMi(x.getMinutes() - x.getMinutes() % 5) }
   const nextDow = (dow, hh) => { const x = new Date(base); x.setDate(x.getDate() + ((dow - x.getDay() + 7) % 7 || 7)); x.setHours(hh, 0, 0, 0); return x }
-  return <div className="cosheet-scrim" onClick={onClose}><div className="cosheet" onClick={e => e.stopPropagation()}>
+  return <div className="cosheet-scrim" onClick={onClose} {...drag(onClose)}><div className="cosheet" onClick={e => e.stopPropagation()}>
     <div className="grab" /><b>Envoyer plus tard</b><small>Jusqu'à 2 mois à l'avance · heure de Paris</small>
     <div className="presets"><button type="button" onClick={() => preset(() => new Date(now.getTime() + 3600e3))}>Dans 1 h</button><button type="button" onClick={() => preset(() => { const x = new Date(base); x.setHours(19, 0); if (x <= now) x.setDate(x.getDate() + 1); return x })}>Ce soir 19 h</button><button type="button" onClick={() => preset(() => { const x = new Date(base); x.setDate(x.getDate() + 1); x.setHours(9, 0); return x })}>Demain 9 h</button><button type="button" onClick={() => preset(() => nextDow(1, 9))}>Lundi 9 h</button></div>
     <div className="wheels"><div className="sel" /><Wheel key={'d' + d} items={days} value={d} onChange={setD} /><Wheel key={'h' + h} items={hours} value={h} onChange={setH} /><Wheel key={'m' + mi} items={mins} value={mi} onChange={setMi} /></div>
@@ -269,7 +269,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
       {!msgs.length && !search && <div className="coempty"><div className="coav big">{mineThread ? initials(coach?.name || KIND[thread.kind].label) : initials(student.name)}</div><b>{title}</b><p>{mineThread ? (thread.kind === 'coach' ? 'Pose ta question, envoie une capture ou un vocal : ton coach te répond dans la journée.' : KIND[thread.kind].sub) : 'Démarre la conversation.'}</p></div>}
       <div ref={end} />
     </div>
-    {menu && <div className="cosheet-scrim" onClick={() => setMenu(null)}><div className="cosheet actions" onClick={e => e.stopPropagation()}>
+    {menu && <div className="cosheet-scrim" onClick={() => setMenu(null)} {...drag(() => setMenu(null))}><div className="cosheet actions" onClick={e => e.stopPropagation()}>
       <div className="grab" />
       <div className="quick">{['❤️', '✅', '🔥', '😭', '🙏'].map(e => <button key={e} type="button" className={(reacts[menu.id] || []).some(r => r.emoji === e && r.user_id === me.id) ? 'on' : ''} onClick={() => react(menu, e)}>{e}</button>)}<button type="button" className="more" onClick={() => { setEmojiFor(menu); setMenu(null) }}>☺︎<sup>+</sup></button></div>
       <div className="tiles">
@@ -279,7 +279,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
         {menu.sender_id === me.id && isStaff && <button type="button" className="danger" onClick={async () => { const { error } = await supabase.from('co_messages').update({ body: 'Message supprimé', kind: 'text', media_url: null }).eq('id', menu.id); if (error) toast(friendlyError(error), true); setMenu(null) }}><span>{I.trash}</span>Supprimer</button>}
       </div>
     </div></div>}
-    {emojiFor && <div className="cosheet-scrim" onClick={() => setEmojiFor(null)}><div className="cosheet" onClick={e => e.stopPropagation()}><div className="grab" /><b>Réagir</b>
+    {emojiFor && <div className="cosheet-scrim" onClick={() => setEmojiFor(null)} {...drag(() => setEmojiFor(null))}><div className="cosheet" onClick={e => e.stopPropagation()}><div className="grab" /><b>Réagir</b>
       <div className="emojigrid">{['❤️', '✅', '🔥', '😭', '🙏', '👍', '👏', '😂', '😍', '🤯', '💪', '🚀', '💰', '🎯', '👀', '🤝', '✨', '😅', '🙌', '💡', '📈', '🛒', '😤', '🥳'].map(e => <button key={e} type="button" onClick={() => react(emojiFor, e)}>{e}</button>)}</div>
     </div></div>}
     {pickOpen && <SchedulePicker onClose={() => setPickOpen(false)} onPick={(iso) => { setSched(iso); setPickOpen(false) }} />}
@@ -329,7 +329,7 @@ export function CoStudentHome({ me, profiles, toast, go, isStaff, viewStudent })
           <div className={`coav ${t.kind === 'coach' && coach && !away ? 'ring' : ''} ${t.kind === 'ai' ? 'aiav' : ''}`}>{t.kind === 'ai' ? I.spark : t.kind === 'team' ? I.users : av?.avatar_url ? <img src={av.avatar_url} alt="" /> : initials(av?.name || k.label)}</div>
           <div className="t"><b>{name}</b><small>{last ? (last.kind === 'voice' ? '🎤 Message vocal' : last.kind === 'image' ? '📷 Photo' : last.kind === 'video' ? '🎬 Vidéo' : last.body) : k.sub}</small></div>
           <div className="m">{last ? ago(last.sent_at) : ''}</div>
-        </button>
+        </button></div>
       })}
     </div>
   </div>
@@ -339,7 +339,7 @@ export function CoStudentHome({ me, profiles, toast, go, isStaff, viewStudent })
 const LABEL_COLORS = ['#F9DC5C', '#ff8a65', '#34d399', '#b7a3ff', '#7dd3fc', '#f472b6', '#FFF1B8', '#a3e635']
 export function LabelSheet({ labels, counts, selected, onSelect, onCreate, onClose, title, sub, onManage, doneLabel }) {
   const [creating, setCreating] = useState(false); const [name, setName] = useState(''); const [color, setColor] = useState(LABEL_COLORS[0])
-  return <div className="cosheet-scrim" onClick={onClose}><div className="cosheet labels" onClick={e => e.stopPropagation()}>
+  return <div className="cosheet-scrim" onClick={onClose} {...drag(onClose)}><div className="cosheet labels" onClick={e => e.stopPropagation()}>
     <div className="grab" /><b>{title}</b>{sub && <small>{sub}</small>}
     <div className="labellist">
       {labels.map(l => <button key={l.id} type="button" className={selected.includes(l.id) ? 'on' : ''} style={{ '--c': l.color }} onClick={() => onSelect(l)}><i /><span>{l.name}</span>{counts && <em>{counts[l.id] || 0}</em>}{selected.includes(l.id) && <strong>✓</strong>}</button>)}
@@ -380,15 +380,25 @@ export function CoLabels({ me, toast, go }) {
 }
 
 /* ───────── réception coach / admin ───────── */
+/** Feuille qu'on peut faire descendre du doigt pour la fermer (spread sur le .cosheet-scrim). */
+const drag = (close) => ({
+  onTouchStart: (e) => { const el = e.target.closest('.cosheet'); if (!el) return; let ok = !e.target.closest('.wheels,.wheel,textarea,input,select'); for (let n = e.target; ok && n && n !== el.parentNode; n = n.parentNode) if (n.scrollTop > 0) ok = false; el._d = { y: e.touches[0].clientY, ok, dy: 0 } },
+  onTouchMove: (e) => { const el = e.target.closest('.cosheet'); const d = el?._d; if (!d || !d.ok) return; d.dy = e.touches[0].clientY - d.y; if (d.dy > 0) { el.style.transition = 'none'; el.style.transform = `translateY(${d.dy}px)` } else el.style.transform = '' },
+  onTouchEnd: (e) => { const el = e.target.closest('.cosheet'); const d = el?._d; if (!d || !d.ok) return; el.style.transition = 'transform .2s'; if (d.dy > 70) { el.style.transform = 'translateY(100%)'; setTimeout(close, 170) } else el.style.transform = ''; el._d = null },
+})
+
 export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh, go }) {
   if (mode === 'students') return <CoStudents me={me} profiles={profiles} toast={toast} isAdmin={isAdmin} refresh={refresh} />
   const [rows, setRows] = useState(null); const [cur, setCur] = useState(null); const [f, setF] = useState('todo'); const [status, setStatus] = useState(null); const [q, setQ] = useState('')
   const [labels, setLabels] = useState([]); const [slabels, setSlabels] = useState({}); const [lab, setLab] = useState(null); const [hits, setHits] = useState(null)
   const [labSheet, setLabSheet] = useState(false); const [tagFor, setTagFor] = useState(null); const [hoursOpen, setHoursOpen] = useState(false); const [awayOpen, setAwayOpen] = useState(false)
-  const holdT = useRef(null); const holdMoved = useRef(false)
+  const holdT = useRef(null); const holdMoved = useRef(false); const [pins, setPins] = useState([]); const [openPin, setOpenPin] = useState(null); const sw = useRef(null)
+  const loadPins = async () => { const { data } = await supabase.from('co_pins').select('thread_id').eq('user_id', me.id); setPins((data || []).map(x => x.thread_id)) }
+  const togglePin = async (r) => { const on = pins.includes(r.id); setOpenPin(null); setPins(a => on ? a.filter(x => x !== r.id) : [...a, r.id]); const { error } = on ? await supabase.from('co_pins').delete().eq('user_id', me.id).eq('thread_id', r.id) : await supabase.from('co_pins').insert({ user_id: me.id, thread_id: r.id }); if (error) { toast(friendlyError(error), true); loadPins() } else toast(on ? 'Conversation désépinglée' : 'Conversation épinglée') }
   const holdRow = (r) => ({
-    onTouchStart: () => { holdMoved.current = false; clearTimeout(holdT.current); holdT.current = setTimeout(() => { if (!holdMoved.current) { try { navigator.vibrate?.(10) } catch {} setTagFor(r) } }, 420) },
-    onTouchMove: () => { holdMoved.current = true; clearTimeout(holdT.current) }, onTouchEnd: () => clearTimeout(holdT.current),
+    onTouchStart: (e) => { const t = e.touches[0]; sw.current = { x: t.clientX, y: t.clientY, dx: 0, h: null }; if (openPin && openPin !== r.id) setOpenPin(null); holdMoved.current = false; clearTimeout(holdT.current); holdT.current = setTimeout(() => { if (!holdMoved.current) { try { navigator.vibrate?.(10) } catch {} setTagFor(r) } }, 420) },
+    onTouchMove: (e) => { const s0 = sw.current; if (!s0) return; const t = e.touches[0]; const dx = t.clientX - s0.x, dy = t.clientY - s0.y; if (s0.h === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) { s0.h = Math.abs(dx) > Math.abs(dy); holdMoved.current = true; clearTimeout(holdT.current) } if (s0.h) { const el = e.currentTarget; const base = openPin === r.id ? -92 : 0; s0.dx = dx; el.parentNode.classList.add('drag'); el.style.transition = 'none'; el.style.transform = `translateX(${Math.max(-110, Math.min(0, base + dx))}px)` } },
+    onTouchEnd: (e) => { clearTimeout(holdT.current); const s0 = sw.current; sw.current = null; if (!s0 || !s0.h) return; const el = e.currentTarget; el.style.transition = ''; el.style.transform = ''; el.parentNode.classList.remove('drag'); el._swiped = Date.now(); if (openPin === r.id) { if (s0.dx > 30) setOpenPin(null) } else if (s0.dx < -45) setOpenPin(r.id) },
     onContextMenu: (e) => { e.preventDefault(); setTagFor(r) },
   })
   const createLabel = async (name, color) => { const { data, error } = await supabase.from('co_labels').insert({ name, color, created_by: me.id }).select().single(); if (error) return toast(friendlyError(error), true); setLabels(x => [...x, data]); return data }
@@ -397,7 +407,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh, go }) {
   const load = async () => { await supabase.rpc('co_ensure_threads'); const [{ data, error }, { data: ls }, { data: sl }] = await Promise.all([supabase.rpc('co_inbox'), supabase.from('co_labels').select('*').order('id'), supabase.from('co_student_labels').select('student_id,label_id')]); if (error) return toast(friendlyError(error), true); setRows(data || []); setLabels(ls || []); const m = {}; (sl || []).forEach(x => { (m[x.student_id] ||= []).push(x.label_id) }); setSlabels(m) }
   useEffect(() => { if (q.trim().length < 2) { setHits(null); return } const t = setTimeout(async () => { const { data } = await supabase.rpc('co_search', { p_q: q.trim() }); setHits(data || []) }, 350); return () => clearTimeout(t) }, [q])
   const loadStatus = () => supabase.from('coach_status').select('*').eq('user_id', me.id).maybeSingle().then(({ data }) => setStatus(data || { user_id: me.id, available: true, hours: { start: '09:00', end: '20:00', days: [1, 2, 3, 4, 5, 6] }, sla_min: 120 }))
-  useEffect(() => { load(); loadStatus(); const ch = supabase.channel('co:inbox').on('postgres_changes', { event: '*', schema: 'public', table: 'co_messages' }, () => load()).subscribe(); return () => supabase.removeChannel(ch) }, [])
+  useEffect(() => { load(); loadStatus(); loadPins(); const ch = supabase.channel('co:inbox').on('postgres_changes', { event: '*', schema: 'public', table: 'co_messages' }, () => load()).subscribe(); return () => supabase.removeChannel(ch) }, [])
   useEffect(() => { const h = () => { const m = location.hash.match(/^#co\/(\d+)/); if (m && rows) { const t = rows.find(x => String(x.id) === m[1]); if (t) setCur(t) } }; h(); window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h) }, [rows])
   const saveStatus = async (patch) => { const next = { ...status, ...patch, user_id: me.id, updated_at: new Date().toISOString() }; setStatus(next); const { error } = await supabase.from('coach_status').upsert(next); if (error) toast(friendlyError(error), true) }
   if (cur) return <CoThread me={me} thread={cur} profiles={profiles} toast={toast} isStaff onBack={() => { setCur(null); load(); if (location.hash.startsWith('#co/')) history.replaceState(null, '', '#co') }} />
@@ -409,7 +419,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh, go }) {
   const dayN = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
   const hoursTxt = status ? `${(status.hours?.start || '09:00').replace(':00', ' h').replace(':', ' h ')} – ${(status.hours?.end || '20:00').replace(':00', ' h').replace(':', ' h ')}` : ''
   const daysTxt = (() => { const d = status?.hours?.days || []; if (d.length === 7) return 'tous les jours'; if (JSON.stringify(d) === '[1,2,3,4,5,6]') return 'lun–sam'; if (JSON.stringify(d) === '[1,2,3,4,5]') return 'lun–ven'; return d.map(i => ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'][i]).join(' ') })()
-  const shownList = f === 'todo' ? todo : list
+  const shownList = [...(f === 'todo' ? todo : list)].sort((a, b) => (pins.includes(b.id) ? 1 : 0) - (pins.includes(a.id) ? 1 : 0))
   return <div className="co coinbox">
     <div className="cohead hd"><div className="t"><b>Réception</b></div>
       <button type="button" className={`coic ${lab ? 'on' : ''}`} title="Étiquettes" onClick={() => setLabSheet(true)}>{I.tag}</button></div>
@@ -434,11 +444,12 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh, go }) {
         const wait = r.waiting_since ? Date.now() - new Date(r.waiting_since) : 0
         const tag = r.waiting_since ? { cls: wait > sla ? 'warn' : 'gold', txt: `attend depuis ${ago(r.waiting_since)}` } : r.last && r.last.sender_id !== r.student_id ? { cls: 'ok', txt: 'répondu' } : null
         const inact = r.kind === 'coach' && r.last_student_at && Date.now() - new Date(r.last_student_at) > 864e5
-        return <button key={r.id} className={`coconv ${wait > sla ? 'hot' : ''}`} {...holdRow(r)} onClick={() => { if (tagFor) return; setCur(r); history.replaceState(null, '', '#co/' + r.id) }}>
+        const pinned = pins.includes(r.id)
+        return <div key={r.id} className={`corowwrap ${openPin === r.id ? 'sw' : ''}`}><button type="button" className="copinbtn" onClick={() => togglePin(r)}><span>📌</span>{pinned ? 'Désépingler' : 'Épingler'}</button><button type="button" className={`coconv ${wait > sla ? 'hot' : ''}`} {...holdRow(r)} onClick={(e) => { if (tagFor) return; if (e.currentTarget._swiped && Date.now() - e.currentTarget._swiped < 400) return; if (openPin) { setOpenPin(null); return } setCur(r); history.replaceState(null, '', '#co/' + r.id) }}>
           <div className="coav">{r.student_avatar ? <img src={r.student_avatar} alt="" /> : initials(r.student_name)}</div>
           <div className="t"><b>{r.student_name}{r.kind !== 'coach' && <span className="kind"> · {KIND[r.kind].label}</span>}</b><small>{r.last ? (r.last.kind === 'voice' ? '🎤 Vocal' : r.last.kind === 'image' ? '📷 Photo' : r.last.kind === 'video' ? '🎬 Vidéo' : r.last.body) : 'Pas encore de message'}</small>
             <span className="tags">{tag && <em className={`cotag ${tag.cls}`}>{tag.txt}</em>}{inact && <em className="cotag warn">inactif {ago(r.last_student_at)}</em>}{(slabels[r.student_id] || []).map(id => { const l = labels.find(x => x.id === id); return l ? <em key={id} className="cotag lab" style={{ '--c': l.color }}>{l.name}</em> : null })}</span></div>
-          <div className="m">{r.waiting_since ? <span className={wait > sla ? 'w' : ''}>{ago(r.waiting_since)}</span> : r.last ? ago(r.last.sent_at) : ''}{r.unread > 0 && <span className="n">{r.unread}</span>}</div>
+          <div className="m">{pinned && <span className="pinic">📌</span>}{r.waiting_since ? <span className={wait > sla ? 'w' : ''}>{ago(r.waiting_since)}</span> : r.last ? ago(r.last.sent_at) : ''}{r.unread > 0 && <span className="n">{r.unread}</span>}</div>
         </button>
       })}
     </div>
@@ -450,7 +461,7 @@ const HOURS30 = Array.from({ length: 48 }, (_, i) => { const h = Math.floor(i / 
 export function HoursSheet({ status, onClose, onSave }) {
   const [days, setDays] = useState(status?.hours?.days || [1, 2, 3, 4, 5, 6]); const [start, setStart] = useState(status?.hours?.start || '09:00'); const [end, setEnd] = useState(status?.hours?.end || '20:00')
   const ok = start < end && days.length > 0
-  return <div className="cosheet-scrim" onClick={onClose}><div className="cosheet" onClick={e => e.stopPropagation()}>
+  return <div className="cosheet-scrim" onClick={onClose} {...drag(onClose)}><div className="cosheet" onClick={e => e.stopPropagation()}>
     <div className="grab" /><b>Mes heures de réponse</b><small>Hors de ces heures, tes élèves sont prévenus automatiquement</small>
     <div className="codaysrow">{['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((l, i) => <button key={i} type="button" className={days.includes(i) ? 'on' : ''} onClick={() => setDays(d => d.includes(i) ? d.filter(x => x !== i) : [...d, i].sort())}>{l}</button>)}</div>
     <div className="seglbl"><span>De</span><span>À</span></div>
@@ -469,7 +480,7 @@ export function AwaySheet({ onClose, onPick }) {
   const when = () => { const x = new Date(base); x.setDate(x.getDate() + d); x.setHours(h, mi, 0, 0); return x }
   const past = !forever && when() <= now
   const preset = (fn) => { setForever(false); const x = fn(); setD(Math.round((new Date(x.getFullYear(), x.getMonth(), x.getDate()) - base) / 864e5)); setH(x.getHours()); setMi(x.getMinutes() - x.getMinutes() % 5) }
-  return <div className="cosheet-scrim" onClick={onClose}><div className="cosheet" onClick={e => e.stopPropagation()}>
+  return <div className="cosheet-scrim" onClick={onClose} {...drag(onClose)}><div className="cosheet" onClick={e => e.stopPropagation()}>
     <div className="grab" /><b>Je m'absente</b><small>Tes élèves sont prévenus dans le fil · Coach IA prend le relais quand il sera actif</small>
     <div className="awayrow"><span>🕑</span><div><b>Jusqu'à</b><small>{forever ? 'nouvel ordre' : days[d].l.toLowerCase()}</small></div><em>{forever ? '—' : `${String(h).padStart(2, '0')} h ${String(mi).padStart(2, '0')}`}</em></div>
     {!forever && <div className="wheels"><div className="sel" /><Wheel key={'d' + d} items={days} value={d} onChange={setD} /><Wheel key={'h' + h} items={hours} value={h} onChange={setH} /><Wheel key={'m' + mi} items={mins} value={mi} onChange={setMi} /></div>}
