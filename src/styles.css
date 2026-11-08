@@ -744,7 +744,7 @@ html,#root,.main{overscroll-behavior-x:none}
 .coinbox .cobody.list{gap:2px}
 
 /* Épingler (balayer vers la gauche) */
-.corowwrap{position:relative;overflow:hidden;border-radius:16px;width:100%;flex:none}
+.corowwrap{position:relative;overflow:hidden;width:100%;flex:none;min-height:76px;transform:translateZ(0)}
 .corowwrap .coconv{position:relative;touch-action:pan-y;transition:transform .22s cubic-bezier(.2,.8,.2,1);background:var(--bg,#09090b)}
 .coinbox .corowwrap .coconv.hot{background:linear-gradient(90deg,rgba(255,138,101,.1),transparent),var(--bg,#09090b)}
 .corowwrap.sw .coconv{transform:translateX(-92px)}
@@ -771,3 +771,7 @@ html,#root,.main{overscroll-behavior-x:none}
 .fiche .fhint{display:block;margin-top:12px;color:var(--muted);font-size:11px}
 .fiche .fback{display:flex;align-items:center;gap:6px;background:none;border:0;color:var(--ch2);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:4px 0 10px}.fiche .fback svg{width:18px;height:18px}
 .fiche .fh{display:block;text-align:left;font-size:16px;margin-bottom:10px}
+
+.coedit{flex:1;min-width:0;max-height:96px;overflow-y:auto;color:var(--fg);font-size:16px;line-height:1.35;outline:none;padding:0;white-space:pre-wrap;word-break:break-word;-webkit-user-select:text;user-select:text}
+.coedit:empty:before{content:attr(data-ph);color:var(--muted)}
+.cofield{height:auto;min-height:44px;padding-top:4px;padding-bottom:4px}

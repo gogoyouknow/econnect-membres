@@ -123,6 +123,15 @@ export function SchedulePicker({ onPick, onClose }) {
   </div></div>
 }
 
+/** Zone de saisie « libre » (contenteditable) : iOS n'y affiche pas la barre ∧ ∨ ✓ des champs classiques (essai). */
+function Composer({ value, onChange, onEnter, placeholder, disabled }) {
+  const ref = useRef(null)
+  useEffect(() => { const el = ref.current; if (el && el.innerText.replace(/\n$/, '') !== value) el.innerText = value }, [value])
+  return <div ref={ref} className="coedit" role="textbox" aria-label={placeholder} data-ph={placeholder} contentEditable={disabled ? 'false' : 'plaintext-only'} suppressContentEditableWarning enterKeyHint="send" autoCapitalize="sentences"
+    onInput={e => onChange(e.currentTarget.innerText.replace(/\n$/, ''))}
+    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEnter() } }} />
+}
+
 /* ───────── fil de conversation ───────── */
 export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const [msgs, setMsgs] = useState([]); const [text, setText] = useState(''); const [busy, setBusy] = useState(false); const [sched, setSched] = useState(null)
@@ -306,7 +315,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
     </div> : <form className="coinput" onSubmit={sendText}>
       <button type="button" className="coic" onClick={() => fileIn.current?.click()} disabled={busy}>{I.camera}</button>
       <input ref={fileIn} type="file" accept="image/*,video/*" hidden onChange={onFile} />
-      <div className="cofield"><input value={text} onChange={e => setText(e.target.value)} placeholder={busy ? 'Envoi…' : sub ? 'Ajoutez une réponse' : 'Message'} disabled={busy} />
+      <div className="cofield"><Composer value={text} onChange={setText} onEnter={sendText} placeholder={busy ? 'Envoi…' : sub ? 'Ajoutez une réponse' : 'Message'} disabled={busy} />
         {canSchedule && <button type="button" className={`inic ${sched ? 'on' : ''}`} title="Programmer" onClick={() => sched ? setSched(null) : setPickOpen(true)}>{I.clock}</button>}
       </div>
       {text.trim() ? <button type="submit" className="cosend" disabled={busy}>{I.send}</button> : <button type="button" className="cosend mic" onClick={R.start} disabled={busy}>{I.mic}</button>}
