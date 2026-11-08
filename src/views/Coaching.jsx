@@ -258,8 +258,11 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
               {m.kind === 'voice' ? <Voice m={m} mine={mine} /> : m.kind === 'image' ? <Pic m={m} /> : m.kind === 'video' ? <Vid m={m} /> : <span className="txt">{hl(m.body, search)}</span>}
               <small>{scheduled ? <>{I.clock} programmé {new Date(m.scheduled_at).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} <button type="button" onClick={() => cancelScheduled(m)}>annuler</button></> : <>{fmtTime(m.sent_at)} {mine && <span className="ck">{I.checks}</span>}</>}</small>
             </div>}
-          {(reacts[m.id] || []).length > 0 && <div className={`coreacts ${mine ? 'me' : ''}`}>{Object.entries(reacts[m.id].reduce((a, r) => { a[r.emoji] = (a[r.emoji] || 0) + 1; return a }, {})).map(([e, n]) => <button key={e} type="button" className={reacts[m.id].some(r => r.emoji === e && r.user_id === me.id) ? 'on' : ''} onClick={() => react(m, e)}>{e} {n}</button>)}</div>}
-          {rc && !sub && <button type="button" className={`cothreadchip ${mine ? 'me' : ''}`} onClick={() => setSub(m)}>{I.thread}<b>{rc.n} réponse{rc.n > 1 ? 's' : ''}</b><span>· dernière {ago(rc.last_at)}</span></button>}
+          {(reacts[m.id] || []).length > 0 && <div className={`coreacts ${mine ? 'me' : ''}`}>{Object.entries(reacts[m.id].reduce((a, r) => { a[r.emoji] = (a[r.emoji] || 0) + 1; return a }, {})).map(([e, n]) => <button key={e} type="button" className={reacts[m.id].some(r => r.emoji === e && r.user_id === me.id) ? 'on' : ''} onClick={() => react(m, e)}>{e} {n}</button>)}<button type="button" className="add" onClick={() => setEmojiFor(m)}>☺︎<sup>+</sup></button></div>}
+          {rc && !sub && <button type="button" className={`cothreadchip ${mine ? 'me' : ''}`} onClick={() => setSub(m)}>
+            <span className="avs">{(rc.repliers || []).map(id => { const p = id === me.id ? me : profiles.map?.[id]; return <i key={id}>{p?.avatar_url ? <img src={p.avatar_url} alt="" /> : initials(p?.name || 'IA')}</i> })}</span>
+            <b>{rc.n} réponse{rc.n > 1 ? 's' : ''}</b><span className="when">{fmtDay(rc.last_at)} à {fmtTime(rc.last_at)}</span>
+          </button>}
         </div>
       })}
       {!shown.length && search && search.length >= 2 && <div className="coempty"><p>Aucun message ne contient « {search} ».</p></div>}
