@@ -678,3 +678,13 @@ html,#root,.main{overscroll-behavior-x:none}
 .cothread .cohead .coic.on{background:rgba(249,220,92,.14);border-color:rgba(249,220,92,.45);color:var(--ch2)}
 .co .copanel,.co .cosearchbar,.co .colabels,.co .cosched{flex:none}
 .cothread .cohead .t b{font-size:15px}
+
+/* défilement des conversations : le corps du fil est la zone qui défile */
+.co.cothread{height:100%;min-height:0;overflow:hidden}
+.co.cothread .cobody{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:12px}
+.co.cothread .cohead{position:static}
+.co.cothread .coinput,.co.cothread .cosched{position:static}
+@media (max-width:900px){
+  .main>.co.cothread{flex:1 1 auto;min-height:0;height:auto}
+  .main:has(.co.cothread){overflow:hidden}
+}

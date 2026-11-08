@@ -198,7 +198,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
 
   const away = status && (!status.available || (status.away_until && new Date(status.away_until) > new Date()))
   const subline = mineThread && thread.kind === 'coach' ? (!coach ? 'Un coach va t\'être attribué' : away ? `indisponible · reprend ${status.away_until ? 'à ' + fmtTime(status.away_until) : 'bientôt'}` : 'disponible') : mineThread ? KIND[thread.kind].sub : `${student.email || ''}`
-  const media = msgs.filter(m => ['image', 'video', 'voice'].includes(m.kind) && m.sent_at)
+  const media = msgs.filter(m => ['image', 'video'].includes(m.kind) && m.sent_at)
   const q = (search || '').trim().toLowerCase()
   const shown = sub ? msgs.filter(m => m.id === sub.id || m.reply_to === sub.id) : msgs.filter(m => !m.reply_to && (!q || q.length < 2 || (m.body || '').toLowerCase().includes(q) || (m.transcript || '').toLowerCase().includes(q)))
   let lastDay = ''
@@ -217,11 +217,8 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
     {search !== null && !sub && <div className="cosearchbar"><span>{I.search}</span><input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher dans la conversation" /><em>{search.length >= 2 ? `${shown.length} résultat${shown.length > 1 ? 's' : ''}` : ''}</em><button type="button" onClick={() => setSearch(null)}>{I.x}</button></div>}
     {isStaff && !mineThread && myLabels.length > 0 && !sub && <div className="colabels">{labels.filter(l => myLabels.includes(l.id)).map(l => <em key={l.id} style={{ '--c': l.color }}>{l.name}</em>)}</div>}
     {panel === 'media' && <div className="copanel">
-      <div className="ph"><b>Photos, vidéos et vocaux</b><button type="button" onClick={() => setPanel(null)}>{I.x}</button></div>
-      {!media.length ? <p className="muted">Rien d'envoyé pour l'instant.</p> : <>
-        <div className="cogrid">{media.filter(m => m.kind === 'image' || m.kind === 'video').map(m => <div key={m.id}>{m.kind === 'image' ? <Pic m={m} /> : <Vid m={m} />}<small>{new Date(m.sent_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</small></div>)}</div>
-        {media.filter(m => m.kind === 'voice').map(m => <div key={m.id} className="cobub" style={{ maxWidth: '100%', marginTop: 8 }}><span className="who">{m.sender_id === me.id ? 'Toi' : profiles.map?.[m.sender_id]?.name || 'Coach IA'} · {new Date(m.sent_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span><Voice m={m} mine={false} /></div>)}
-      </>}
+      <div className="ph"><b>Photos et vidéos · {media.length}</b><button type="button" onClick={() => setPanel(null)}>{I.x}</button></div>
+      {!media.length ? <p className="muted">Aucune pièce jointe pour l'instant.</p> : <div className="cogrid">{media.map(m => <div key={m.id}>{m.kind === 'image' ? <Pic m={m} /> : <Vid m={m} />}<small>{new Date(m.sent_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</small></div>)}</div>}
     </div>}
     {panel === 'labels' && <div className="copanel">
       <div className="ph"><b>Étiquettes de {student.name}</b><button type="button" onClick={() => setPanel(null)}>{I.x}</button></div>
