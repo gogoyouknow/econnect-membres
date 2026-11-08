@@ -155,7 +155,6 @@ export default function App() {
     else if (cur === 'profile') main = <Profile {...ctx} />
     else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
     else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
-  else if (cur === 'co') main = isStaff ? <CoInbox {...ctx} /> : <CoStudentHome {...ctx} />
     else main = <Courses key="methode" scope="methode" {...ctx} />
   }
   else if (cur === 'acceleration' && me.tier < 2 && !isStaff) main = <Upsell {...ctx} />
@@ -174,6 +173,7 @@ export default function App() {
   else if (cur === 'moderation' && isStaff) main = <Moderation {...ctx} />
   else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
   else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
+  else if (cur === 'co') main = isStaff ? <CoInbox {...ctx} /> : <CoStudentHome {...ctx} />
   else main = <Chat key="general" space="general" {...ctx} />
 
   return (
