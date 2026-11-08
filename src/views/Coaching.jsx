@@ -131,6 +131,14 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const [search, setSearch] = useState(null)      // null = fermé, '' = ouvert
   const [panel, setPanel] = useState(null)        // 'media' | 'labels'
   const [counts, setCounts] = useState({}); const [pickOpen, setPickOpen] = useState(false)
+  const [menu, setMenu] = useState(null)          // message sous le doigt (appui long)
+  const holdT = useRef(null); const holdMoved = useRef(false)
+  const hold = (m) => (m.kind === 'system' || (!m.sent_at && m.scheduled_at)) ? {} : {
+    onTouchStart: () => { holdMoved.current = false; clearTimeout(holdT.current); holdT.current = setTimeout(() => { if (!holdMoved.current) { try { navigator.vibrate?.(10) } catch {} setMenu(m) } }, 420) },
+    onTouchMove: () => { holdMoved.current = true; clearTimeout(holdT.current) },
+    onTouchEnd: () => clearTimeout(holdT.current),
+    onContextMenu: (e) => { e.preventDefault(); setMenu(m) },
+  }
   const [labels, setLabels] = useState([]); const [myLabels, setMyLabels] = useState([])
   const end = useRef(null); const fileIn = useRef(null); const R = useRecorder()
   const student = profiles.map?.[thread.student_id] || {}
@@ -231,11 +239,10 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
         return <div key={m.id} className={`cowrap ${isParent ? 'parent' : ''}`}>
           {showDay && <div className="coday"><span>{day}</span></div>}
           {m.kind === 'system' ? <div className="cosys gold">{m.body}</div> :
-            <div className={`cobub ${mine ? 'me' : ''} ${m.ai ? 'ai' : ''} ${m.kind === 'image' || m.kind === 'video' ? 'media' : ''} ${scheduled ? 'sched' : ''}`}>
+            <div className={`cobub ${mine ? 'me' : ''} ${m.ai ? 'ai' : ''} ${m.kind === 'image' || m.kind === 'video' ? 'media' : ''} ${scheduled ? 'sched' : ''} ${menu?.id === m.id ? 'held' : ''}`} {...hold(m)}>
               {!mine && (thread.kind !== 'coach' || !mineThread) && <span className="who">{m.ai ? 'Coach IA' : who?.name || 'Membre'}</span>}
               {m.kind === 'voice' ? <Voice m={m} mine={mine} /> : m.kind === 'image' ? <Pic m={m} /> : m.kind === 'video' ? <Vid m={m} /> : <span className="txt">{hl(m.body, search)}</span>}
               <small>{scheduled ? <>{I.clock} programmé {new Date(m.scheduled_at).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} <button type="button" onClick={() => cancelScheduled(m)}>annuler</button></> : <>{fmtTime(m.sent_at)} {mine && <span className="ck">{I.checks}</span>}</>}</small>
-              {!scheduled && !sub && !isParent && m.kind !== 'system' && <button type="button" className="coreply" title="Répondre dans un fil" onClick={() => { setSub(m); setSearch(null) }}>{I.reply}</button>}
             </div>}
           {rc && !sub && <button type="button" className={`cothreadchip ${mine ? 'me' : ''}`} onClick={() => setSub(m)}>{I.thread}<b>{rc.n} réponse{rc.n > 1 ? 's' : ''}</b><span>· dernière {ago(rc.last_at)}</span></button>}
         </div>
@@ -244,6 +251,15 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
       {!msgs.length && !search && <div className="coempty"><div className="coav big">{mineThread ? initials(coach?.name || KIND[thread.kind].label) : initials(student.name)}</div><b>{title}</b><p>{mineThread ? (thread.kind === 'coach' ? 'Pose ta question, envoie une capture ou un vocal : ton coach te répond dans la journée.' : KIND[thread.kind].sub) : 'Démarre la conversation.'}</p></div>}
       <div ref={end} />
     </div>
+    {menu && <div className="cosheet-scrim" onClick={() => setMenu(null)}><div className="cosheet actions" onClick={e => e.stopPropagation()}>
+      <div className="grab" />
+      <div className="preview">{menu.kind === 'voice' ? '🎤 Message vocal' : menu.kind === 'image' ? '📷 Photo' : menu.kind === 'video' ? '🎬 Vidéo' : menu.body}</div>
+      {!sub && <button type="button" className="act" onClick={() => { setSub(menu); setSearch(null); setMenu(null) }}><span>{I.thread}</span>Répondre dans un fil<small>{counts[menu.id]?.n ? `${counts[menu.id].n} réponse${counts[menu.id].n > 1 ? 's' : ''} déjà` : 'Garde les réponses groupées sous ce message'}</small></button>}
+      {menu.kind === 'text' && <button type="button" className="act" onClick={async () => { try { await navigator.clipboard.writeText(menu.body); toast('Copié') } catch {} setMenu(null) }}><span>{I.clip}</span>Copier le texte</button>}
+      {menu.kind === 'text' && <button type="button" className="act" onClick={() => { setText(t => (t ? t + ' ' : '') + `« ${menu.body.slice(0, 80)}${menu.body.length > 80 ? '…' : ''} » `); setMenu(null) }}><span>{I.reply}</span>Citer dans ma réponse</button>}
+      {menu.sender_id === me.id && isStaff && <button type="button" className="act danger" onClick={async () => { const { error } = await supabase.from('co_messages').update({ body: 'Message supprimé', kind: 'text', media_url: null }).eq('id', menu.id); if (error) toast(friendlyError(error), true); setMenu(null) }}><span>{I.trash}</span>Supprimer pour tout le monde</button>}
+      <button type="button" className="cobtn ghost" onClick={() => setMenu(null)}>Annuler</button>
+    </div></div>}
     {pickOpen && <SchedulePicker onClose={() => setPickOpen(false)} onPick={(iso) => { setSched(iso); setPickOpen(false) }} />}
     {sched && <div className="cosched">{I.clock}<span>Sera envoyé <b>{new Date(sched).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</b></span><button type="button" onClick={() => setSched(null)}>{I.x}</button></div>}
     {R.state === 'rec' ? <div className="coinput rec">
