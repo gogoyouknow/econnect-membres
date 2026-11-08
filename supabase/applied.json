@@ -26,5 +26,6 @@
   "0025_co_threads_self.sql",
   "0026_co_suivi.sql",
   "0027_relances_off.sql",
-  "0028_client_errors.sql"
+  "0028_client_errors.sql",
+  "0029_co_labels.sql"
 ]
