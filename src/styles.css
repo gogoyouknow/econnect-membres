@@ -752,3 +752,22 @@ html,#root,.main{overscroll-behavior-x:none}
 .copinbtn span{font-size:20px}
 .corowwrap.sw .copinbtn,.corowwrap.drag .copinbtn{opacity:1}
 .coconv .m .pinic{font-size:11px;opacity:.9}
+
+/* Fiche conversation (façon WhatsApp) */
+.cothread .cohead .tap{cursor:pointer}
+.cosheet.fiche{text-align:center;max-height:78vh;overflow-y:auto;overscroll-behavior:contain;transition:max-height .25s}
+.cosheet.fiche.full{max-height:92vh;height:92vh}
+.cosheet.fiche .grab{cursor:pointer;padding:8px 0;background-clip:content-box;height:20px;width:64px}
+.fiche .bigav{width:84px;height:84px;font-size:28px;margin:4px auto 8px}
+.fiche .bigav img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.fiche h2{margin:0;font-size:20px;letter-spacing:-.01em}.fiche .fsub{margin:3px 0 14px;color:var(--muted);font-size:12.5px}
+.fiche .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px;margin-bottom:12px}
+.fiche .facts button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 4px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);color:var(--fg-2);font:inherit;font-size:11.5px;cursor:pointer}
+.fiche .facts button span{font-size:19px;line-height:1;display:grid;place-items:center}.fiche .facts button svg{width:20px;height:20px}
+.fiche .facts button.on{background:rgba(249,220,92,.14);border-color:rgba(249,220,92,.4);color:var(--ch2)}
+.fiche .fgrp{border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);overflow:hidden;text-align:left}
+.fiche .fgrp button{display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;background:none;border:0;color:var(--fg);font:inherit;font-size:14.5px;cursor:pointer}
+.fiche .fgrp button+button{border-top:1px solid rgba(255,255,255,.07)}.fiche .fgrp em{margin-left:auto;font-style:normal;color:var(--muted);font-size:13px;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fiche .fhint{display:block;margin-top:12px;color:var(--muted);font-size:11px}
+.fiche .fback{display:flex;align-items:center;gap:6px;background:none;border:0;color:var(--ch2);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:4px 0 10px}.fiche .fback svg{width:18px;height:18px}
+.fiche .fh{display:block;text-align:left;font-size:16px;margin-bottom:10px}

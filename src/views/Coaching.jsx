@@ -130,6 +130,7 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const [sub, setSub] = useState(null)            // fil de réponses ouvert (message parent)
   const [search, setSearch] = useState(null)      // null = fermé, '' = ouvert
   const [panel, setPanel] = useState(null)        // 'media' | 'labels'
+  const [info, setInfo] = useState(false); const [iv, setIv] = useState('main'); const [full, setFull] = useState(false); const [pinned, setPinned] = useState(false)
   const [counts, setCounts] = useState({}); const [pickOpen, setPickOpen] = useState(false)
   const [menu, setMenu] = useState(null)          // message sous le doigt (appui long)
   const [reacts, setReacts] = useState({})        // message_id -> [{emoji,user_id}]
@@ -213,16 +214,17 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
   const shown = sub ? msgs.filter(m => m.reply_to === sub.id) : msgs.filter(m => !m.reply_to && (!q || q.length < 2 || (m.body || '').toLowerCase().includes(q) || (m.transcript || '').toLowerCase().includes(q)))
   let lastDay = ''
   const canSchedule = isStaff && !mineThread
+  const openInfo = () => { setIv('main'); setFull(false); setInfo(true) }
+  useEffect(() => { if (isStaff && !mineThread) supabase.from('co_pins').select('thread_id').eq('user_id', me.id).eq('thread_id', thread.id).maybeSingle().then(({ data }) => setPinned(!!data)) }, [thread.id])
+  const togglePinHere = async () => { const on = pinned; setPinned(!on); const { error } = on ? await supabase.from('co_pins').delete().eq('user_id', me.id).eq('thread_id', thread.id) : await supabase.from('co_pins').insert({ user_id: me.id, thread_id: thread.id }); if (error) { setPinned(on); toast(friendlyError(error), true) } else toast(on ? 'Conversation désépinglée' : 'Conversation épinglée') }
+  const avatarNode = thread.kind === 'ai' && mineThread ? <span className="ai">{I.spark}</span> : (mineThread ? (coach?.avatar_url ? <img src={coach.avatar_url} alt="" /> : initials(coach?.name || KIND[thread.kind].label)) : (student.avatar_url ? <img src={student.avatar_url} alt="" /> : initials(student.name)))
+  const staffView = isStaff && !mineThread
   return <div className="co cothread">
     <div className="cohead">
       <button className="coic" onClick={onBack}>{I.back}</button>
-      {!sub && <div className={`coav ${!away && coach ? 'ring' : ''}`}>{thread.kind === 'ai' && mineThread ? <span className="ai">{I.spark}</span> : (mineThread ? (coach?.avatar_url ? <img src={coach.avatar_url} alt="" /> : initials(coach?.name || KIND[thread.kind].label)) : (student.avatar_url ? <img src={student.avatar_url} alt="" /> : initials(student.name)))}{present.length > 0 && <i className="on" title="Dans la conversation" />}</div>}
-      <div className={`t ${sub ? 'filpill' : ''}`}><b>{sub ? 'Fil' : title}</b><small className={away ? 'away' : present.length ? 'here' : ''}>{sub ? <>👤 {title}</> : present.length ? 'dans la conversation' : subline}</small></div>
-      {sub ? <button className="coic" onClick={() => setSub(null)}>{I.x}</button> : <>
-        <button className={`coic ${search !== null ? 'on' : ''}`} title="Rechercher" onClick={() => setSearch(search === null ? '' : null)}>{I.search}</button>
-        <button className={`coic ${panel === 'media' ? 'on' : ''}`} title="Photos, vidéos, vocaux" onClick={() => setPanel(panel === 'media' ? null : 'media')}>{I.grid}</button>
-        {isStaff && !mineThread && <button className={`coic ${panel === 'labels' ? 'on' : ''}`} title="Étiquettes" onClick={() => setPanel(panel === 'labels' ? null : 'labels')}>{I.tag}</button>}
-      </>}
+      {!sub && <div className={`coav tap ${!away && coach ? 'ring' : ''}`} onClick={openInfo}>{thread.kind === 'ai' && mineThread ? <span className="ai">{I.spark}</span> : (mineThread ? (coach?.avatar_url ? <img src={coach.avatar_url} alt="" /> : initials(coach?.name || KIND[thread.kind].label)) : (student.avatar_url ? <img src={student.avatar_url} alt="" /> : initials(student.name)))}{present.length > 0 && <i className="on" title="Dans la conversation" />}</div>}
+      <div className={`t ${sub ? 'filpill' : 'tap'}`} onClick={sub ? undefined : openInfo}><b>{sub ? 'Fil' : title}</b><small className={away ? 'away' : present.length ? 'here' : ''}>{sub ? <>👤 {title}</> : present.length ? 'dans la conversation' : subline}</small></div>
+      {sub && <button className="coic" onClick={() => setSub(null)}>{I.x}</button>}
     </div>
     {search !== null && !sub && <div className="cosearchbar"><span>{I.search}</span><input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher dans la conversation" /><em>{search.length >= 2 ? `${shown.length} résultat${shown.length > 1 ? 's' : ''}` : ''}</em><button type="button" onClick={() => setSearch(null)}>{I.x}</button></div>}
     {isStaff && !mineThread && myLabels.length > 0 && !sub && <div className="colabels">{labels.filter(l => myLabels.includes(l.id)).map(l => <em key={l.id} style={{ '--c': l.color }}>{l.name}</em>)}</div>}
@@ -278,6 +280,19 @@ export function CoThread({ me, thread, profiles, onBack, toast, isStaff }) {
         {menu.kind === 'text' ? <button type="button" onClick={() => { setText(t => (t ? t + ' ' : '') + `« ${menu.body.slice(0, 80)}${menu.body.length > 80 ? '…' : ''} » `); setMenu(null) }}><span>{I.reply}</span>Citer</button> : null}
         {menu.sender_id === me.id && isStaff && <button type="button" className="danger" onClick={async () => { const { error } = await supabase.from('co_messages').update({ body: 'Message supprimé', kind: 'text', media_url: null }).eq('id', menu.id); if (error) toast(friendlyError(error), true); setMenu(null) }}><span>{I.trash}</span>Supprimer</button>}
       </div>
+    </div></div>}
+    {info && <div className="cosheet-scrim" onClick={() => setInfo(false)} {...drag(() => setInfo(false))}><div className={`cosheet fiche ${full ? 'full' : ''}`} onClick={e => e.stopPropagation()}>
+      <div className="grab" onClick={() => setFull(f => !f)} />
+      {iv !== 'main' && <button type="button" className="fback" onClick={() => setIv('main')}>{I.back}<span>{title}</span></button>}
+      {iv === 'main' && <>
+        <div className="coav bigav">{avatarNode}</div>
+        <h2>{title}</h2><p className="fsub">{subline}</p>
+        <div className="facts"><button type="button" onClick={() => { setInfo(false); setSearch('') }}><span>{I.search}</span>Rechercher</button><button type="button" onClick={() => setIv('media')}><span>{I.grid}</span>Médias</button>{staffView && <button type="button" onClick={() => setIv('labels')}><span>{I.tag}</span>Étiquettes</button>}{staffView && <button type="button" className={pinned ? 'on' : ''} onClick={togglePinHere}><span>📌</span>{pinned ? 'Désépingler' : 'Épingler'}</button>}</div>
+        <div className="fgrp"><button type="button" onClick={() => setIv('media')}><span>Photos et vidéos</span><em>{media.length} ›</em></button>{staffView && <button type="button" onClick={() => setIv('labels')}><span>Étiquettes</span><em>{labels.filter(l => myLabels.includes(l.id)).map(l => l.name).join(' · ') || 'Aucune'} ›</em></button>}</div>
+        <small className="fhint">{full ? 'Touche la barre du haut pour réduire' : 'Touche la barre du haut pour agrandir · fais glisser vers le bas pour fermer'}</small>
+      </>}
+      {iv === 'media' && <><b className="fh">Photos et vidéos · {media.length}</b>{!media.length ? <p className="muted">Aucune pièce jointe pour l'instant.</p> : <div className="cogrid">{media.map(m => <div key={m.id}>{m.kind === 'image' ? <Pic m={m} /> : <Vid m={m} />}<small>{new Date(m.sent_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</small></div>)}</div>}</>}
+      {iv === 'labels' && staffView && <><b className="fh">Étiquettes de {student.name}</b><div className="colabelpick">{labels.map(l => <button key={l.id} type="button" className={myLabels.includes(l.id) ? 'on' : ''} style={{ '--c': l.color }} onClick={() => toggleLabel(l)}>{l.name}</button>)}<button type="button" className="new" onClick={addLabel}>+ Nouvelle</button></div><small className="muted">Visibles par l'équipe seulement.</small></>}
     </div></div>}
     {emojiFor && <div className="cosheet-scrim" onClick={() => setEmojiFor(null)} {...drag(() => setEmojiFor(null))}><div className="cosheet" onClick={e => e.stopPropagation()}><div className="grab" /><b>Réagir</b>
       <div className="emojigrid">{['❤️', '✅', '🔥', '😭', '🙏', '👍', '👏', '😂', '😍', '🤯', '💪', '🚀', '💰', '🎯', '👀', '🤝', '✨', '😅', '🙌', '💡', '📈', '🛒', '😤', '🥳'].map(e => <button key={e} type="button" onClick={() => react(emojiFor, e)}>{e}</button>)}</div>
