@@ -731,3 +731,14 @@ html,#root,.main{overscroll-behavior-x:none}
 .lrow{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:var(--glass);border:1px solid var(--cline);text-align:left;color:var(--fg);font:inherit;cursor:pointer;width:100%}.lrow .dot{width:14px;height:14px;border-radius:50%;background:var(--c);box-shadow:0 0 12px color-mix(in srgb,var(--c) 70%,transparent);flex:none}.lrow .t{flex:1;min-width:0}.lrow .t b{display:block;font-size:15px}.lrow .t small{color:var(--muted);font-size:11.5px}.lrow .pen{width:34px;height:34px;border-radius:11px;background:var(--glass2);border:1px solid var(--cline);display:grid;place-items:center;font-size:14px;color:var(--fg-2)}
 .lrow.edit{flex-direction:column;align-items:stretch;border-color:rgba(249,220,92,.4);background:rgba(249,220,92,.07);cursor:default;gap:10px}.lrow.edit input{width:100%;padding:11px 12px;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);color:var(--fg);font:inherit;font-size:16px}
 .lbtns{display:flex;gap:8px}.lbtns button{flex:1;padding:11px;border-radius:14px;font:inherit;font-size:13px;font-weight:700;border:0;cursor:pointer}.lbtns .ok{background:linear-gradient(135deg,var(--ch1),var(--ch3));color:var(--ink)}.lbtns .ok:disabled{opacity:.5}.lbtns .del{background:rgba(255,138,101,.14);color:var(--warn);border:1px solid rgba(255,138,101,.35)}.lbtns .gh{background:rgba(255,255,255,.06);color:var(--fg);border:1px solid var(--cline)}
+
+/* Réception (croquis validé) : grand titre, lignes à plat */
+.coinbox .cohead.hd{background:none;backdrop-filter:none;border-bottom:0;padding:10px 16px 8px}
+.coinbox .cohead.hd .t b{font-size:26px;font-weight:800;letter-spacing:-.02em;overflow:visible}
+.coinbox .coconv{background:transparent;border:0;border-radius:16px;padding:11px 8px;gap:12px}
+.coinbox .coconv:active{background:var(--glass)}
+.coinbox .coconv.hot{background:linear-gradient(90deg,rgba(255,138,101,.1),transparent);border:0}
+.coinbox .coconv .coav{width:50px;height:50px;flex:none}
+.coinbox .coconv .t b{font-size:15.5px}
+.coinbox .coconv .t small{font-size:13px;margin-top:2px}
+.coinbox .cobody.list{gap:2px}

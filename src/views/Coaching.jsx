@@ -410,7 +410,7 @@ export function CoInbox({ me, profiles, toast, isAdmin, mode, refresh, go }) {
   const hoursTxt = status ? `${(status.hours?.start || '09:00').replace(':00', ' h').replace(':', ' h ')} – ${(status.hours?.end || '20:00').replace(':00', ' h').replace(':', ' h ')}` : ''
   const daysTxt = (() => { const d = status?.hours?.days || []; if (d.length === 7) return 'tous les jours'; if (JSON.stringify(d) === '[1,2,3,4,5,6]') return 'lun–sam'; if (JSON.stringify(d) === '[1,2,3,4,5]') return 'lun–ven'; return d.map(i => ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'][i]).join(' ') })()
   const shownList = f === 'todo' ? todo : list
-  return <div className="co">
+  return <div className="co coinbox">
     <div className="cohead hd"><div className="t"><b>Réception</b></div>
       <button type="button" className={`coic ${lab ? 'on' : ''}`} title="Étiquettes" onClick={() => setLabSheet(true)}>{I.tag}</button></div>
     <div className="cobody list">
