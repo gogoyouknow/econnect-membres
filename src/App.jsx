@@ -12,6 +12,7 @@ import Notifs from './views/Notifs'
 import Moderation from './views/Moderation'
 import Admin from './views/Admin'
 import Analytics from './views/Analytics'
+import { CoStudentHome, CoInbox } from './views/Coaching'
 import Side from './views/Side'
 import Upsell, { AccelOffer } from './views/Upsell'
 import Journey from './views/Journey'
@@ -27,9 +28,11 @@ import Leads from './views/Leads'
 const SPACES = {
   methode: { name: 'Méthode E-Connect', short: 'Méthode', sub: 'Ta formation', home: 'mcours' },
   accel: { name: "L'Accélérateur", short: 'Accélérateur', sub: 'Le groupe et l\'accompagnement', home: 'general' },
+  accomp: { name: 'Accompagnement', short: 'Accomp.', sub: 'Tes conversations avec ton coach', home: 'co' },
 }
 
 const VIEWS = [
+  { id: 'co', k: '💬', label: 'Messages', group: 'Accompagnement', sp: 'accomp' },
   { id: 'mcours', k: '🎓', label: 'Ma formation', group: 'Méthode E-Connect', sp: 'methode' },
   { id: 'mwins', k: '🏆', label: 'Résultats', group: 'Méthode E-Connect', sp: 'methode' },
   { id: 'mlives', k: '🔴', label: 'Lives & replays', group: 'Méthode E-Connect', sp: 'methode' },
@@ -61,7 +64,7 @@ export default function App() {
   const setViewAs = (v) => { setViewAsState(v); try { v ? localStorage.setItem('viewAs', v) : localStorage.removeItem('viewAs') } catch {} }
   const [profiles, setProfiles] = useState({ list: [], map: {} })
   const [settings, setSettings] = useState(null)
-  const [view, setView] = useState(() => (location.hash || '#general').slice(1))
+  const [view, setView] = useState(() => { const h = (location.hash || '#general').slice(1); return h.startsWith('co/') ? 'co' : h })
   const [rail, setRail] = useState(false)
   const [unread, setUnread] = useState(0)
   const [guide, setGuide] = useState(false)
@@ -99,7 +102,7 @@ export default function App() {
     return () => supabase.removeChannel(ch)
   }, [session])
 
-  useEffect(() => { location.hash = view; setRail(false) }, [view])
+  useEffect(() => { if (!(view === 'co' && location.hash.startsWith('#co/'))) location.hash = view; setRail(false) }, [view])
   useEffect(() => {
     if (!session) return
     const check = async () => {
@@ -123,10 +126,11 @@ export default function App() {
   const isStaff = me.role !== 'member', isAdmin = me.role === 'admin'
   const ctx = { me, profiles, settings, isStaff, isAdmin, refresh, go: setView, toast }
   // quels espaces ce membre possède, et lequel est affiché
-  const owns = { methode: isStaff || !!me.methode, accel: isStaff || me.accel !== false }
+  const owns = { methode: isStaff || !!me.methode, accel: isStaff || me.accel !== false, accomp: isStaff || (me.accel !== false && me.role === 'member') }
   const inSpace = (v, s) => (v.sp || 'accel') === s || v.sp === 'both'
   const viewSp = VIEWS.find(v => v.id === view)?.sp || (view === 'acceleration' ? 'accel' : null)
   let space = owns[spacePref] ? spacePref : owns.accel ? 'accel' : 'methode'
+  if (view === 'co' && owns.accomp) space = 'accomp'
   if (viewSp && viewSp !== 'both' && viewSp !== space && owns[viewSp]) space = viewSp   // lien direct (#mcours, notification…)
   const spaceList = Object.keys(SPACES).filter(s => owns[s] || (s === 'accel' && owns.methode))   // un élève Méthode voit L'Accélérateur (verrouillé)
   const switchSpace = (s) => {
@@ -151,6 +155,7 @@ export default function App() {
     else if (cur === 'profile') main = <Profile {...ctx} />
     else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
     else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
+  else if (cur === 'co') main = isStaff ? <CoInbox {...ctx} /> : <CoStudentHome {...ctx} />
     else main = <Courses key="methode" scope="methode" {...ctx} />
   }
   else if (cur === 'acceleration' && me.tier < 2 && !isStaff) main = <Upsell {...ctx} />
@@ -210,7 +215,7 @@ export default function App() {
       {space === 'accel' && <Side {...ctx} />}
 
       <nav className="tabbar">
-        {(space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]).map(([id, k, l]) =>
+        {(space === 'accomp' ? (isStaff ? [['co', '💬', 'Réception'], ['tracking', '📊', 'Suivi'], ['members', '👥', 'Élèves'], ['lives', '🔴', 'Lives'], ['admin', '⚙️', 'Admin']] : [['co', '💬', 'Messages'], ['journey', '🧭', 'Parcours'], ['courses', '🎓', 'Formation'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]) : space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]).map(([id, k, l]) =>
           <button key={id} className={cur === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
         <button className={rail ? 'on' : ''} onClick={() => setRail(r => !r)}><span>☰</span>Plus</button>
       </nav>

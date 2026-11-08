@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 
-export const ROLE_LABEL = { admin: 'Admin', mod: 'Modérateur', member: 'Membre' }
+export const ROLE_LABEL = { admin: 'Admin', mod: 'Modérateur', coach: 'Coach', member: 'Membre' }
 export const TIER_LABEL = { 1: 'Démarrage', 2: 'Accélération' }
 
 export const initials = (name = '?') => name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
