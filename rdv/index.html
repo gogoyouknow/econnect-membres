@@ -7,6 +7,15 @@
     <meta name="robots" content="noindex" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
     <link rel="apple-touch-icon" href="/icon-180.png" />
+    <script>
+      // Application Calio (/admin) : plein écran une fois ajoutée à l'écran d'accueil (iPhone), sans barre Safari.
+      if (location.pathname.indexOf('/admin') === 0) {
+        [['apple-mobile-web-app-capable', 'yes'], ['mobile-web-app-capable', 'yes'], ['apple-mobile-web-app-status-bar-style', 'black'], ['apple-mobile-web-app-title', 'Calio']].forEach(function (a) { var m = document.createElement('meta'); m.name = a[0]; m.content = a[1]; document.head.appendChild(m) })
+        var l = document.createElement('link'); l.rel = 'manifest'; l.href = '/admin.webmanifest'; document.head.appendChild(l)
+        var t = document.querySelector('meta[name="theme-color"]'); if (t) t.content = '#0E1116'
+        document.title = 'Calio'
+      }
+    </script>
     <title>Réserve ton appel · L'Accélérateur</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
