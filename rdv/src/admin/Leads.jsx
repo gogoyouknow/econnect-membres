@@ -27,7 +27,7 @@ export default function Leads({ toast, onChange }) {
   const cold = open_.filter(l => l.follow === 'new' && unqualified(l))
   const done = open_.filter(l => l.follow !== 'new')
   const list = { todo, cold, done }[tab]
-  const link = typeof window !== 'undefined' ? window.location.origin + '/' : ''
+  const link = 'https://rdv.theambitiousman.fr/'
   const msg = (l) => `Salut ${l.first_name || ''}, c'est Clément. Je vois que tu as commencé à réserver ton appel, mais tu n'es pas allé au bout. Tu as eu un souci ? Tu peux reprendre ici : ${link}`.replace('  ', ' ')
 
   return <div className="sheet-body">

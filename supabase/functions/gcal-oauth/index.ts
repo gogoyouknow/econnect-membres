@@ -5,7 +5,7 @@ const rpc = async (fn: string, args: Record<string, unknown> = {}) => {
   if (!r.ok) throw new Error(`${fn}: ${r.status} ${await r.text()}`)
   const t = await r.text(); return t ? JSON.parse(t) : null
 }
-const back = (q: string) => Response.redirect('https://econnect-rdv.vercel.app/admin?agenda=' + q, 302)
+const back = (q: string) => Response.redirect('https://rdv.theambitiousman.fr/admin?agenda=' + q, 302)
 
 Deno.serve(async (req) => {
   const u = new URL(req.url)
