@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import Candidatures from './Candidatures'
 import Leads from './Leads'
+const Logo = ({ s = 30 }) => <svg className="logo" viewBox="0 0 1024 1024" width={s} height={s} aria-hidden="true"><path d="M 686.6 354.8 A 235 235 0 1 0 686.6 669.2" fill="none" stroke="#fff" strokeWidth="125" strokeLinecap="round" /><circle cx="742" cy="512" r="62" fill="#6FE3A1" /></svg>
 import Dispos from './Dispos'
 
 const Ic = ({ d }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">{d}</svg>
@@ -48,7 +49,7 @@ export default function Admin() {
   }
   if (sess === undefined) return <div className="adm"><p className="muted ctr">Chargement…</p></div>
   if (!sess && forgot) return <div className="adm"><form className="login" onSubmit={sendReset}>
-    <b className="brand">L'ACCÉLÉRATEUR</b><h1>Mot de passe oublié</h1>
+    <Logo s={44} /><b className="brand">CALIO</b><h1>Mot de passe oublié</h1>
     {sent ? <p className="muted">C'est envoyé. Ouvre l'email, clique sur le lien et choisis un nouveau mot de passe (tu arrives sur L'Accélérateur). Reviens ensuite ici pour te connecter avec.</p>
       : <><p className="muted">Entre ton email : on t'envoie un lien pour en choisir un nouveau.</p>
         <input name="email" type="email" placeholder="Email" autoComplete="username" defaultValue="contact@theambitiousman.fr" required />
@@ -57,7 +58,7 @@ export default function Admin() {
     {msg && <small className="err">{msg.t}</small>}
   </form></div>
   if (!sess) return <div className="adm"><form className="login" onSubmit={login}>
-    <b className="brand">L'ACCÉLÉRATEUR</b><h1>Mes appels</h1><p className="muted">Connecte-toi avec ton compte habituel.</p>
+    <Logo s={44} /><b className="brand">CALIO</b><h1>Mes appels</h1><p className="muted">Connecte-toi avec ton compte habituel.</p>
     <input name="email" type="email" placeholder="Email" autoComplete="username" required />
     <input name="password" type={showPw ? 'text' : 'password'} placeholder="Mot de passe" autoComplete="current-password" required />
     <label className="showpw"><input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} /> Afficher le mot de passe</label>
@@ -70,7 +71,7 @@ export default function Admin() {
     <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Changer de compte</button></div></div>
   const today = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short' })
   return <div className="adm app">
-    <header className="bar"><h1>Mes appels</h1><span className="date">{today}</span><button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
+    <header className="bar"><Logo s={30} /><h1>Mes appels</h1><span className="date">{today}</span><button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
     <div className={`scroll ${tab !== 'appels' ? 'light' : ''}`}>
       {tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : tab === 'dispos' ? <Dispos toast={toast} /> : <Candidatures toast={toast} tab={tab} />}
     </div>

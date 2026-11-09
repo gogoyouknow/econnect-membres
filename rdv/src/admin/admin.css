@@ -129,3 +129,5 @@ body.admbody{background:#0E1116;background-image:none;padding:0;color:#E8ECF2;fo
 .adm .mleg u.d{background:#fff;border:1px dashed #3B82F6}
 .adm .hrange .btn{flex:none;width:44px;padding:11px 0}
 .adm .hrange input[type=time]{min-width:0}
+
+.adm .logo{display:block;flex:none}.adm .login .logo{margin-bottom:6px}

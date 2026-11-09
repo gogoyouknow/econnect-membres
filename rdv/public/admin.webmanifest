@@ -1,1 +1,14 @@
-{ "name": "Mes appels · L'Accélérateur", "short_name": "Mes appels", "start_url": "/admin", "scope": "/admin", "display": "standalone", "background_color": "#0b0b0c", "theme_color": "#0b0b0c" }
+{
+  "name": "Calio",
+  "short_name": "Calio",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
