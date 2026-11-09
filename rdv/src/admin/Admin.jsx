@@ -11,6 +11,7 @@ export default function Admin() {
   const [busy, setBusy] = useState(false)
   const [tab, setTab] = useState('appels')
   const [forgot, setForgot] = useState(false)
+  const [showPw, setShowPw] = useState(false)
   const [sent, setSent] = useState(false)
   const toast = (t, bad) => { setMsg({ t, bad }); setTimeout(() => setMsg(null), 3500) }
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function Admin() {
     const f = new FormData(e.target)
     const { error } = await supabase.auth.signInWithPassword({ email: String(f.get('email')).trim(), password: String(f.get('password')) })
     setBusy(false)
-    if (error) toast('Email ou mot de passe incorrect', true)
+    if (error) toast(/invalid login/i.test(error.message) ? 'Email ou mot de passe incorrect' : 'Erreur : ' + error.message, true)
   }
   const sendReset = async (e) => {
     e.preventDefault(); setBusy(true)
@@ -50,7 +51,8 @@ export default function Admin() {
   if (!sess) return <div className="adm"><form className="login" onSubmit={login}>
     <b className="brand">L'ACCÉLÉRATEUR</b><h1>Mes appels</h1><p className="muted">Connecte-toi avec ton compte habituel.</p>
     <input name="email" type="email" placeholder="Email" autoComplete="username" required />
-    <input name="password" type="password" placeholder="Mot de passe" autoComplete="current-password" required />
+    <input name="password" type={showPw ? 'text' : 'password'} placeholder="Mot de passe" autoComplete="current-password" required />
+    <label className="showpw"><input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} /> Afficher le mot de passe</label>
     <button className="btn big" disabled={busy}>{busy ? '…' : 'Me connecter'}</button>
     <button type="button" className="btn ghost" onClick={() => setForgot(true)}>Mot de passe oublié</button>
     {msg && <small className="err">{msg.t}</small>}
