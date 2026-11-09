@@ -10,6 +10,20 @@ const dayKey = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).forma
 const fmtT = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 const fmtDay = (k) => { const d = new Date(k + 'T12:00:00Z'); return { w: new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'short' }).format(d), n: d.getUTCDate() } }
 
+// D'où vient la personne (TikTok, Instagram…) : on le mémorise à la 1ère visite et on l'envoie avec la fiche.
+const SRC = (() => {
+  try {
+    const k = 'cand_src'; const old = localStorage.getItem(k); if (old) return JSON.parse(old)
+    const q = new URLSearchParams(location.search); const utm = {}
+    ;['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'ttclid', 'fbclid', 'src'].forEach((x) => { const v = q.get(x); if (v) utm[x.replace('utm_', '')] = v.slice(0, 100) })
+    let ref = ''; try { ref = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, '') : '' } catch { /* */ }
+    if (/theambitiousman\.fr$|vercel\.app$/.test(ref)) ref = ''
+    const h = String(utm.source || utm.src || ref).toLowerCase()
+    const source = utm.ttclid || /tiktok|^tt$/.test(h) ? 'TikTok' : /instagram|^ig$/.test(h) ? 'Instagram' : /youtu/.test(h) ? 'YouTube' : utm.fbclid || /facebook|^fb$|meta/.test(h) ? 'Facebook' : /^t\.co$|twitter|^x$/.test(h) ? 'X' : h ? (utm.source || utm.src || ref).slice(0, 40) : 'Direct'
+    const v = { source, utm: Object.keys(utm).length ? utm : null, referrer: ref, landing: (location.pathname + location.search).slice(0, 200) }
+    localStorage.setItem(k, JSON.stringify(v)); return v
+  } catch { return {} }
+})()
 const sid = (() => {
   try { let v = localStorage.getItem('cand_sid'); if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); localStorage.setItem('cand_sid', v) } return v } catch { return 'mem-' + Date.now() + Math.random().toString(16).slice(2) }
 })()
@@ -67,7 +81,7 @@ export default function App() {
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
   const go = (s) => { setErr(''); setStep(s); window.scrollTo(0, 0) }
   // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
-  const leadBody = (stp, g) => { const d = g.tel.replace(/\D/g, '').replace(/^0+/, ''); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? g.prefix + d : '', phone_raw: d ? g.prefix + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have } }
+  const leadBody = (stp, g) => { const d = g.tel.replace(/\D/g, '').replace(/^0+/, ''); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? g.prefix + d : '', phone_raw: d ? g.prefix + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC } }
   const saveLead = (stp, over = {}) => { if (!configured) return; rpc('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
   // On garde TOUT ce qui est tapé, même sans clic sur « Continuer » : sauvegarde auto 0,7 s après la dernière frappe, et à la fermeture / au changement d'onglet.
   const LS = { who: 'who', situ: 'situ', block: 'situ', budget: 'budget', block2: 'budget', slot: 'slot' }
