@@ -64,7 +64,7 @@ const VIEWS = [
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [meReal, setMe] = useState(null)
-  const [viewAs, setViewAsState] = useState(() => { try { return localStorage.getItem('viewAs') || '' } catch { return '' } })
+  const [viewAs, setViewAsState] = useState('')
   const setViewAs = (v) => { setViewAsState(v); try { v ? localStorage.setItem('viewAs', v) : localStorage.removeItem('viewAs') } catch {} }
   const [profiles, setProfiles] = useState({ list: [], map: {} })
   const [settings, setSettings] = useState(null)
@@ -192,9 +192,6 @@ export default function App() {
           {spaceMenu && <><div className="spscrim" onClick={() => setSpaceMenu(false)} /><div className="spmenu">
             <small>Tes espaces</small>
             {spaceList.map(s => <button key={s} className={s === space ? 'on' : ''} onClick={() => switchSpace(s)}><span><b>{SPACES[s].name}</b><small>{owns[s] ? SPACES[s].sub : 'Accompagnement · 160 €/mois'}</small></span><em>{s === space ? '✓' : owns[s] ? '' : '🔒'}</em></button>)}
-            {realStaff && <><small>Voir comme un élève</small>
-              {Object.entries(VIEW_AS).map(([k, v]) => <button key={k} className={viewAs === k ? 'on' : ''} onClick={() => { setSpaceMenu(false); setViewAs(k); setView(k === 'methode' ? 'mcours' : 'courses') }}><span><b>{v.label}</b><small>Même écran que lui, sans se déconnecter</small></span><em>{viewAs === k ? '✓' : ''}</em></button>)}
-              {viewAs && <button onClick={() => { setSpaceMenu(false); setViewAs('') }}><span><b>Revenir en admin</b></span><em>↩</em></button>}</>}
           </div></>}
         </div>
         <div className="sp" />

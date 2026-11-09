@@ -10,6 +10,16 @@ export default function Profile({ me, toast, refresh, settings }) {
   const [last, setLast] = useState(me.last_name || '')
   const [busy, setBusy] = useState(false)
   const fileRef = useRef(null)
+  const [pw1, setPw1] = useState(''); const [pw2, setPw2] = useState(''); const [pwBusy, setPwBusy] = useState(false)
+  async function savePw(e) {
+    e.preventDefault()
+    if (pw1.length < 8) return toast('8 caractères minimum', true)
+    if (pw1 !== pw2) return toast('Les deux mots de passe ne sont pas identiques', true)
+    setPwBusy(true)
+    const { error } = await supabase.auth.updateUser({ password: pw1 })
+    setPwBusy(false); if (error) return toast(friendlyError(error), true)
+    setPw1(''); setPw2(''); toast('Mot de passe changé')
+  }
   async function save(e) {
     e.preventDefault(); if (!first.trim()) return toast('Ton prénom est obligatoire', true)
     setBusy(true)
@@ -42,6 +52,16 @@ export default function Profile({ me, toast, refresh, settings }) {
           <button type="button" className="btn ghost" onClick={() => supabase.auth.signOut()}>Se déconnecter</button>
           <button className="btn" disabled={busy}>Enregistrer</button>
         </div>
+      </form>
+      <form className="post form" onSubmit={savePw} style={{ maxWidth: 520 }}>
+        <b>Mon mot de passe</b>
+        <small className="muted" style={{ display: 'block', marginBottom: 8 }}>Change-le ici, sans email. 8 caractères minimum.</small>
+        <input type="email" value={me.email || ''} autoComplete="username" readOnly hidden />
+        <div className="grid2">
+          <div className="field"><label htmlFor="pw1">Nouveau mot de passe</label><input id="pw1" type="password" autoComplete="new-password" minLength={8} value={pw1} onChange={e => setPw1(e.target.value)} required /></div>
+          <div className="field"><label htmlFor="pw2">Confirme-le</label><input id="pw2" type="password" autoComplete="new-password" minLength={8} value={pw2} onChange={e => setPw2(e.target.value)} required /></div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}><button className="btn" disabled={pwBusy}>{pwBusy ? '…' : 'Changer mon mot de passe'}</button></div>
       </form>
       {me.role === 'member' && me.methode && <div className="post" style={{ maxWidth: 520 }}><b>Ma formation</b>
         <div className="row"><label>La Méthode E-Connect<small>Paiement unique · accès à vie à la formation</small></label><span className="pill gold">Active</span></div>
