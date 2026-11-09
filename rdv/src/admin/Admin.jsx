@@ -10,6 +10,8 @@ export default function Admin() {
   const [msg, setMsg] = useState(null)
   const [busy, setBusy] = useState(false)
   const [tab, setTab] = useState('appels')
+  const [forgot, setForgot] = useState(false)
+  const [sent, setSent] = useState(false)
   const toast = (t, bad) => { setMsg({ t, bad }); setTimeout(() => setMsg(null), 3500) }
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSess(data.session || null))
@@ -27,12 +29,30 @@ export default function Admin() {
     setBusy(false)
     if (error) toast('Email ou mot de passe incorrect', true)
   }
+  const sendReset = async (e) => {
+    e.preventDefault(); setBusy(true)
+    const email = String(new FormData(e.target).get('email')).trim()
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: 'https://econnect-membres.vercel.app/#reset' })
+    setBusy(false)
+    if (error) return toast("Impossible d'envoyer le lien pour le moment", true)
+    setSent(true)
+  }
   if (sess === undefined) return <div className="adm"><p className="muted ctr">Chargement…</p></div>
+  if (!sess && forgot) return <div className="adm"><form className="login" onSubmit={sendReset}>
+    <b className="brand">L'ACCÉLÉRATEUR</b><h1>Mot de passe oublié</h1>
+    {sent ? <p className="muted">C'est envoyé. Ouvre l'email, clique sur le lien et choisis un nouveau mot de passe (tu arrives sur L'Accélérateur). Reviens ensuite ici pour te connecter avec.</p>
+      : <><p className="muted">Entre ton email : on t'envoie un lien pour en choisir un nouveau.</p>
+        <input name="email" type="email" placeholder="Email" autoComplete="username" defaultValue="contact@theambitiousman.fr" required />
+        <button className="btn big" disabled={busy}>{busy ? '…' : 'Envoyer le lien'}</button></>}
+    <button type="button" className="btn ghost" onClick={() => { setForgot(false); setSent(false) }}>Retour</button>
+    {msg && <small className="err">{msg.t}</small>}
+  </form></div>
   if (!sess) return <div className="adm"><form className="login" onSubmit={login}>
     <b className="brand">L'ACCÉLÉRATEUR</b><h1>Mes appels</h1><p className="muted">Connecte-toi avec ton compte habituel.</p>
     <input name="email" type="email" placeholder="Email" autoComplete="username" required />
     <input name="password" type="password" placeholder="Mot de passe" autoComplete="current-password" required />
     <button className="btn big" disabled={busy}>{busy ? '…' : 'Me connecter'}</button>
+    <button type="button" className="btn ghost" onClick={() => setForgot(true)}>Mot de passe oublié</button>
     {msg && <small className="err">{msg.t}</small>}
   </form></div>
   if (ok === null) return <div className="adm"><p className="muted ctr">Vérification…</p></div>
