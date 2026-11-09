@@ -23,27 +23,31 @@ export default function Leads({ toast, onChange }) {
   const upd = async (l, patch) => { const { error } = await supabase.from('cand_leads').update(patch).eq('id', l.id); if (error) return toast(friendlyError(error), true); load() }
 
   const open_ = (rows || []).filter(l => !l.booked)
-  const todo = open_.filter(l => l.follow === 'new' && !unqualified(l))
-  const cold = open_.filter(l => l.follow === 'new' && unqualified(l))
+  const usable = (l) => Boolean(l.phone || l.email)
+  const todo = open_.filter(l => l.follow === 'new' && usable(l) && !unqualified(l))
+  const cold = open_.filter(l => l.follow === 'new' && usable(l) && unqualified(l))
+  const part = open_.filter(l => l.follow === 'new' && !usable(l))
   const done = open_.filter(l => l.follow !== 'new')
-  const list = { todo, cold, done }[tab]
+  const list = { todo, cold, part, done }[tab]
   const link = 'https://rdv.theambitiousman.fr/'
   const msg = (l) => `Salut ${l.first_name || ''}, c'est Clément. Je vois que tu as commencé à réserver ton appel, mais tu n'es pas allé au bout. Tu as eu un souci ? Tu peux reprendre ici : ${link}`.replace('  ', ' ')
 
   return <div className="sheet-body">
     <h2 className="sh">À relancer</h2>
     <p className="muted">Les personnes qui ont laissé leurs coordonnées sans réserver d'appel. Rien n'est perdu.</p>
-    <div className="pills" style={{ marginTop: 14 }}>{[['todo', `À relancer · ${todo.length}`], ['cold', `Pas prêts · ${cold.length}`], ['done', 'Traités']].map(([k, l]) => <button key={k} className={`pill ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}</div>
+    <div className="pills" style={{ marginTop: 14 }}>{[['todo', `À relancer · ${todo.length}`], ['part', `Incomplets · ${part.length}`], ['cold', `Pas prêts · ${cold.length}`], ['done', 'Traités']].map(([k, l]) => <button key={k} className={`pill ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}</div>
     {rows === null && <p className="muted">Chargement…</p>}
-    {rows && !list.length && <div className="sys">{tab === 'todo' ? 'Personne à relancer pour le moment' : tab === 'cold' ? 'Personne ici' : 'Rien de traité pour le moment'}</div>}
+    {rows && !list.length && <div className="sys">{tab === 'todo' ? 'Personne à relancer pour le moment' : tab === 'cold' ? 'Personne ici' : tab === 'part' ? 'Aucune saisie incomplète' : 'Rien de traité pour le moment'}</div>}
     {list.map(l => <div key={l.id} className={`call ${open === l.id ? 'open' : ''}`}>
       <div className="crow" onClick={() => setOpen(open === l.id ? null : l.id)}>
         <div className="cmain"><b>{l.first_name || 'Sans prénom'}</b><small>{STEP[l.step]} · {ago(l.updated_at)}</small></div>
-        {l.follow === 'done' ? <span className="badge ok">Relancé</span> : l.follow === 'skip' ? <span className="badge done">Écarté</span> : <span className="badge wait">{unqualified(l) ? 'Pas prêt' : 'À relancer'}</span>}
+        {l.follow === 'done' ? <span className="badge ok">Relancé</span> : l.follow === 'skip' ? <span className="badge done">Écarté</span> : <span className="badge wait">{!usable(l) ? 'Incomplet' : unqualified(l) ? 'Pas prêt' : 'À relancer'}</span>}
       </div>
       {open === l.id && <div className="cdet">
-        {l.phone && <div className="drow"><label>WhatsApp</label><a href={wa(l.phone)} target="_blank" rel="noreferrer">{l.phone}</a></div>}
-        {l.email && <div className="drow"><label>Email</label><a href={`mailto:${l.email}`}>{l.email}</a></div>}
+        {l.phone ? <div className="drow"><label>WhatsApp</label><a href={wa(l.phone)} target="_blank" rel="noreferrer">{l.phone}</a></div>
+          : l.phone_raw ? <div className="drow"><label>Numéro tapé</label><span>{l.phone_raw} · incomplet</span></div> : null}
+        {l.email ? <div className="drow"><label>Email</label><a href={`mailto:${l.email}`}>{l.email}</a></div>
+          : l.email_raw ? <div className="drow"><label>Email tapé</label><span>{l.email_raw} · incomplet</span></div> : null}
         <div className="drow"><label>Situation</label><span>{l.situation || '—'}</span></div>
         <div className="drow"><label>Budget</label><span>{CAPL[l.capital] || '—'}{l.budget_confirmed === 'yes' ? ' · disponible maintenant' : l.budget_confirmed === 'soon' ? ' · pas avant quelques semaines' : l.budget_confirmed === 'no' ? ' · non disponible' : ''}</span></div>
         <div className="drow"><label>1ère visite</label><span>{new Date(l.created_at).toLocaleString('fr-FR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>

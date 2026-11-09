@@ -7,6 +7,7 @@ export async function rpc(name, args = {}) {
     method: 'POST',
     headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(args),
+    keepalive: true,
   })
   const j = await r.json().catch(() => null)
   if (!r.ok) throw new Error((j && (j.message || j.error)) || 'Erreur réseau')

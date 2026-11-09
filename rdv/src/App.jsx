@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { rpc, configured } from './api'
 
 const TZ = 'Europe/Paris'
@@ -27,7 +27,23 @@ export default function App() {
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
   const go = (s) => { setErr(''); setStep(s); window.scrollTo(0, 0) }
   // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
-  const saveLead = (stp, over = {}) => { if (!configured) return; const g = { ...f, ...over }; rpc('cand_lead', { p: { sid, step: stp, first_name: g.first_name.trim(), phone: g.tel.replace(/\D/g, '').length >= 8 ? g.prefix + g.tel.replace(/\D/g, '').replace(/^0+/, '') : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have } }).catch(() => {}) }
+  const leadBody = (stp, g) => { const d = g.tel.replace(/\D/g, '').replace(/^0+/, ''); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? g.prefix + d : '', phone_raw: d ? g.prefix + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have } }
+  const saveLead = (stp, over = {}) => { if (!configured) return; rpc('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
+  // On garde TOUT ce qui est tapé, même sans clic sur « Continuer » : sauvegarde auto 0,7 s après la dernière frappe, et à la fermeture / au changement d'onglet.
+  const LS = { who: 'who', situ: 'situ', block: 'situ', budget: 'budget', block2: 'budget', slot: 'slot' }
+  const live = useRef({})
+  live.current = { f, step }
+  useEffect(() => {
+    if (!configured || !LS[step] || !(f.first_name.trim() || f.tel.trim() || f.email.trim())) return
+    const t = setTimeout(() => rpc('cand_lead', { p: leadBody(LS[step], f) }).catch(() => {}), 700)
+    return () => clearTimeout(t)
+  }, [f, step])
+  useEffect(() => {
+    const flush = () => { const { f: g, step: s } = live.current; if (configured && LS[s] && (g.first_name.trim() || g.tel.trim() || g.email.trim())) rpc('cand_lead', { p: leadBody(LS[s], g) }).catch(() => {}) }
+    const vis = () => { if (document.visibilityState === 'hidden') flush() }
+    window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', vis)
+    return () => { window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', vis) }
+  }, [])
   const n = { who: 1, situ: 2, block: 2, budget: 3, block2: 3, slot: 4 }[step] || 0
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
