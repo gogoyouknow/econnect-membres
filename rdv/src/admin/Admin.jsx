@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
-import { supabase, friendlyError } from './supabase'
+import { supabase } from './supabase'
 import Candidatures from './Candidatures'
+
+const Ic = ({ d }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">{d}</svg>
 
 export default function Admin() {
   const [sess, setSess] = useState(undefined)
   const [ok, setOk] = useState(null)
   const [msg, setMsg] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [tab, setTab] = useState('appels')
   const toast = (t, bad) => { setMsg({ t, bad }); setTimeout(() => setMsg(null), 3500) }
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSess(data.session || null))
@@ -35,9 +38,16 @@ export default function Admin() {
   if (ok === null) return <div className="adm"><p className="muted ctr">Vérification…</p></div>
   if (!ok) return <div className="adm"><div className="login"><h1>Accès refusé</h1><p className="muted">Ce compte n'a pas accès à cet espace.</p>
     <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Changer de compte</button></div></div>
-  return <div className="adm">
-    <div className="top"><b className="brand">L'ACCÉLÉRATEUR · MES APPELS</b><button className="btn ghost sm" onClick={() => supabase.auth.signOut()}>Déconnexion</button></div>
-    <Candidatures toast={toast} />
+  const today = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short' })
+  return <div className="adm app">
+    <header className="bar"><h1>Mes appels</h1><span className="date">{today}</span><button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
+    <div className={`scroll ${tab === 'dispos' ? 'light' : ''}`}>
+      <Candidatures toast={toast} tab={tab} />
+    </div>
+    <nav className="tabs">
+      <button className={tab === 'appels' ? 'on' : ''} onClick={() => setTab('appels')}><Ic d={<><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></>} />Appels</button>
+      <button className={tab === 'dispos' ? 'on' : ''} onClick={() => setTab('dispos')}><Ic d={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />Disponibilités</button>
+    </nav>
     {msg && <div className={`toast ${msg.bad ? 'bad' : ''}`}>{msg.t}</div>}
   </div>
 }
