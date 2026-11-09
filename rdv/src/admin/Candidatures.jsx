@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { friendlyError } from '../lib/data'
+import { supabase, friendlyError } from './supabase'
 
 const WD = [[1, 'Lundi'], [2, 'Mardi'], [3, 'Mercredi'], [4, 'Jeudi'], [5, 'Vendredi'], [6, 'Samedi'], [0, 'Dimanche']]
 const ST = { reserve: ['En attente WhatsApp', ''], confirme: ['Confirmé', 'gold'], fait: ['Fait', ''], absent: ['Absent', ''], annule: ['Annulé', ''] }
@@ -41,7 +40,7 @@ export default function Candidatures({ toast }) {
   const unblock = async (d) => { await supabase.from('cand_blocked').delete().eq('day', d); loadCfg() }
 
   return <>
-    <div className="head"><div style={{ flex: 1 }}><h2>Candidatures TikTok</h2><small>Appels réservés depuis ta bio · {pending} en attente de message WhatsApp</small></div>
+    <div className="head"><div style={{ flex: 1 }}><h2>Mes appels</h2><small>Réservés depuis ta bio · {pending} en attente de message WhatsApp</small></div>
       <button className="btn ghost sm" onClick={() => setEdit(e => !e)}>{edit ? 'Voir les appels' : 'Mes disponibilités'}</button></div>
     <div className="body">
       {!edit && <>
@@ -69,7 +68,7 @@ export default function Candidatures({ toast }) {
             <textarea rows={2} defaultValue={c.note} placeholder="Note (objection, suite à donner…)" onBlur={e => e.target.value !== c.note && upd(c, { note: e.target.value })} />
           </div>}
         </div>)}
-        <small className="muted">Sans message WhatsApp reçu dans le délai réglé, le créneau est libéré automatiquement. Les événements de ton Google Agenda bloquent déjà les créneaux (réglage dans Prospects → Mon Google Agenda).</small>
+        <small className="muted">Sans message WhatsApp reçu dans le délai réglé, le créneau est libéré automatiquement. Les événements de ton Google Agenda bloquent déjà les créneaux (réglage dans L'Accélérateur → Prospects → Mon Google Agenda).</small>
       </>}
       {edit && week && cfg && <div className="post">
         <b>Mes disponibilités</b>

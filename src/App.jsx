@@ -24,14 +24,12 @@ import Onboarding from './views/Onboarding'
 import Profile from './views/Profile'
 import Messages from './views/Messages'
 import Leads from './views/Leads'
-import Candidatures from './views/Candidatures'
 
 // Espaces de l'app : chacun a ses propres accès (profiles.methode / profiles.accel)
 const SPACES = {
   methode: { name: 'Méthode E-Connect', short: 'Méthode', sub: 'Ta formation', home: 'mcours' },
   accel: { name: "L'Accélérateur", short: 'Accélérateur', sub: 'Le groupe et l\'accompagnement', home: 'general' },
   accomp: { name: 'Accompagnement', short: 'Accomp.', sub: 'Tes conversations avec ton coach', home: 'co' },
-  rdv: { name: 'Appels TikTok', short: 'Appels', sub: 'Réservations de ta bio', home: 'candidatures' },
 }
 
 const VIEWS = [
@@ -57,7 +55,6 @@ const VIEWS = [
   { id: 'notifs', k: '🔔', label: 'Notifications', group: 'Communauté', sp: 'both' },
   { id: 'profile', k: '👤', label: 'Mon profil', group: 'Communauté', sp: 'both' },
   { id: 'leads', k: '🎯', label: 'Prospects', group: 'Gestion', staff: true },
-  { id: 'candidatures', k: '📞', label: 'Mes appels', group: 'Appels TikTok', sp: 'rdv', staff: true },
   { id: 'tracking', k: '📊', label: 'Suivi des élèves', group: 'Gestion', staff: true },
   { id: 'moderation', k: '🛡️', label: 'Modération', group: 'Gestion', staff: true },
   { id: 'analytics', k: '📈', label: 'Analytics', group: 'Gestion', admin: true, sp: 'both' },
@@ -133,7 +130,7 @@ export default function App() {
   const isStaff = me.role !== 'member', isAdmin = me.role === 'admin'
   const ctx = { me, profiles, settings, isStaff, isAdmin, refresh, go: setView, toast }
   // quels espaces ce membre possède, et lequel est affiché
-  const owns = { methode: isStaff || !!me.methode, accel: isStaff || me.accel !== false, accomp: isStaff || (me.accel !== false && me.role === 'member'), rdv: isStaff }
+  const owns = { methode: isStaff || !!me.methode, accel: isStaff || me.accel !== false, accomp: isStaff || (me.accel !== false && me.role === 'member') }
   const inSpace = (v, s) => (v.sp || 'accel') === s || v.sp === 'both'
   const viewSp = VIEWS.find(v => v.id === view)?.sp || (view === 'acceleration' ? 'accel' : null)
   let space = owns[spacePref] ? spacePref : owns.accel ? 'accel' : 'methode'
@@ -177,7 +174,6 @@ export default function App() {
   else if (cur === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
   else if (cur === 'messages') main = <Messages {...ctx} />
   else if (cur === 'leads' && isStaff) main = <Leads {...ctx} />
-  else if (cur === 'candidatures' && isStaff) main = <Candidatures {...ctx} />
   else if (cur === 'moderation' && isStaff) main = <Moderation {...ctx} />
   else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
   else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
@@ -223,7 +219,7 @@ export default function App() {
       {space === 'accel' && <Side {...ctx} />}
 
       <nav className="tabbar">
-        {(space === 'accomp' ? (isStaff ? [['co', '💬', 'Réception'], ['cosuivi', '📊', 'Suivi'], ['coeleves', '👥', 'Élèves']] : [['co', '💬', 'Messages'], ['journey', '🧭', 'Parcours'], ['courses', '🎓', 'Formation'], ['profile', '👤', 'Profil']]) : space === 'rdv' ? [['candidatures', '📞', 'Mes appels']] : space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]).map(([id, k, l]) =>
+        {(space === 'accomp' ? (isStaff ? [['co', '💬', 'Réception'], ['cosuivi', '📊', 'Suivi'], ['coeleves', '👥', 'Élèves']] : [['co', '💬', 'Messages'], ['journey', '🧭', 'Parcours'], ['courses', '🎓', 'Formation'], ['profile', '👤', 'Profil']]) : space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]).map(([id, k, l]) =>
           <button key={id} className={cur === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
         <button className={rail ? 'on' : ''} onClick={() => setRail(r => !r)}><span>☰</span>Plus</button>
       </nav>
