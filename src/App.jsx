@@ -24,6 +24,7 @@ import Onboarding from './views/Onboarding'
 import Profile from './views/Profile'
 import Messages from './views/Messages'
 import Leads from './views/Leads'
+import Candidatures from './views/Candidatures'
 
 // Espaces de l'app : chacun a ses propres accès (profiles.methode / profiles.accel)
 const SPACES = {
@@ -55,6 +56,7 @@ const VIEWS = [
   { id: 'notifs', k: '🔔', label: 'Notifications', group: 'Communauté', sp: 'both' },
   { id: 'profile', k: '👤', label: 'Mon profil', group: 'Communauté', sp: 'both' },
   { id: 'leads', k: '🎯', label: 'Prospects', group: 'Gestion', staff: true },
+  { id: 'candidatures', k: '📞', label: 'Candidatures TikTok', group: 'Gestion', staff: true },
   { id: 'tracking', k: '📊', label: 'Suivi des élèves', group: 'Gestion', staff: true },
   { id: 'moderation', k: '🛡️', label: 'Modération', group: 'Gestion', staff: true },
   { id: 'analytics', k: '📈', label: 'Analytics', group: 'Gestion', admin: true, sp: 'both' },
@@ -174,6 +176,7 @@ export default function App() {
   else if (cur === 'notifs') main = <Notifs {...ctx} onRead={() => setUnread(0)} />
   else if (cur === 'messages') main = <Messages {...ctx} />
   else if (cur === 'leads' && isStaff) main = <Leads {...ctx} />
+  else if (cur === 'candidatures' && isStaff) main = <Candidatures {...ctx} />
   else if (cur === 'moderation' && isStaff) main = <Moderation {...ctx} />
   else if (cur === 'admin' && isAdmin) main = <Admin {...ctx} />
   else if (cur === 'analytics' && isAdmin) main = <Analytics {...ctx} />
