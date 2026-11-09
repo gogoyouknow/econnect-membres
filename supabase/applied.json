@@ -36,5 +36,6 @@
   "0035_cand_leads.sql",
   "0036_cand_overrides.sql",
   "0037_gcal_where.sql",
-  "0038_google_oauth.sql"
+  "0038_google_oauth.sql",
+  "0039_cand_leads_partiel.sql"
 ]
