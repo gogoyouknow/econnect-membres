@@ -35,5 +35,6 @@
   "0034_candidatures.sql",
   "0035_cand_leads.sql",
   "0036_cand_overrides.sql",
-  "0037_gcal_where.sql"
+  "0037_gcal_where.sql",
+  "0038_google_oauth.sql"
 ]
