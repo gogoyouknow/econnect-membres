@@ -14,32 +14,51 @@ const fromMin = (n) => `${pad(Math.floor(n / 60))}:${pad(n % 60)}`
 const dowOf = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).getUTCDay() }
 const addDays = (k, n) => { const [y, m, d] = k.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d + n)); return key(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()) }
 const longDay = (k) => { const [y, m, d] = k.split('-').map(Number); const s = new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('fr-FR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }); return s.charAt(0).toUpperCase() + s.slice(1) }
+const badRange = (rs) => rs.some(r => !r[0] || !r[1] || r[0] >= r[1])
 
-/** Disponibilités : calendrier du mois. Toucher une date = voir ses créneaux, la fermer, ou changer les horaires de ce jour de la semaine. */
+/** Petit éditeur de plages horaires (début – fin, + ajouter, ✕ supprimer). */
+function Ranges({ ranges, onChange }) {
+  const set = (i, k, v) => onChange(ranges.map((r, j) => j === i ? (k ? [r[0], v] : [v, r[1]]) : r))
+  return <>
+    {ranges.map((r, i) => <div key={i} className="hrange" style={{ marginLeft: 0 }}>
+      <input type="time" value={r[0]} onChange={e => set(i, 0, e.target.value)} /><span>–</span><input type="time" value={r[1]} onChange={e => set(i, 1, e.target.value)} />
+      <button type="button" className="btn ghost sm" aria-label="Supprimer la plage" onClick={() => onChange(ranges.filter((_, j) => j !== i))}>✕</button></div>)}
+    {ranges.length < 4 && <button type="button" className="linkbtn" style={{ paddingLeft: 0 }} onClick={() => onChange([...ranges, ranges.length ? ['17:00', '18:00'] : ['10:00', '11:00']])}>+ Ajouter une plage</button>}
+  </>
+}
+
+/** Disponibilités : Horaires (semaine type) · Dates (calendrier + exceptions) · Agenda (Google Agenda). */
 export default function Dispos({ toast }) {
   const todayK = parisKey(new Date().toISOString())[0]
   const [ty, tm] = todayK.split('-').map(Number)
+  const [sub, setSub] = useState('horaires')
   const [ym, setYm] = useState({ y: ty, m: tm - 1 })
   const [sel, setSel] = useState(todayK)
-  const [week, setWeek] = useState(null); const [cfg, setCfg] = useState(null); const [blocked, setBlocked] = useState([])
+  const [week, setWeek] = useState(null); const [cfg, setCfg] = useState(null); const [blocked, setBlocked] = useState([]); const [over, setOver] = useState({})
   const [free, setFree] = useState(new Set()); const [taken, setTaken] = useState(new Set())
-  const [edit, setEdit] = useState(false)
+  const [gcal, setGcal] = useState(null); const [busy, setBusy] = useState([])
+  const [copy, setCopy] = useState(null); const [copyTo, setCopyTo] = useState([])
+  const [editDay, setEditDay] = useState(false); const [dayRanges, setDayRanges] = useState([])
 
   const load = async () => {
-    const [h, s, b, sl, cd] = await Promise.all([
+    supabase.rpc('gcal_status').then(({ data }) => setGcal(data))
+    supabase.from('busy_times').select('starts_at,ends_at,title').gte('ends_at', new Date().toISOString()).then(({ data }) => setBusy((data || []).map(e => { const [dk, a] = parisKey(e.starts_at), [dk2, b] = parisKey(e.ends_at); return { dk, a: toMin(a), b: dk2 === dk ? toMin(b) : 1440 } })))
+    const [h, s, b, o, sl, cd] = await Promise.all([
       supabase.from('cand_hours').select('*').order('start_time'), supabase.from('cand_settings').select('*').eq('id', 1).single(),
-      supabase.from('cand_blocked').select('day').order('day'), supabase.rpc('cand_slots'),
+      supabase.from('cand_blocked').select('day').order('day'), supabase.from('cand_overrides').select('*').order('start_time'), supabase.rpc('cand_slots'),
       supabase.from('candidatures').select('starts_at,status').in('status', ['reserve', 'confirme']).gte('starts_at', new Date(Date.now() - 864e5).toISOString())])
     const w = {}; DOW.forEach(([d]) => { w[d] = [] }); (h.data || []).forEach(r => w[r.weekday].push([hm(r.start_time), hm(r.end_time)]))
-    setWeek(w); setCfg(s.data); setBlocked((b.data || []).map(x => x.day))
+    const ov = {}; (o.data || []).forEach(r => { (ov[r.day] = ov[r.day] || []).push([hm(r.start_time), hm(r.end_time)]) })
+    setWeek(w); setCfg(s.data); setBlocked((b.data || []).map(x => x.day)); setOver(ov)
     setFree(new Set((sl.data || []).map(i => parisKey(i).join('|')))); setTaken(new Set((cd.data || []).map(c => parisKey(c.starts_at).join('|'))))
   }
   useEffect(() => { load() }, [])
 
+  const rangesFor = (k) => over[k] || (week && week[dowOf(k)]) || []
   const slotsFor = (k) => {
     if (!week || !cfg) return []
     const out = []; const dur = +cfg.slot_min, step = +cfg.step_min
-    for (const [a, b] of week[dowOf(k)] || []) for (let t = toMin(a); t + dur <= toMin(b); t += step) out.push(fromMin(t))
+    for (const [a, b] of rangesFor(k)) for (let t = toMin(a); t + dur <= toMin(b); t += step) out.push(fromMin(t))
     return out
   }
   const horizonK = cfg ? addDays(todayK, +cfg.horizon_days) : todayK
@@ -48,20 +67,20 @@ export default function Dispos({ toast }) {
     const first = key(ym.y, ym.m, 1); const lead = (dowOf(first) + 6) % 7; const start = addDays(first, -lead)
     return Array.from({ length: 42 }, (_, i) => {
       const k = addDays(start, i); const inMonth = +k.slice(5, 7) - 1 === ym.m
-      const n = slotsFor(k).length; const isBlocked = blocked.includes(k)
+      const sl = slotsFor(k); const isBlocked = blocked.includes(k)
       let st = 'open'
-      if (k < todayK) st = 'past'; else if (isBlocked) st = 'closed'; else if (!n) st = 'off'; else if (k > horizonK) st = 'far'
-      const nFree = st === 'open' ? slotsFor(k).filter(t => free.has(k + '|' + t)).length : 0
-      return { k, d: +k.slice(8), inMonth, st, n: nFree }
+      if (k < todayK) st = 'past'; else if (isBlocked) st = 'closed'; else if (!sl.length) st = 'off'; else if (k > horizonK) st = 'far'
+      const nFree = st === 'open' ? sl.filter(t => free.has(k + '|' + t)).length : 0
+      return { k, d: +k.slice(8), inMonth, st, n: nFree, ovr: !!over[k] }
     })
-  }, [week, cfg, blocked, free, ym])
+  }, [week, cfg, blocked, free, ym, over])
 
   const saveWeek = async () => {
-    for (const rs of Object.values(week)) for (const r of rs) if (!r[0] || !r[1] || r[0] >= r[1]) return toast('Vérifie les horaires : le début doit précéder la fin', true)
+    for (const rs of Object.values(week)) if (badRange(rs)) return toast('Vérifie les horaires : le début doit précéder la fin', true)
     const { error: e1 } = await supabase.from('cand_hours').delete().gte('id', 0); if (e1) return toast(friendlyError(e1), true)
     const ins = Object.entries(week).flatMap(([d, rs]) => rs.map(r => ({ weekday: +d, start_time: r[0], end_time: r[1] })))
     if (ins.length) { const { error } = await supabase.from('cand_hours').insert(ins); if (error) return toast(friendlyError(error), true) }
-    toast('Horaires enregistrés'); setEdit(false); load()
+    toast('Horaires enregistrés'); load()
   }
   const saveCfg = async () => {
     const { error } = await supabase.from('cand_settings').update({ slot_min: +cfg.slot_min, step_min: +cfg.step_min, notice_min: Math.round(+(cfg.notice_h ?? cfg.notice_min / 60) * 60), horizon_days: +cfg.horizon_days, release_hours: +cfg.release_hours }).eq('id', 1)
@@ -72,50 +91,102 @@ export default function Dispos({ toast }) {
     else { const { error } = await supabase.from('cand_blocked').upsert({ day: sel }); if (error) return toast(friendlyError(error), true) }
     load()
   }
-  const setRange = (d, i, k, v) => setWeek(w => ({ ...w, [d]: w[d].map((r, j) => j === i ? (k ? [r[0], v] : [v, r[1]]) : r) }))
+  const openDayEditor = () => { setDayRanges(rangesFor(sel).map(r => [...r])); setEditDay(true) }
+  const saveDay = async () => {
+    if (badRange(dayRanges)) return toast('Vérifie les horaires : le début doit précéder la fin', true)
+    await supabase.from('cand_overrides').delete().eq('day', sel)
+    if (!dayRanges.length) { await supabase.from('cand_blocked').upsert({ day: sel }); toast('Jour fermé'); setEditDay(false); return load() }
+    const { error } = await supabase.from('cand_overrides').insert(dayRanges.map(r => ({ day: sel, start_time: r[0], end_time: r[1] }))); if (error) return toast(friendlyError(error), true)
+    await supabase.from('cand_blocked').delete().eq('day', sel)
+    toast('Horaires de ce jour enregistrés'); setEditDay(false); load()
+  }
+  const resetDay = async () => { await supabase.from('cand_overrides').delete().eq('day', sel); toast('Horaires habituels rétablis'); setEditDay(false); load() }
+  const saveGcal = async (e) => {
+    e.preventDefault(); const v = e.target.ics.value.trim()
+    const { error } = await supabase.rpc('set_gcal_ics', { p_url: v }); if (error) return toast(friendlyError(error), true)
+    e.target.reset(); toast(v ? 'Agenda connecté, synchro en cours…' : 'Agenda déconnecté'); setTimeout(load, 4000); load()
+  }
+  const unplug = async () => { const { error } = await supabase.rpc('set_gcal_ics', { p_url: '' }); if (error) return toast(friendlyError(error), true); toast('Agenda déconnecté'); load() }
   const nav = (n) => setYm(({ y, m }) => { const t = new Date(Date.UTC(y, m + n, 1)); return { y: t.getUTCFullYear(), m: t.getUTCMonth() } })
+  const applyCopy = () => { setWeek(w => { const n = { ...w }; copyTo.forEach(d => { n[d] = w[copy].map(r => [...r]) }); return n }); setCopy(null); setCopyTo([]); toast('Copié : pense à enregistrer') }
 
   if (!week || !cfg) return <div className="sheet-body"><p className="muted">Chargement…</p></div>
   const d = dowOf(sel); const sl = slotsFor(sel); const isBlocked = blocked.includes(sel); const past = sel < todayK
   const nFreeSel = sl.filter(t => free.has(sel + '|' + t)).length
 
   return <div className="sheet-body">
-    <div className="mhead"><h2 className="sh">{MONTHS[ym.m]} {ym.y}</h2><div className="mnav"><button onClick={() => nav(-1)} aria-label="Mois précédent">‹</button><button onClick={() => nav(1)} aria-label="Mois suivant">›</button></div></div>
-    <div className="mcal">
-      {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((w, i) => <div key={i} className="mw">{w}</div>)}
-      {cells.map(c => <button key={c.k} className={`mc ${c.st} ${c.inMonth ? '' : 'out'} ${c.k === sel ? 'sel' : ''} ${c.k === todayK ? 'today' : ''}`} onClick={() => { setSel(c.k); setEdit(false); if (!c.inMonth) setYm({ y: +c.k.slice(0, 4), m: +c.k.slice(5, 7) - 1 }) }}>
-        <b>{c.d}</b><i>{c.st === 'open' ? c.n : c.st === 'closed' ? 'fermé' : c.st === 'far' ? '—' : ''}</i></button>)}
-    </div>
-    <div className="mleg"><span><u className="g" /> Ouvert (créneaux libres)</span><span><u className="r" /> Fermé</span><span><u className="x" /> Hors délai</span></div>
+    <div className="pills" style={{ marginBottom: 12 }}>{[['horaires', 'Horaires'], ['dates', 'Dates'], ['agenda', 'Agenda']].map(([k, l]) => <button key={k} className={`pill ${sub === k ? 'on' : ''}`} onClick={() => setSub(k)}>{l}{k === 'agenda' && gcal && !gcal.set ? ' •' : ''}</button>)}</div>
 
-    <div className="daycard">
-      <div className="dchead"><b>{longDay(sel)}</b><span>{past ? 'Passé' : isBlocked ? 'Fermé' : sl.length ? `${nFreeSel} libre${nFreeSel > 1 ? 's' : ''} sur ${sl.length}` : 'Aucun horaire'}</span></div>
-      {!isBlocked && !past && sl.length > 0 && <div className="slotchips">{sl.map(t => { const k = sel + '|' + t; const st = free.has(k) ? 'ok' : taken.has(k) ? 'res' : 'off'; return <span key={t} className={`sc ${st}`}>{t}{st === 'res' ? ' · réservé' : ''}</span> })}</div>}
-      {!isBlocked && !past && !sl.length && <p className="muted small" style={{ margin: '8px 0 0' }}>Pas d'horaire le {DNAME[d]}. Ajoute une plage ci-dessous.</p>}
-      {isBlocked && <p className="muted small" style={{ margin: '8px 0 0' }}>Ce jour est fermé : personne ne peut réserver.</p>}
-      <div className="dcbtns">
-        <button className="btn ghost sm" onClick={() => setEdit(!edit)}>{edit ? 'Fermer l’éditeur' : `Horaires du ${DNAME[d]}`}</button>
-        {!past && <button className={`btn sm ${isBlocked ? '' : 'danger'}`} onClick={toggleBlock}>{isBlocked ? 'Rouvrir ce jour' : 'Fermer ce jour'}</button>}
-      </div>
-      {edit && <div className="editor">
-        <p className="muted small" style={{ margin: '0 0 6px' }}>Ces horaires valent pour <b>tous les {DNAME[d]}s</b>. Pour une seule date, utilise « Fermer ce jour ».</p>
-        {week[d].map((r, i) => <div key={i} className="hrange" style={{ marginLeft: 0 }}>
-          <input type="time" value={r[0]} onChange={e => setRange(d, i, 0, e.target.value)} /><span>–</span><input type="time" value={r[1]} onChange={e => setRange(d, i, 1, e.target.value)} />
-          <button type="button" className="btn ghost sm" aria-label="Supprimer la plage" onClick={() => setWeek(w => ({ ...w, [d]: w[d].filter((_, j) => j !== i) }))}>✕</button></div>)}
-        {week[d].length < 4 && <button type="button" className="linkbtn" style={{ paddingLeft: 0 }} onClick={() => setWeek(w => ({ ...w, [d]: [...w[d], [w[d].length ? '17:00' : '10:00', w[d].length ? '18:00' : '11:00']] }))}>+ Ajouter une plage</button>}
-        <button className="btn big" onClick={saveWeek}>Enregistrer les horaires du {DNAME[d]}</button>
-      </div>}
-    </div>
+    {sub === 'horaires' && <>
+      <h2 className="sh">Mes horaires habituels</h2>
+      <p className="muted" style={{ margin: '2px 0 10px' }}>Heure de Paris. C'est ce que voient les candidats chaque semaine.</p>
+      <div className="wlist">{DOW.map(([dd, name]) => { const on = week[dd].length > 0; return <div key={dd} className="wrow">
+        <div className="whead">
+          <button type="button" className={`tg ${on ? 'on' : ''}`} aria-label={on ? `Fermer le ${DNAME[dd]}` : `Ouvrir le ${DNAME[dd]}`} onClick={() => setWeek(w => ({ ...w, [dd]: on ? [] : [['10:00', '11:00']] }))}><i /></button>
+          <b>{name}</b>{!on && <span className="muted">Indisponible</span>}
+          {on && <button type="button" className="cpy" aria-label={`Copier les horaires du ${DNAME[dd]}`} onClick={() => { setCopy(copy === dd ? null : dd); setCopyTo([]) }}>Copier</button>}
+        </div>
+        {on && <Ranges ranges={week[dd]} onChange={rs => setWeek(w => ({ ...w, [dd]: rs }))} />}
+        {copy === dd && <div className="copybox"><span className="muted small">Copier sur :</span><div className="chips">{DOW.filter(([x]) => x !== dd).map(([x, n]) => <button key={x} type="button" className={`chip ${copyTo.includes(x) ? 'sel' : ''}`} onClick={() => setCopyTo(c => c.includes(x) ? c.filter(y => y !== x) : [...c, x])}>{n.slice(0, 3)}.</button>)}</div>
+          <button type="button" className="btn sm" disabled={!copyTo.length} onClick={applyCopy}>Appliquer</button></div>}
+      </div> })}</div>
+      <button className="btn big" onClick={saveWeek}>Enregistrer mes horaires</button>
+      <details className="settings"><summary>Réglages des appels</summary>
+        <div className="grid2">
+          <div><label className="lq">Durée de l'appel (min)</label><input type="number" min="15" max="120" value={cfg.slot_min} onChange={e => setCfg({ ...cfg, slot_min: e.target.value })} /></div>
+          <div><label className="lq">Un créneau toutes les (min)</label><input type="number" min="5" max="120" value={cfg.step_min} onChange={e => setCfg({ ...cfg, step_min: e.target.value })} /></div>
+          <div><label className="lq">Délai minimum (heures)</label><input type="number" min="0" max="72" value={cfg.notice_h ?? Math.round(cfg.notice_min / 60)} onChange={e => setCfg({ ...cfg, notice_h: e.target.value })} /></div>
+          <div><label className="lq">Réservable sur (jours)</label><input type="number" min="1" max="60" value={cfg.horizon_days} onChange={e => setCfg({ ...cfg, horizon_days: e.target.value })} /></div>
+          <div><label className="lq">Libérer sans message après (h)</label><input type="number" min="1" max="48" value={cfg.release_hours} onChange={e => setCfg({ ...cfg, release_hours: e.target.value })} /></div>
+        </div>
+        <button className="btn big" onClick={saveCfg}>Enregistrer les réglages</button>
+      </details>
+    </>}
 
-    <details className="settings"><summary>Réglages des appels</summary>
-      <div className="grid2">
-        <div><label className="lq">Durée de l'appel (min)</label><input type="number" min="15" max="120" value={cfg.slot_min} onChange={e => setCfg({ ...cfg, slot_min: e.target.value })} /></div>
-        <div><label className="lq">Un créneau toutes les (min)</label><input type="number" min="5" max="120" value={cfg.step_min} onChange={e => setCfg({ ...cfg, step_min: e.target.value })} /></div>
-        <div><label className="lq">Délai minimum (heures)</label><input type="number" min="0" max="72" value={cfg.notice_h ?? Math.round(cfg.notice_min / 60)} onChange={e => setCfg({ ...cfg, notice_h: e.target.value })} /></div>
-        <div><label className="lq">Réservable sur (jours)</label><input type="number" min="1" max="60" value={cfg.horizon_days} onChange={e => setCfg({ ...cfg, horizon_days: e.target.value })} /></div>
-        <div><label className="lq">Libérer sans message après (h)</label><input type="number" min="1" max="48" value={cfg.release_hours} onChange={e => setCfg({ ...cfg, release_hours: e.target.value })} /></div>
+    {sub === 'dates' && <>
+      <div className="mhead"><h2 className="sh">{MONTHS[ym.m]} {ym.y}</h2><div className="mnav"><button onClick={() => nav(-1)} aria-label="Mois précédent">‹</button><button onClick={() => nav(1)} aria-label="Mois suivant">›</button></div></div>
+      <div className="mcal">
+        {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((w, i) => <div key={i} className="mw">{w}</div>)}
+        {cells.map(c => <button key={c.k} className={`mc ${c.st} ${c.inMonth ? '' : 'out'} ${c.k === sel ? 'sel' : ''} ${c.k === todayK ? 'today' : ''} ${c.ovr ? 'ovr' : ''}`} onClick={() => { setSel(c.k); setEditDay(false); if (!c.inMonth) setYm({ y: +c.k.slice(0, 4), m: +c.k.slice(5, 7) - 1 }) }}>
+          <b>{c.d}</b><i>{c.st === 'open' ? c.n : c.st === 'closed' ? 'fermé' : c.st === 'far' ? '—' : ''}</i></button>)}
       </div>
-      <button className="btn big" onClick={saveCfg}>Enregistrer les réglages</button>
-    </details>
+      <div className="mleg"><span><u className="g" /> Ouvert (créneaux libres)</span><span><u className="r" /> Fermé</span><span><u className="d" /> Horaires particuliers</span></div>
+
+      <div className="daycard">
+        <div className="dchead"><b>{longDay(sel)}</b><span>{past ? 'Passé' : isBlocked ? 'Fermé' : sl.length ? `${nFreeSel} libre${nFreeSel > 1 ? 's' : ''} sur ${sl.length}` : 'Aucun horaire'}</span></div>
+        {over[sel] && !isBlocked && <p className="small" style={{ margin: '6px 0 0', color: '#1D4ED8' }}>Horaires particuliers pour cette date : {over[sel].map(r => r.join('–')).join(' · ')}</p>}
+        {!isBlocked && !past && sl.length > 0 && <div className="slotchips">{sl.map(t => { const k = sel + '|' + t; const m0 = toMin(t); const inAgenda = busy.some(e => e.dk === sel && m0 < e.b && m0 + +cfg.slot_min > e.a); const st = free.has(k) ? 'ok' : taken.has(k) ? 'res' : 'off'; return <span key={t} className={`sc ${st}`}>{t}{st === 'res' ? ' · réservé' : st === 'off' && inAgenda ? ' · Agenda' : ''}</span> })}</div>}
+        {!isBlocked && !past && !sl.length && <p className="muted small" style={{ margin: '8px 0 0' }}>Pas d'horaire le {DNAME[d]}.</p>}
+        {isBlocked && <p className="muted small" style={{ margin: '8px 0 0' }}>Ce jour est fermé : personne ne peut réserver.</p>}
+        {!past && <div className="dcbtns">
+          <button className="btn ghost sm" onClick={() => editDay ? setEditDay(false) : openDayEditor()}>{editDay ? 'Annuler' : 'Horaires différents'}</button>
+          <button className={`btn sm ${isBlocked ? '' : 'danger'}`} onClick={toggleBlock}>{isBlocked ? 'Rouvrir ce jour' : 'Fermer ce jour'}</button>
+        </div>}
+        {editDay && <div className="editor">
+          <p className="muted small" style={{ margin: '0 0 6px' }}>Horaires uniquement pour le <b>{longDay(sel).toLowerCase()}</b>. Sans plage, le jour est fermé.</p>
+          <Ranges ranges={dayRanges} onChange={setDayRanges} />
+          <button className="btn big" onClick={saveDay}>Enregistrer pour ce jour</button>
+          {over[sel] && <button className="btn ghost big" style={{ marginTop: 8 }} onClick={resetDay}>Remettre les horaires habituels</button>}
+        </div>}
+      </div>
+    </>}
+
+    {sub === 'agenda' && <>
+      <h2 className="sh">Google Agenda</h2>
+      <div className="gcard" style={{ marginTop: 10 }}>
+        <div className="dchead"><b>Calendrier connecté</b>{gcal?.set ? <span className="gok">● Connecté</span> : <span className="gno">Non connecté</span>}</div>
+        {gcal?.set && <p className="muted small" style={{ margin: '6px 0 0' }}>{gcal.busy} événement(s) à venir bloquent des créneaux{gcal.synced_at ? ` · dernière synchro ${new Date(gcal.synced_at).toLocaleTimeString('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })}` : ''}. Mise à jour toutes les 10 min.</p>}
+        <p className="muted small" style={{ margin: '6px 0 10px' }}>Tes événements Google Agenda bloquent automatiquement les créneaux, et chaque réservation arrive dans ta boîte mail avec une invitation « Ajouter à l'agenda ».</p>
+        <form onSubmit={saveGcal}>
+          <input name="ics" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" />
+          <div className="dcbtns"><button className="btn sm">{gcal?.set ? 'Changer l’adresse' : 'Connecter mon agenda'}</button>{gcal?.set && <button type="button" className="btn ghost sm" onClick={unplug}>Déconnecter</button>}</div>
+        </form>
+      </div>
+      <div className="gcard"><b>Où trouver l'adresse à coller ?</b><ol className="howto" style={{ margin: '8px 0 0', paddingLeft: 18, lineHeight: 1.6 }}>
+        <li>Sur ordinateur, ouvre calendar.google.com avec contact@theambitiousman.fr.</li>
+        <li>À gauche, survole ton agenda, clique sur ⋮ puis « Paramètres et partage ».</li>
+        <li>Descends jusqu'à « Intégrer l'agenda » et copie « Adresse secrète au format iCal ».</li>
+        <li>Colle-la ci-dessus et appuie sur « Connecter mon agenda ».</li></ol></div>
+    </>}
   </div>
 }
