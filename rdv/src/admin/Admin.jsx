@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import Candidatures from './Candidatures'
 import Leads from './Leads'
+import Dispos from './Dispos'
 
 const Ic = ({ d }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">{d}</svg>
 
@@ -71,7 +72,7 @@ export default function Admin() {
   return <div className="adm app">
     <header className="bar"><h1>Mes appels</h1><span className="date">{today}</span><button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
     <div className={`scroll ${tab !== 'appels' ? 'light' : ''}`}>
-      {tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : <Candidatures toast={toast} tab={tab} />}
+      {tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : tab === 'dispos' ? <Dispos toast={toast} /> : <Candidatures toast={toast} tab={tab} />}
     </div>
     <nav className="tabs">
       <button className={tab === 'appels' ? 'on' : ''} onClick={() => setTab('appels')}><Ic d={<><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></>} />Appels</button>
