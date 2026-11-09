@@ -103,6 +103,7 @@ export default function Dispos({ toast }) {
   const resetDay = async () => { await supabase.from('cand_overrides').delete().eq('day', sel); toast('Horaires habituels rétablis'); setEditDay(false); load() }
   const saveGcal = async (e) => {
     e.preventDefault(); const v = e.target.ics.value.trim()
+    if (!v) return toast('Colle d\u2019abord l\u2019adresse secrète de ton agenda dans le champ', true)
     const { error } = await supabase.rpc('set_gcal_ics', { p_url: v }); if (error) return toast(friendlyError(error), true)
     e.target.reset(); toast(v ? 'Agenda connecté, synchro en cours…' : 'Agenda déconnecté'); setTimeout(load, 4000); load()
   }
