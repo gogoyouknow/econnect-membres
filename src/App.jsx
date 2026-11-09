@@ -31,6 +31,7 @@ const SPACES = {
   methode: { name: 'Méthode E-Connect', short: 'Méthode', sub: 'Ta formation', home: 'mcours' },
   accel: { name: "L'Accélérateur", short: 'Accélérateur', sub: 'Le groupe et l\'accompagnement', home: 'general' },
   accomp: { name: 'Accompagnement', short: 'Accomp.', sub: 'Tes conversations avec ton coach', home: 'co' },
+  rdv: { name: 'Appels TikTok', short: 'Appels', sub: 'Réservations de ta bio', home: 'candidatures' },
 }
 
 const VIEWS = [
@@ -56,7 +57,7 @@ const VIEWS = [
   { id: 'notifs', k: '🔔', label: 'Notifications', group: 'Communauté', sp: 'both' },
   { id: 'profile', k: '👤', label: 'Mon profil', group: 'Communauté', sp: 'both' },
   { id: 'leads', k: '🎯', label: 'Prospects', group: 'Gestion', staff: true },
-  { id: 'candidatures', k: '📞', label: 'Candidatures TikTok', group: 'Gestion', staff: true },
+  { id: 'candidatures', k: '📞', label: 'Mes appels', group: 'Appels TikTok', sp: 'rdv', staff: true },
   { id: 'tracking', k: '📊', label: 'Suivi des élèves', group: 'Gestion', staff: true },
   { id: 'moderation', k: '🛡️', label: 'Modération', group: 'Gestion', staff: true },
   { id: 'analytics', k: '📈', label: 'Analytics', group: 'Gestion', admin: true, sp: 'both' },
@@ -66,7 +67,7 @@ const VIEWS = [
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [meReal, setMe] = useState(null)
-  const [viewAs, setViewAsState] = useState(() => { try { return localStorage.getItem('viewAs') || '' } catch { return '' } })
+  const [viewAs, setViewAsState] = useState('')
   const setViewAs = (v) => { setViewAsState(v); try { v ? localStorage.setItem('viewAs', v) : localStorage.removeItem('viewAs') } catch {} }
   const [profiles, setProfiles] = useState({ list: [], map: {} })
   const [settings, setSettings] = useState(null)
@@ -132,7 +133,7 @@ export default function App() {
   const isStaff = me.role !== 'member', isAdmin = me.role === 'admin'
   const ctx = { me, profiles, settings, isStaff, isAdmin, refresh, go: setView, toast }
   // quels espaces ce membre possède, et lequel est affiché
-  const owns = { methode: isStaff || !!me.methode, accel: isStaff || me.accel !== false, accomp: isStaff || (me.accel !== false && me.role === 'member') }
+  const owns = { methode: isStaff || !!me.methode, accel: isStaff || me.accel !== false, accomp: isStaff || (me.accel !== false && me.role === 'member'), rdv: isStaff }
   const inSpace = (v, s) => (v.sp || 'accel') === s || v.sp === 'both'
   const viewSp = VIEWS.find(v => v.id === view)?.sp || (view === 'acceleration' ? 'accel' : null)
   let space = owns[spacePref] ? spacePref : owns.accel ? 'accel' : 'methode'
@@ -195,9 +196,6 @@ export default function App() {
           {spaceMenu && <><div className="spscrim" onClick={() => setSpaceMenu(false)} /><div className="spmenu">
             <small>Tes espaces</small>
             {spaceList.map(s => <button key={s} className={s === space ? 'on' : ''} onClick={() => switchSpace(s)}><span><b>{SPACES[s].name}</b><small>{owns[s] ? SPACES[s].sub : 'Accompagnement · 160 €/mois'}</small></span><em>{s === space ? '✓' : owns[s] ? '' : '🔒'}</em></button>)}
-            {realStaff && <><small>Voir comme un élève</small>
-              {Object.entries(VIEW_AS).map(([k, v]) => <button key={k} className={viewAs === k ? 'on' : ''} onClick={() => { setSpaceMenu(false); setViewAs(k); setView(k === 'methode' ? 'mcours' : 'courses') }}><span><b>{v.label}</b><small>Même écran que lui, sans se déconnecter</small></span><em>{viewAs === k ? '✓' : ''}</em></button>)}
-              {viewAs && <button onClick={() => { setSpaceMenu(false); setViewAs('') }}><span><b>Revenir en admin</b></span><em>↩</em></button>}</>}
           </div></>}
         </div>
         <div className="sp" />
@@ -225,7 +223,7 @@ export default function App() {
       {space === 'accel' && <Side {...ctx} />}
 
       <nav className="tabbar">
-        {(space === 'accomp' ? (isStaff ? [['co', '💬', 'Réception'], ['cosuivi', '📊', 'Suivi'], ['coeleves', '👥', 'Élèves']] : [['co', '💬', 'Messages'], ['journey', '🧭', 'Parcours'], ['courses', '🎓', 'Formation'], ['profile', '👤', 'Profil']]) : space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]).map(([id, k, l]) =>
+        {(space === 'accomp' ? (isStaff ? [['co', '💬', 'Réception'], ['cosuivi', '📊', 'Suivi'], ['coeleves', '👥', 'Élèves']] : [['co', '💬', 'Messages'], ['journey', '🧭', 'Parcours'], ['courses', '🎓', 'Formation'], ['profile', '👤', 'Profil']]) : space === 'rdv' ? [['candidatures', '📞', 'Mes appels']] : space === 'methode' ? [['mcours', '🎓', 'Formation'], ['mwins', '🏆', 'Résultats'], ['mlives', '🔴', 'Lives'], owns.accel ? ['mchat', '💬', 'Chat'] : ['offre', '⚡', 'Accélérateur']] : isStaff ? [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['tracking', '📊', 'Suivi'], ['lives', '🔴', 'Lives'], ['members', '👥', 'Membres']] : [['general', '💬', 'Chat'], ['courses', '🎓', 'Cours'], ['journey', '🧭', 'Parcours'], ['lives', '🔴', 'Lives'], ['profile', '👤', 'Profil']]).map(([id, k, l]) =>
           <button key={id} className={cur === id ? 'on' : ''} onClick={() => go(id)}><span>{k}</span>{l}</button>)}
         <button className={rail ? 'on' : ''} onClick={() => setRail(r => !r)}><span>☰</span>Plus</button>
       </nav>
