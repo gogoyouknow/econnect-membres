@@ -14,6 +14,46 @@ const sid = (() => {
   try { let v = localStorage.getItem('cand_sid'); if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); localStorage.setItem('cand_sid', v) } return v } catch { return 'mem-' + Date.now() + Math.random().toString(16).slice(2) }
 })()
 
+// Témoignages vidéo (playlist YouTube « Témoignage d'élèves »). Vignettes officielles de la chaîne ; la vidéo ne se charge qu'au toucher.
+const TEMOS = [
+  ['OsUzPk84x5s', 'Abdoulaye · son 2ᵉ mois', '10:48'],
+  ['iu0DjBCAyxs', 'Meryeme · après 2 semaines', '5:17'],
+  ['_ms0EjrimCs', 'Salarié, à côté de son CDI', '3:44'],
+  ['17QrGHeEp-M', 'Selimkhan · 27 ans', '7:43'],
+  ['9Q69OkBQlyY', '23 ans · 45 jours après', '8:36'],
+  ['VWBhzjocYds', 'Issa · 40 jours après', '8:00'],
+  ['hcbIS0DFEE0', 'Son tout premier stock', '6:55'],
+  ['b0YZOAXwSiU', 'Son premier mois', '17:34'],
+  ['KmG2NbYS9KA', 'Accompagnement 1-1', '19:21'],
+]
+// Grande vignette = sddefault (640 px, bandes noires haut/bas rognées par .lb) ; petites = mqdefault (16:9 sans bandes). Repli sur mqdefault si l'image manque.
+const Thumb = ({ id, dur, big }) => <span className={`tvid ${big ? 'big' : ''}`}>
+  <img className={big ? 'lb' : ''} src={`https://img.youtube.com/vi/${id}/${big ? 'sddefault' : 'mqdefault'}.jpg`} alt="" loading={big ? 'eager' : 'lazy'} decoding="async"
+    onError={(e) => { const i = e.currentTarget; if (!i.dataset.fb) { i.dataset.fb = '1'; i.classList.remove('lb'); i.src = `https://img.youtube.com/vi/${id}/mqdefault.jpg` } }} />
+  <i className="tplay"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg></i><span className="tdur">{dur}</span></span>
+function Temos({ onCta }) {
+  const [play, setPlay] = useState(null)
+  const [all, setAll] = useState(false)
+  const [first, ...rest] = TEMOS
+  const list = all ? rest : rest.slice(0, 4)
+  useEffect(() => { if (!play) return; const k = (e) => e.key === 'Escape' && setPlay(null); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [play])
+  const card = ([id, lbl, dur], big) => <button className={`tcard ${big ? 'big' : ''}`} key={id} onClick={() => setPlay([id, lbl])} aria-label={`Lire le témoignage : ${lbl}`}><Thumb id={id} dur={dur} big={big} /><b>{lbl}</b></button>
+  return <section className="temos">
+    <h2>Ils étaient exactement comme toi</h2>
+    <p className="muted s13">Ils avaient les mêmes doutes avant de réserver. Écoute-les, c'est eux qui en parlent le mieux.</p>
+    {card(first, true)}
+    <div className="tgrid">{list.map((t) => card(t))}</div>
+    {!all && rest.length > 4 && <button className="link" onClick={() => setAll(true)}>Voir {rest.length - 4} autres témoignages</button>}
+    <button className="btn" onClick={onCta}>Je réserve mon appel →</button>
+    {play && <div className="tmodal" onClick={() => setPlay(null)} role="dialog" aria-modal="true" aria-label={play[1]}>
+      <div className="tbox" onClick={(e) => e.stopPropagation()}>
+        <button className="tclose" onClick={() => setPlay(null)} aria-label="Fermer">✕</button>
+        <div className="tvid"><iframe src={`https://www.youtube-nocookie.com/embed/${play[0]}?autoplay=1&rel=0&playsinline=1`} title={play[1]} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen /></div>
+        <b>{play[1]}</b>
+      </div></div>}
+  </section>
+}
+
 export default function App() {
   const [step, setStep] = useState('intro')
   const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', email: '', situation: '', capital: '', have: '' })
@@ -99,6 +139,7 @@ export default function App() {
         <div><span>3</span><p><b>Si je peux t'aider, on en parle.</b> Sinon, je te le dis.</p></div></div>
         <button className="btn" onClick={() => go('who')}>Je réserve mon appel →</button>
         <p className="note c">3 questions · moins d'une minute</p></div>
+      <Temos onCta={() => go('who')} />
       <p className="note filter">Je réponds aux personnes prêtes à passer à l'action et à investir dans leur projet. Si ce n'est pas encore ton cas, ne réserve pas : on perdrait du temps tous les deux.</p>
     </section>}
 
