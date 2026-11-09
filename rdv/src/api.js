@@ -1,6 +1,6 @@
 // Appels directs aux fonctions SQL publiques (cand_*) du Supabase existant : pas de connexion, pas de librairie lourde.
 const URL_ = import.meta.env.VITE_SUPABASE_URL
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').match(/eyJ[\w-]+\.[\w-]+\.[\w-]+/)?.[0] || ''
 export const configured = Boolean(URL_ && KEY)
 export async function rpc(name, args = {}) {
   const r = await fetch(`${URL_}/rest/v1/rpc/${name}`, {
