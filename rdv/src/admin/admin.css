@@ -127,3 +127,5 @@ body.admbody{background:#0E1116;background-image:none;padding:0;color:#E8ECF2;fo
 .adm .chip.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
 .adm .mc.ovr{border-style:dashed;border-color:#3B82F6}
 .adm .mleg u.d{background:#fff;border:1px dashed #3B82F6}
+.adm .hrange .btn{flex:none;width:44px;padding:11px 0}
+.adm .hrange input[type=time]{min-width:0}
