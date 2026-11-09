@@ -31,5 +31,6 @@
   "0030_co_reactions.sql",
   "0031_reply_counts.sql",
   "0032_alerte_attente.sql",
-  "0033_co_pins.sql"
+  "0033_co_pins.sql",
+  "0034_candidatures.sql"
 ]
