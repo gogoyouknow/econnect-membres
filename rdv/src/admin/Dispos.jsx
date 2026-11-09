@@ -52,7 +52,17 @@ export default function Dispos({ toast }) {
     setWeek(w); setCfg(s.data); setBlocked((b.data || []).map(x => x.day)); setOver(ov)
     setFree(new Set((sl.data || []).map(i => parisKey(i).join('|')))); setTaken(new Set((cd.data || []).map(c => parisKey(c.starts_at).join('|'))))
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    try {
+      const p = new URLSearchParams(window.location.search).get('agenda')
+      if (p) {
+        setSub('agenda'); window.history.replaceState({}, '', window.location.pathname)
+        if (p === 'ok') { toast('Google Agenda connecté'); supabase.rpc('gcal_sync_now').then(() => setTimeout(load, 5000)) }
+        else toast(p === 'refuse' ? 'Connexion refusée côté Google' : 'La connexion à Google n\u2019a pas abouti, réessaie', true)
+      }
+    } catch (e) { /* rien */ }
+  }, [])
 
   const rangesFor = (k) => over[k] || (week && week[dowOf(k)]) || []
   const slotsFor = (k) => {
@@ -105,9 +115,20 @@ export default function Dispos({ toast }) {
     e.preventDefault(); const v = e.target.ics.value.trim()
     if (!v) return toast('Colle d\u2019abord l\u2019adresse secrète de ton agenda dans le champ', true)
     const { error } = await supabase.rpc('set_gcal_ics', { p_url: v }); if (error) return toast(friendlyError(error), true)
-    e.target.reset(); toast(v ? 'Agenda connecté, synchro en cours…' : 'Agenda déconnecté'); setTimeout(load, 4000); load()
+    e.target.reset(); toast('Agenda connecté, synchro en cours…'); setTimeout(load, 4000); load()
   }
-  const unplug = async () => { const { error } = await supabase.rpc('set_gcal_ics', { p_url: '' }); if (error) return toast(friendlyError(error), true); toast('Agenda déconnecté'); load() }
+  const unplug = async () => { const { error } = await supabase.rpc('gcal_disconnect'); if (error) return toast(friendlyError(error), true); toast('Agenda déconnecté'); load() }
+  const syncNow = async () => { const { error } = await supabase.rpc('gcal_sync_now'); if (error) return toast(friendlyError(error), true); toast('Synchro lancée'); setTimeout(load, 4000) }
+  const saveOauth = async (e) => {
+    e.preventDefault(); const f = new FormData(e.target)
+    const { error } = await supabase.rpc('set_google_oauth', { p_client_id: String(f.get('cid') || ''), p_client_secret: String(f.get('csec') || '') }); if (error) return toast(friendlyError(error), true)
+    e.target.reset(); toast('Identifiants Google enregistrés'); load()
+  }
+  const connectGoogle = async () => {
+    const { data, error } = await supabase.rpc('gcal_oauth_start'); if (error) return toast(friendlyError(error), true)
+    const q = new URLSearchParams({ client_id: data.client_id, redirect_uri: 'https://jfournnrqewntnfyptic.supabase.co/functions/v1/gcal-oauth', response_type: 'code', scope: 'https://www.googleapis.com/auth/calendar.freebusy', access_type: 'offline', prompt: 'consent', state: data.state })
+    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + q.toString()
+  }
   const nav = (n) => setYm(({ y, m }) => { const t = new Date(Date.UTC(y, m + n, 1)); return { y: t.getUTCFullYear(), m: t.getUTCMonth() } })
   const applyCopy = () => { setWeek(w => { const n = { ...w }; copyTo.forEach(d => { n[d] = w[copy].map(r => [...r]) }); return n }); setCopy(null); setCopyTo([]); toast('Copié : pense à enregistrer') }
 
@@ -176,18 +197,24 @@ export default function Dispos({ toast }) {
       <h2 className="sh">Google Agenda</h2>
       <div className="gcard" style={{ marginTop: 10 }}>
         <div className="dchead"><b>Calendrier connecté</b>{gcal?.set ? <span className="gok">● Connecté</span> : <span className="gno">Non connecté</span>}</div>
-        {gcal?.set && <p className="muted small" style={{ margin: '6px 0 0' }}>{gcal.busy} événement(s) à venir bloquent des créneaux{gcal.synced_at ? ` · dernière synchro ${new Date(gcal.synced_at).toLocaleTimeString('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })}` : ''}. Mise à jour toutes les 10 min.</p>}
-        <p className="muted small" style={{ margin: '6px 0 10px' }}>Tes événements Google Agenda bloquent automatiquement les créneaux, et chaque réservation arrive dans ta boîte mail avec une invitation « Ajouter à l'agenda ».</p>
-        <form onSubmit={saveGcal}>
-          <input name="ics" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" />
-          <div className="dcbtns"><button className="btn sm">{gcal?.set ? 'Changer l’adresse' : 'Connecter mon agenda'}</button>{gcal?.set && <button type="button" className="btn ghost sm" onClick={unplug}>Déconnecter</button>}</div>
-        </form>
+        {gcal?.set && <p className="muted small" style={{ margin: '6px 0 0' }}>{gcal.mode === 'google' ? 'Connexion Google directe. ' : 'Adresse iCal. '}{gcal.busy} créneau(x) occupé(s) à venir{gcal.synced_at ? ` · dernière synchro ${new Date(gcal.synced_at).toLocaleTimeString('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })}` : ''}. Mise à jour toutes les 10 min.</p>}
+        <p className="muted small" style={{ margin: '6px 0 10px' }}>Quand tu es occupé dans Google Agenda, les créneaux correspondants disparaissent automatiquement de ta page de réservation. Seules les plages occupées sont lues, jamais le titre ni le contenu de tes événements.</p>
+        {gcal?.set ? <div className="dcbtns"><button className="btn ghost sm" onClick={syncNow}>Synchroniser maintenant</button><button className="btn ghost sm" onClick={unplug}>Déconnecter</button></div>
+          : gcal?.oauth_ready ? <button className="btn big" style={{ marginTop: 0 }} onClick={connectGoogle}>Se connecter avec Google</button>
+          : <p className="muted small" style={{ margin: 0 }}>Une configuration unique est nécessaire (voir ci-dessous).</p>}
       </div>
-      <div className="gcard"><b>Où trouver l'adresse à coller ?</b><ol className="howto" style={{ margin: '8px 0 0', paddingLeft: 18, lineHeight: 1.6 }}>
-        <li>Sur ordinateur, ouvre calendar.google.com avec contact@theambitiousman.fr.</li>
-        <li>À gauche, survole ton agenda, clique sur ⋮ puis « Paramètres et partage ».</li>
-        <li>Descends jusqu'à « Intégrer l'agenda » et copie « Adresse secrète au format iCal ».</li>
-        <li>Colle-la ci-dessus et appuie sur « Connecter mon agenda ».</li></ol></div>
+      {!gcal?.set && !gcal?.oauth_ready && <div className="gcard"><b>Configuration unique</b>
+        <p className="muted small" style={{ margin: '6px 0 8px' }}>Colle ici les deux informations du « client OAuth » créé dans Google Cloud. Elles sont gardées côté serveur.</p>
+        <form onSubmit={saveOauth}>
+          <input name="cid" placeholder="ID client (…apps.googleusercontent.com)" autoComplete="off" />
+          <input name="csec" type="password" placeholder="Code secret du client" autoComplete="off" style={{ marginTop: 8 }} />
+          <button className="btn big">Enregistrer</button>
+        </form></div>}
+      {!gcal?.set && <details className="gcard"><summary style={{ fontWeight: 600, cursor: 'pointer' }}>Autre méthode : adresse iCal secrète</summary>
+        <form onSubmit={saveGcal} style={{ marginTop: 10 }}>
+          <input name="ics" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" />
+          <div className="dcbtns"><button className="btn sm">Connecter avec l'adresse</button></div>
+        </form></details>}
     </>}
   </div>
 }

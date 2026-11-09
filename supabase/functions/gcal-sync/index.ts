@@ -13,6 +13,20 @@ Deno.serve(async (req) => {
   try {
     const token = req.headers.get('x-push-token') ?? ''
     await rpc('push_payload', { p_token: token, p_user: '00000000-0000-0000-0000-000000000000' })   // vérifie le jeton
+    // Connexion directe Google (prioritaire) : créneaux occupés via l'API freeBusy
+    const oc = await rpc('gcal_oauth_for_fn')
+    if (oc?.refresh && oc.client_id && oc.client_secret) {
+      const tk = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: oc.client_id, client_secret: oc.client_secret, refresh_token: oc.refresh, grant_type: 'refresh_token' }) })
+      const tj = await tk.json()
+      if (!tk.ok || !tj.access_token) throw new Error('Google : ' + (tj.error_description || tj.error || tk.status))
+      const fb = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', { method: 'POST', headers: { Authorization: `Bearer ${tj.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeMin: new Date(Date.now() - 86400000).toISOString(), timeMax: new Date(Date.now() + 14 * 86400000).toISOString(), timeZone: 'Europe/Paris', items: [{ id: 'primary' }] }) })
+      const fj = await fb.json()
+      if (!fb.ok) throw new Error('freeBusy : ' + (fj.error?.message || fb.status))
+      const busyG = ((fj.calendars?.primary?.busy ?? []) as { start: string, end: string }[]).map(b => ({ s: b.start, e: b.end, t: 'Occupé' }))
+      const nG = await rpc('gcal_replace_busy_for_fn', { p: busyG })
+      return Response.json({ ok: true, mode: 'google', events: busyG.length, stored: nG })
+    }
     const ics = await rpc('gcal_ics_for_fn')
     if (!ics) return Response.json({ ok: false, error: 'pas d\'adresse iCal' })
     const txt = await fetch(ics, { headers: { 'User-Agent': 'laccelerateur-rdv/1.0' } }).then(r => { if (!r.ok) throw new Error(`iCal ${r.status}`); return r.text() })
