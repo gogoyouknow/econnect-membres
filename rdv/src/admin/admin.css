@@ -78,3 +78,6 @@ body.admbody{background:#0E1116;background-image:none;padding:0;color:#E8ECF2;fo
 .adm .toast.bad{border-color:#FF7A6B}
 .adm .showpw{display:flex;align-items:center;gap:8px;font-size:13px;color:#8A94A6}
 .adm .login .showpw input{width:auto}
+
+.adm .tabs .ico{position:relative;display:inline-flex}
+.adm .tabs .dot{position:absolute;top:-4px;right:-10px;min-width:16px;height:16px;border-radius:999px;background:#E5484D;color:#fff;font-style:normal;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}

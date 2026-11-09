@@ -10,6 +10,10 @@ const dayKey = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).forma
 const fmtT = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 const fmtDay = (k) => { const d = new Date(k + 'T12:00:00Z'); return { w: new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'short' }).format(d), n: d.getUTCDate() } }
 
+const sid = (() => {
+  try { let v = localStorage.getItem('cand_sid'); if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); localStorage.setItem('cand_sid', v) } return v } catch { return 'mem-' + Date.now() + Math.random().toString(16).slice(2) }
+})()
+
 export default function App() {
   const [step, setStep] = useState('intro')
   const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', email: '', situation: '', capital: '', have: '' })
@@ -22,11 +26,13 @@ export default function App() {
   const [done, setDone] = useState(null)
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
   const go = (s) => { setErr(''); setStep(s); window.scrollTo(0, 0) }
+  // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
+  const saveLead = (stp, over = {}) => { if (!configured) return; const g = { ...f, ...over }; rpc('cand_lead', { p: { sid, step: stp, first_name: g.first_name.trim(), phone: g.tel.replace(/\D/g, '').length >= 8 ? g.prefix + g.tel.replace(/\D/g, '').replace(/^0+/, '') : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have } }).catch(() => {}) }
   const n = { who: 1, situ: 2, block: 2, budget: 3, block2: 3, slot: 4 }[step] || 0
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
   const loadSlots = () => rpc('cand_slots').then((s) => setSlots(s || [])).catch(() => setSlots([]))
-  useEffect(() => { if (step === 'slot') loadSlots() }, [step])
+  useEffect(() => { if (step === 'slot') { loadSlots(); saveLead('slot') } }, [step])
   const days = useMemo(() => { const m = new Map(); (slots || []).forEach((s) => { const k = dayKey(s); if (!m.has(k)) m.set(k, []); m.get(k).push(s) }); return [...m.entries()] }, [slots])
   useEffect(() => { if (days.length && !days.find((d) => d[0] === day)) setDay(days[0][0]) }, [days])
 
@@ -36,15 +42,15 @@ export default function App() {
       if (!f.first_name.trim()) return setErr('Indique ton prénom.')
       if (digits.length < 8 || digits.length > 12) return setErr('Vérifie ton numéro WhatsApp, il semble incomplet.')
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(f.email.trim())) return setErr('Vérifie ton adresse email.')
-      go('situ')
+      saveLead('who'); go('situ')
     },
     situ() {
       if (!f.situation || !f.capital) return setErr('Réponds aux deux questions pour continuer.')
-      go(f.capital === 'lt500' ? 'block' : 'budget')
+      saveLead('situ'); go(f.capital === 'lt500' ? 'block' : 'budget')
     },
     budget() {
       if (!f.have) return setErr('Choisis une réponse pour continuer.')
-      go(f.have === 'yes' ? 'slot' : 'block2')
+      saveLead('budget'); go(f.have === 'yes' ? 'slot' : 'block2')
     },
   }
   async function book() {
@@ -84,14 +90,14 @@ export default function App() {
       <div className="field"><label htmlFor="p">Prénom</label><input id="p" value={f.first_name} onChange={(e) => set('first_name', e.target.value)} autoComplete="given-name" placeholder="Ton prénom" /></div>
       <div className="field"><label htmlFor="t">Numéro WhatsApp</label><div className="phone">
         <select value={f.prefix} onChange={(e) => set('prefix', e.target.value)} aria-label="Indicatif">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
-        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => set('tel', e.target.value)} placeholder="6 12 34 56 78" /></div>
+        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => set('tel', e.target.value)} onBlur={() => saveLead('who')} placeholder="6 12 34 56 78" /></div>
         <span className="muted s12">Je t'appelle sur ce numéro, vérifie-le bien.</span></div>
-      <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="ton@email.com" /></div>
+      <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => set('email', e.target.value)} onBlur={() => saveLead('who')} placeholder="ton@email.com" /></div>
       <div className="err">{err}</div><button className="btn" onClick={next.who}>Continuer →</button></div></section>}
 
     {step === 'situ' && <section className="screen"><h2>Ta situation</h2><div className="card">
-      <div className="field"><span className="lbl">Que fais-tu dans la vie ?</span><div className="chips">{SITUS.map((s) => <button key={s} className={`chip ${f.situation === s ? 'sel' : ''}`} onClick={() => set('situation', s)}>{s}</button>)}</div></div>
-      <div className="field"><span className="lbl">Combien peux-tu investir maintenant dans ton projet ?</span><div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => set('capital', v)}>{l}</button>)}</div></div>
+      <div className="field"><span className="lbl">Que fais-tu dans la vie ?</span><div className="chips">{SITUS.map((s) => <button key={s} className={`chip ${f.situation === s ? 'sel' : ''}`} onClick={() => { set('situation', s); saveLead('situ', { situation: s }) }}>{s}</button>)}</div></div>
+      <div className="field"><span className="lbl">Combien peux-tu investir maintenant dans ton projet ?</span><div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('situ', { capital: v }) }}>{l}</button>)}</div></div>
       <div className="err">{err}</div><button className="btn" onClick={next.situ}>Continuer →</button></div>
       <button className="link" onClick={() => go('who')}>← Retour</button></section>}
 
@@ -103,7 +109,7 @@ export default function App() {
     {step === 'budget' && <section className="screen"><h2>Une dernière question, franche</h2><div className="card">
       <p>Tu as indiqué <b>{CAP_LBL[f.capital]}</b>. Beaucoup de personnes cochent un montant qu'elles n'ont pas encore, et on perd du temps tous les deux.</p>
       <div className="field"><span className="lbl">Tu peux vraiment mobiliser ce budget maintenant ?</span><div className="chips col">
-        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => set('have', v)}>{l}</button>)}</div></div>
+        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }) }}>{l}</button>)}</div></div>
       <p className="muted s13">Sois honnête, ça m'aide à te dire la vérité.</p>
       <div className="err">{err}</div><button className="btn" onClick={next.budget}>Choisir mon créneau →</button></div>
       <button className="link" onClick={() => go('situ')}>← Retour</button></section>}

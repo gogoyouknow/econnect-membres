@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import Candidatures from './Candidatures'
+import Leads from './Leads'
 
 const Ic = ({ d }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">{d}</svg>
 
@@ -13,6 +14,7 @@ export default function Admin() {
   const [forgot, setForgot] = useState(false)
   const [showPw, setShowPw] = useState(false)
   const [sent, setSent] = useState(false)
+  const [nLeads, setNLeads] = useState(0)
   const toast = (t, bad) => { setMsg({ t, bad }); setTimeout(() => setMsg(null), 3500) }
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSess(data.session || null))
@@ -23,6 +25,11 @@ export default function Admin() {
     if (!sess) { setOk(null); return }
     supabase.rpc('is_staff').then(({ data, error }) => setOk(error ? false : !!data))
   }, [sess])
+  useEffect(() => {
+    if (!ok) return
+    const q = () => supabase.from('cand_leads').select('capital,budget_confirmed').eq('booked', false).eq('follow', 'new').then(({ data }) => setNLeads((data || []).filter(l => l.capital !== 'lt500' && !['soon', 'no'].includes(l.budget_confirmed)).length))
+    q(); const i = setInterval(q, 90000); return () => clearInterval(i)
+  }, [ok])
   const login = async (e) => {
     e.preventDefault(); setBusy(true)
     const f = new FormData(e.target)
@@ -63,11 +70,12 @@ export default function Admin() {
   const today = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short' })
   return <div className="adm app">
     <header className="bar"><h1>Mes appels</h1><span className="date">{today}</span><button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
-    <div className={`scroll ${tab === 'dispos' ? 'light' : ''}`}>
-      <Candidatures toast={toast} tab={tab} />
+    <div className={`scroll ${tab !== 'appels' ? 'light' : ''}`}>
+      {tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : <Candidatures toast={toast} tab={tab} />}
     </div>
     <nav className="tabs">
       <button className={tab === 'appels' ? 'on' : ''} onClick={() => setTab('appels')}><Ic d={<><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></>} />Appels</button>
+      <button className={tab === 'leads' ? 'on' : ''} onClick={() => setTab('leads')}><span className="ico"><Ic d={<><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M17 6v6M20 9h-6" /></>} />{nLeads > 0 && <i className="dot">{nLeads > 9 ? '9+' : nLeads}</i>}</span>Relances</button>
       <button className={tab === 'dispos' ? 'on' : ''} onClick={() => setTab('dispos')}><Ic d={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />Disponibilités</button>
     </nav>
     {msg && <div className={`toast ${msg.bad ? 'bad' : ''}`}>{msg.t}</div>}
