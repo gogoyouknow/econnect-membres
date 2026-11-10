@@ -31,7 +31,9 @@ const splitTel = (prefix, tel) => {
 const effTel = (g) => (g.wa_ok === false && String(g.wtel || '').trim() ? splitTel(g.wprefix, g.wtel) : splitTel(g.prefix, g.tel))
 let PV = null // validateur de numéros de mobile (chargé à la demande, ne ralentit pas la page)
 const loadPV = () => PV ? Promise.resolve(PV) : import('libphonenumber-js/mobile').then((m) => (PV = m)).catch(() => null)
-const telOk = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); if (d.length < 6) return false; if (PV) { try { return PV.isValidPhoneNumber(pf + d) } catch { /* */ } } return d.length >= 8 && d.length <= 12 }
+// Numéro fixe français (01 à 05) : pas de WhatsApp possible.
+const isFixe = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); return pf === '+33' && /^[1-5]/.test(String(d)) }
+const telOk = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); if (d.length < 6) return false; if (isFixe(prefix, tel)) return String(d).length === 9; if (PV) { try { return PV.isValidPhoneNumber(pf + d) } catch { /* */ } } return d.length >= 8 && d.length <= 12 }
 const dayKey = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(iso))
 const fmtT = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 const fmtDay = (k) => { const d = new Date(k + 'T12:00:00Z'); return { w: new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'short' }).format(d), n: d.getUTCDate() } }
@@ -78,6 +80,18 @@ function Temos({ onCta }) {
 }
 
 const isoIn = (d) => { const x = new Date(Date.now() + d * 864e5); return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(x) }
+
+const MAIL_DOMS = ['gmail.com', 'hotmail.com', 'hotmail.fr', 'outlook.com', 'outlook.fr', 'yahoo.fr', 'yahoo.com', 'icloud.com', 'live.fr', 'live.com', 'orange.fr', 'free.fr', 'wanadoo.fr', 'sfr.fr', 'laposte.net', 'proton.me', 'protonmail.com', 'me.com']
+function lev(a, b) { const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length] }
+// Faute de frappe dans le domaine (gmail.con, gmial.com, hotmal.fr…) : propose la bonne adresse, sans jamais bloquer.
+function mailFix(email) {
+  const e = (email || '').trim(); const at = e.lastIndexOf('@'); if (at < 1) return null
+  const dom = e.slice(at + 1).toLowerCase(); if (dom.length < 4 || !dom.includes('.') || MAIL_DOMS.includes(dom)) return null
+  let best = null, bd = 3
+  for (const c of MAIL_DOMS) { const d = lev(dom, c); if (d < bd) { bd = d; best = c } }
+  return best && bd <= 2 ? e.slice(0, at + 1) + best : null
+}
+
 
 export default function App() {
   const [step, setStep] = useState('intro')
@@ -129,8 +143,9 @@ export default function App() {
     async who() {
       const [pfx, digits] = splitTel(f.prefix, f.tel)
       if (!f.first_name.trim()) return setErr('Indique ton prénom.')
+      if (f.wa_ok !== false && isFixe(f.prefix, f.tel)) { set('wa_ok', false); return setErr("Ce numéro est un fixe : il n'a pas WhatsApp. Indique ci-dessous ton numéro de portable, c'est là qu'on se parlera.") }
       if (!telOk(f.prefix, f.tel)) { setTBlur(true); return setErr("Ce numéro n'a pas l'air valide : vérifie l'indicatif et les chiffres (exemple : 6 12 34 56 78).") }
-      if (f.wa_ok === false && !telOk(f.wprefix, f.wtel)) { setTBlur(true); return setErr("Entre un numéro WhatsApp valide, c'est lui qui me permet de te joindre.") }
+      if (f.wa_ok === false && (!telOk(f.wprefix, f.wtel) || isFixe(f.wprefix, f.wtel))) { setTBlur(true); return setErr("Entre un numéro WhatsApp valide, c'est lui qui me permet de te joindre.") }
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(f.email.trim())) return setErr('Vérifie ton adresse email.')
       if (pfx !== f.prefix || String(digits) !== f.tel) setF((x) => ({ ...x, prefix: pfx, tel: digits })); saveLead('who', { prefix: pfx, tel: digits })
       // Déjà un rendez-vous à venir ? On ne le laisse pas en reprendre un deuxième : on propose de le modifier.
@@ -218,7 +233,8 @@ export default function App() {
           <select value={f.wprefix} onChange={(e) => set('wprefix', e.target.value)} aria-label="Indicatif WhatsApp">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
           <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => set('wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
         <span className="muted s12">{f.wa_ok === false ? 'Indique le numéro sur lequel tu as WhatsApp : c\'est là que tu me confirmes ton appel.' : 'C\'est sur WhatsApp qu\'on se contacte, toi et moi : c\'est là que tu me confirmes ton rendez-vous et que je t\'écris ou t\'appelle. Vérifie-le bien.'}</span></div>
-      <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => set('email', e.target.value)} onBlur={() => saveLead('who')} placeholder="ton@email.com" /></div>
+      <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => set('email', e.target.value)} onBlur={() => saveLead('who')} placeholder="ton@email.com" />
+        {mailFix(f.email) && <button type="button" className="mailfix" onClick={() => set('email', mailFix(f.email))}>Tu voulais dire <b>{mailFix(f.email)}</b> ? <u>Corriger</u></button>}</div>
       <div className="err">{err}</div><button className="btn" disabled={busy} onClick={next.who}>{busy ? 'Un instant…' : 'Continuer →'}</button></div></section>}
 
     {step === 'situ' && <section className="screen"><h2>Ta situation</h2><div className="card">

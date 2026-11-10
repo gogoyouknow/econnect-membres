@@ -305,7 +305,7 @@ body.admbody{background:#0E1116;background-image:none;padding:0;color:#E8ECF2;fo
 /* Texte sélectionnable et copiable (iPhone compris) + boutons « Copier » */
 .adm .hero,.adm .hq,.adm .cdet,.adm .cq,.adm .pr-dr,.adm .pt,.adm .drow{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 .adm .hcopy{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.adm .hcopy button,.adm .cpy{font:600 12.5px var(--body,inherit);color:inherit;background:rgba(127,127,127,.16);border:0;border-radius:999px;padding:7px 12px;cursor:pointer}
+.adm .hcopy button,.adm .hcall,.adm .cpy{font:600 12.5px var(--body,inherit);color:inherit;background:rgba(127,127,127,.16);border:0;border-radius:999px;padding:7px 12px;cursor:pointer}
 .adm .cdet .cpy,.adm .pr-dr .cpy{color:#12151C;background:#EEF0F3}
 .adm .cpy{margin-top:8px}.adm .drow .cpy{margin:0 0 0 8px}
 
@@ -331,7 +331,7 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
   .adm .out,.adm .tg{position:relative}
   .adm .out::after,.adm .tg::after{content:'';position:absolute;inset:-9px -5px}
   .adm .tg::after{inset:-10px -6px}
-  .adm .hcopy button,.adm .cpy{min-height:40px;padding:10px 14px}
+  .adm .hcopy button,.adm .hcall,.adm .cpy{min-height:40px;padding:10px 14px;display:inline-flex;align-items:center}
   .adm .linkbtn{padding-top:12px;padding-bottom:12px}
   .adm .btn.sm{min-height:40px}
 }
@@ -373,3 +373,5 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .mw{color:#5B6270}
 @media (max-width:899px){.adm .tabs button{color:#667085}.adm .tabs button.on{color:var(--ink)}}
 .adm .upd{flex:none;display:block;width:100%;background:#F5C451;color:#12151C;border:0;font:inherit;font-size:14px;font-weight:700;padding:11px 16px;cursor:pointer;text-align:center}
+.adm .dupnote{margin:10px 0;padding:10px 12px;border-radius:10px;background:#FFF8E1;border:1px solid #F5C451;color:#1B2230;font-size:13px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.adm .hcall{text-decoration:none}

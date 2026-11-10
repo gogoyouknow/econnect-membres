@@ -51,6 +51,21 @@ const COLS = [
 const DEF = ['stage', 'phone', 'email', 'source', 'capital', 'call_at', 'created_at']
 const lsGet = () => { try { const v = JSON.parse(localStorage.getItem('calio_pr_cols')); if (Array.isArray(v) && v.length) return v } catch { /* */ } return DEF }
 
+// Une personne = un numéro. Si elle s'est inscrite deux fois (autre email, même téléphone), on n'affiche qu'une fiche
+// (celle qui a un appel, sinon la plus avancée, sinon la plus récente) et on garde les autres en `dupIds` pour les fusionner.
+const RANK = { rdv: 8, fait: 7, absent: 6, annule: 2, qualifie: 5, potentiel: 4, disqualifie: 3, incomplet: 1 }
+const last9 = (s) => { const d = digits(s); return d.length >= 9 ? d.slice(-9) : '' }
+function dedupe(all) {
+  const g = new Map(), out = []
+  for (const r of all) { const k = last9(r.phone || r.phone_raw); if (!k) { out.push(r); continue } if (!g.has(k)) g.set(k, []); g.get(k).push(r) }
+  for (const a of g.values()) {
+    if (a.length === 1) { out.push(a[0]); continue }
+    const best = [...a].sort((x, y) => (RANK[y.stage] || 0) - (RANK[x.stage] || 0) || (y.updated_at > x.updated_at ? 1 : -1))[0]
+    out.push({ ...best, dupIds: a.filter((x) => x.id !== best.id).map((x) => x.id), dupEmails: a.filter((x) => x.id !== best.id).map((x) => x.email || x.email_raw).filter(Boolean) })
+  }
+  return out.sort((x, y) => (y.updated_at > x.updated_at ? 1 : -1))
+}
+
 function Badge({ s }) { return <span className={`prb st-${s}`}>{STAGE[s]}</span> }
 
 function parseCSV(txt) {
@@ -100,7 +115,7 @@ export default function Prospects({ toast, focus }) {
         all = all.concat(data || []); if (!data || data.length < 1000) break; from += 1000
       }
     } catch (e) { bad = friendlyError(e) }
-    setLerr(bad); if (!bad) setRows(all)
+    setLerr(bad); if (!bad) setRows(dedupe(all))
   }
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   useEffect(() => { if (focus?.id) { setView('all'); setOpenId(focus.id) } }, [focus])
@@ -185,6 +200,11 @@ export default function Prospects({ toast, focus }) {
     if (!rec.first_name && !rec.phone_raw && !rec.email_raw) return toast('Mets au moins un prénom, un numéro ou un email', true)
     const { error } = await supabase.from('cand_leads').insert(rec); if (error) return toast(friendlyError(error), true)
     setAdd(false); toast('Prospect ajouté'); load()
+  }
+  const merge = async (r) => {
+    if (!window.confirm(`${full(r)} a ${r.dupIds.length + 1} fiches avec le même numéro. On garde celle-ci et on supprime l’autre${r.dupIds.length > 1 ? 's' : ''} (${r.dupEmails.join(', ') || 'sans email'}). Ses rendez-vous ne sont pas touchés. Continuer ?`)) return
+    const { error } = await supabase.from('cand_leads').delete().in('id', r.dupIds); if (error) return toast(friendlyError(error), true)
+    toast('Fiches fusionnées'); load()
   }
   const del = async (r) => {
     if (r.calls > 0) return toast('Il a un appel : supprime-le d’abord dans « Appels »', true)
@@ -272,6 +292,7 @@ export default function Prospects({ toast, focus }) {
           {(open.phone || open.phone_raw) && <button className="btn ghost sm" onClick={() => copyText(open.phone || open.phone_raw, toast, 'Numéro copié')}>Copier le numéro</button>}
           {open.email && <a className="btn ghost sm" style={{ textDecoration: 'none' }} href={`mailto:${open.email}`}>Email</a>}
         </div>
+        {open.dupIds?.length > 0 && <div className="dupnote">Même numéro, {open.dupIds.length + 1} fiches{open.dupEmails.length ? ` (autre email : ${open.dupEmails.join(', ')})` : ''}. <button className="btn ghost sm" onClick={() => merge(open)}>Fusionner</button></div>}
         <h4>Coordonnées</h4>
         <div className="grid2" style={{ marginTop: 0 }}>
           <label className="lq">Prénom<input defaultValue={open.first_name || ''} onBlur={(e) => e.target.value.trim() !== (open.first_name || '') && upd([open.id], { first_name: e.target.value.trim() || null }, true)} /></label>

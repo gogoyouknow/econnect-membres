@@ -134,3 +134,5 @@ body{touch-action:pan-y}
 .vid{border-radius:14px;overflow:hidden;background:#000;width:100%;min-height:120px}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
 input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;text-align:left;display:block}
+.mailfix{display:block;margin-top:6px;padding:8px 10px;border-radius:10px;border:1px solid #F5C451;background:#FFF8E1;color:#1B2230;font:inherit;font-size:13px;text-align:left;width:100%;cursor:pointer}
+.mailfix u{font-weight:700}

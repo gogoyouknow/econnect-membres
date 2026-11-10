@@ -86,7 +86,7 @@ export default function Candidatures({ toast, tab: main }) {
             <a className="wabtn" href={waWeb(next.phone, fillMsg(tpl, next))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, next.phone, fillMsg(tpl, next))}>WhatsApp</a>
           </div>
           <PrepTrack ev={ev[next.id]} compact />
-          <div className="hcopy"><button onClick={() => openRep(next)}>Replanifier</button><button onClick={() => copyText(next.phone, toast, 'Numéro copié')}>Copier le numéro</button><button onClick={() => copyText(NURTURE_URL + '?t=' + next.qtoken, toast, 'Lien personnel copié')}>Copier le lien personnel</button></div>
+          <div className="hcopy"><a className="hcall" href={`tel:${(next.phone || '').replace(/[^\d+]/g, '')}`}>Appeler</a><button onClick={() => openRep(next)}>Replanifier</button><button onClick={() => copyText(next.phone, toast, 'Numéro copié')}>Copier le numéro</button><button onClick={() => copyText(NURTURE_URL + '?t=' + next.qtoken, toast, 'Lien personnel copié')}>Copier le lien personnel</button></div>
           {qs[next.id] && <div className="hq"><b>💬 Ses questions pour l'appel</b><p>{qs[next.id].body}</p><button className="cpy" onClick={() => copyText(qs[next.id].body, toast, 'Questions copiées')}>Copier les questions</button></div>}
         </> : lerr && !rows.length ? <><div className="hk">Appels indisponibles</div><div className="hempty">Je n'arrive pas à charger tes appels pour le moment (voir plus bas).</div></> : <><div className="hk">Aucun appel à venir</div><div className="hempty">Dès qu'une personne réserve depuis ta bio, elle apparaît ici.</div></>}
       </div>
@@ -116,6 +116,8 @@ export default function Candidatures({ toast, tab: main }) {
             <div className="acts">
               {live(c) && <a className="btn sm" style={{ textDecoration: 'none' }} href={waWeb(c.phone, fillMsg(tpl, c))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, c.phone, fillMsg(tpl, c))}>Envoyer le message WhatsApp</a>}
               {c.status === 'reserve' && <button className="btn sm" onClick={() => upd(c, { status: 'confirme' })}>✓ Message WhatsApp reçu</button>}
+              {live(c) && c.phone && <a className="btn ghost sm" style={{ textDecoration: 'none' }} href={`tel:${c.phone.replace(/[^\d+]/g, '')}`}>Appeler</a>}
+              {live(c) && c.phone && <a className="btn ghost sm" style={{ textDecoration: 'none' }} href={`sms:${c.phone.replace(/[^\d+]/g, '')}`}>SMS</a>}
               {live(c) && <>
                 <button className="btn ghost sm" onClick={() => openRep(c)}>Replanifier</button>
                 <button className="btn ghost sm" onClick={() => upd(c, { status: 'fait' })}>Appel fait</button>
