@@ -45,5 +45,6 @@
   "0044_calio_push.sql",
   "0045_wa_number.sql",
   "0046_double_resa_relances.sql",
-  "0047_closing.sql"
+  "0047_closing.sql",
+  "0048_sequence_confirmation.sql"
 ]
