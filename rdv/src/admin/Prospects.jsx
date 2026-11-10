@@ -1,3 +1,4 @@
+import LoadErr from './LoadErr'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import { openWA, fillMsg, waWeb, NURTURE_MSG, NURTURE_URL } from './whatsapp'
@@ -73,6 +74,7 @@ const normPhone = (raw) => {
   let s = String(raw || '').trim(); if (!s) return ''
   const plus = s.startsWith('+') || s.startsWith('00'); let d = digits(s); if (s.startsWith('00')) d = d.replace(/^00/, '')
   if (!plus) { if (d.startsWith('0')) d = '33' + d.slice(1); else if (d.length === 9 && /^[67]/.test(d)) d = '33' + d }
+  if (plus && /^330\d{9}$/.test(d)) d = '33' + d.slice(3) // « +33 (0)6… » : le 0 entre parenthèses ne fait pas partie du numéro
   return d.length >= 8 ? '+' + d : ''
 }
 
@@ -88,14 +90,17 @@ export default function Prospects({ toast, focus }) {
   const file = useRef(null)
   useEffect(() => { if (!(add || imp)) return; const b = document.body, h = document.documentElement; const o = [b.style.overflow, h.style.overflow]; b.style.overflow = h.style.overflow = 'hidden'; return () => { b.style.overflow = o[0]; h.style.overflow = o[1] } }, [!!(add || imp)])
 
+  const [lerr, setLerr] = useState('')
   const load = async () => {
-    let all = [], from = 0
-    for (;;) {
-      const { data, error } = await supabase.from('prospects_v').select('*').order('updated_at', { ascending: false }).range(from, from + 999)
-      if (error) { toast(friendlyError(error), true); break }
-      all = all.concat(data || []); if (!data || data.length < 1000) break; from += 1000
-    }
-    setRows(all)
+    let all = [], from = 0, bad = ''
+    try {
+      for (;;) {
+        const { data, error } = await supabase.from('prospects_v').select('*').order('updated_at', { ascending: false }).range(from, from + 999)
+        if (error) { bad = friendlyError(error); break }
+        all = all.concat(data || []); if (!data || data.length < 1000) break; from += 1000
+      }
+    } catch (e) { bad = friendlyError(e) }
+    setLerr(bad); if (!bad) setRows(all)
   }
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   useEffect(() => { if (focus?.id) { setView('all'); setOpenId(focus.id) } }, [focus])
@@ -109,7 +114,7 @@ export default function Prospects({ toast, focus }) {
   const list = useMemo(() => {
     const nq = norm(q), dq = digits(q)
     const f = R.filter((r) => inView(view, r) && (!fSrc || r.source === fSrc) && (!fSit || r.situation === fSit) &&
-      (!nq || norm(full(r) + ' ' + (r.email || r.email_raw || '') + ' ' + (r.note || '') + ' ' + (r.tags || []).join(' ')).includes(nq) || (dq.length > 2 && digits(r.phone || r.phone_raw).includes(dq))))
+      (!nq || norm(full(r) + ' ' + (r.email || r.email_raw || '') + ' ' + (r.note || '') + ' ' + (r.tags || []).join(' ')).includes(nq) || (dq.length > 2 && (digits(r.phone || r.phone_raw).includes(dq) || digits(r.phone || r.phone_raw).includes(dq.replace(/^00?/, ''))))))
     const col = sort.k === 'name' ? [0, 0, 0, full] : COLS.find((c) => c[0] === sort.k)
     const val = (r) => { const v = col[3](r); return typeof v === 'string' ? norm(v) : v }
     return [...f].sort((a, b) => { const x = val(a), y = val(b); const ex = x === '' || x == null, ey = y === '' || y == null; if (ex || ey) return ex === ey ? 0 : ex ? 1 : -1; return (x > y ? 1 : x < y ? -1 : 0) * sort.dir })
@@ -241,8 +246,9 @@ export default function Prospects({ toast, focus }) {
         <input placeholder="Nouveau tag" value={tagIn} onChange={(e) => setTagIn(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && bulkTag()} />
         <button className="btn ghost sm" onClick={bulkTag}>Ajouter le tag</button>
         <button className="linkbtn" style={{ padding: 0 }} onClick={() => setSel(new Set())}>Tout désélectionner</button></div>}
-      {rows === null && <p className="muted">Chargement…</p>}
-      {rows && !list.length && <div className="sys">Aucun prospect ici pour le moment</div>}
+      {rows === null && !lerr && <p className="muted">Chargement…</p>}
+      <LoadErr msg={lerr} onRetry={load} />
+      {rows && !lerr && !list.length && <div className="sys">Aucun prospect ici pour le moment</div>}
       {rows && list.length > 0 && <>
         <div className="pr-tw"><table className="pr-t">
           <thead><tr><th className="ck"><input type="checkbox" checked={allOn} onChange={togAll} /></th>{th('name', 'Prospect', 190)}{vis.map((c) => th(c[0], c[1], c[2]))}</tr></thead>

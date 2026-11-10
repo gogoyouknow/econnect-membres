@@ -1,3 +1,4 @@
+import LoadErr from './LoadErr'
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import { openWA } from './whatsapp'
@@ -18,8 +19,8 @@ const unqualified = (l) => l.capital === 'lt500' || ['soon', 'no'].includes(l.bu
 
 /** « Relances » : toutes les personnes qui ont laissé leurs coordonnées sans réserver d'appel. */
 export default function Leads({ toast, onChange }) {
-  const [rows, setRows] = useState(null); const [tab, setTab] = useState('todo'); const [open, setOpen] = useState(null)
-  const load = () => supabase.from('cand_leads').select('*').order('updated_at', { ascending: false }).limit(500).then(({ data, error }) => { if (error) toast(friendlyError(error), true); setRows(data || []); onChange && onChange((data || []).filter(l => !l.booked && l.follow === 'new' && !unqualified(l)).length) })
+  const [rows, setRows] = useState(null); const [tab, setTab] = useState('todo'); const [open, setOpen] = useState(null); const [lerr, setLerr] = useState('')
+  const load = () => supabase.from('cand_leads').select('*').order('updated_at', { ascending: false }).limit(500).then(({ data, error }) => { if (error) return setLerr(friendlyError(error)); setLerr(''); setRows(data || []); onChange && onChange((data || []).filter(l => !l.booked && l.follow === 'new' && !unqualified(l)).length) }).catch((e) => setLerr(friendlyError(e)))
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   const upd = async (l, patch) => { const { error } = await supabase.from('cand_leads').update(patch).eq('id', l.id); if (error) return toast(friendlyError(error), true); load() }
 
@@ -37,7 +38,8 @@ export default function Leads({ toast, onChange }) {
     <h2 className="sh">À relancer</h2>
     <p className="muted">Les personnes qui ont laissé leurs coordonnées sans réserver d'appel. Rien n'est perdu.</p>
     <div className="pills" style={{ marginTop: 14 }}>{[['todo', `À relancer · ${todo.length}`], ['part', `Incomplets · ${part.length}`], ['cold', `Pas prêts · ${cold.length}`], ['done', 'Traités']].map(([k, l]) => <button key={k} className={`pill ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}</div>
-    {rows === null && <p className="muted">Chargement…</p>}
+    {rows === null && !lerr && <p className="muted">Chargement…</p>}
+    <LoadErr msg={lerr} onRetry={load} />
     {rows && !list.length && <div className="sys">{tab === 'todo' ? 'Personne à relancer pour le moment' : tab === 'cold' ? 'Personne ici' : tab === 'part' ? 'Aucune saisie incomplète' : 'Rien de traité pour le moment'}</div>}
     {list.map(l => <div key={l.id} className={`call ${open === l.id ? 'open' : ''}`}>
       <div className="crow" onClick={() => setOpen(open === l.id ? null : l.id)}>

@@ -46,7 +46,7 @@ const FAQ = [
 
 // Qui écrit ? Le lien personnel (?t=…) envoyé sur WhatsApp, sinon l'identifiant du navigateur utilisé pour réserver.
 const TOKEN = (() => { try { return new URLSearchParams(location.search).get('t') || '' } catch { return '' } })()
-const SID = (() => { try { return localStorage.getItem('cand_sid') || '' } catch { return '' } })()
+const SID = (() => { try { let v = localStorage.getItem('cand_sid'); if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); localStorage.setItem('cand_sid', v) } return v } catch { return 'mem-' + Date.now() + Math.random().toString(16).slice(2) } })()
 
 // Suivi : la page prévient Calio quand elle est ouverte, quand une vidéo est lancée, quand des questions sont écrites (seulement si la personne est identifiée).
 const track = (kind, label) => { if (!configured || (!TOKEN && !SID)) return; rpc('cand_page_track', { p: { t: TOKEN, sid: SID, kind, label: label || '' } }).catch(() => { }) }
@@ -83,7 +83,7 @@ function Notes() {
 function Main() {
   const [on, setOn] = useState(false)
   return <div className="dmain">
-    {on ? <div className="tvid big"><iframe src={`https://www.youtube-nocookie.com/embed/${MAIN[0]}?autoplay=1&rel=0&playsinline=1`} title={MAIN[1]} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen /></div>
+    {on ? <div className="tvid big"><iframe src={`https://www.youtube-nocookie.com/embed/${MAIN[0]}?autoplay=1&rel=0&playsinline=1`} title={MAIN[1]} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" /></div>
       : <button className="tcard big" onClick={() => { setOn(true); track('play', MAIN[1]) }} aria-label={`Lire : ${MAIN[1]}`}><Thumb id={MAIN[0]} dur={MAIN[2]} big /></button>}
     <b>{MAIN[1]}</b>
   </div>

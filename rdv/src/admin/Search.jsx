@@ -15,7 +15,7 @@ export default function Search({ onPick }) {
     const t = setTimeout(async () => {
       const d = s.replace(/\D/g, '')
       const f = [`first_name.ilike.%${s}%`, `last_name.ilike.%${s}%`, `email.ilike.%${s}%`, `email_raw.ilike.%${s}%`]
-      if (d.length >= 3) f.push(`phone.ilike.%${d}%`, `phone_raw.ilike.%${d}%`)
+      if (d.length >= 3) { const nd = d.startsWith('00') ? d.slice(2) : d.startsWith('0') ? d.slice(1) : d; f.push(`phone.ilike.%${nd}%`, `phone_raw.ilike.%${nd}%`, `phone_raw.ilike.%${d}%`) } // « 06 12… » retrouve « +33 6 12… »
       const { data } = await supabase.from('prospects_v').select('id,first_name,last_name,phone,phone_raw,email,email_raw,stage').or(f.join(',')).order('updated_at', { ascending: false }).limit(8)
       if (!dead) setRes(data || [])
     }, 220)
@@ -30,7 +30,7 @@ export default function Search({ onPick }) {
   const pick = (r) => { setQ(''); setRes(null); setOpen(false); onPick(r.id) }
   return <div className="gs" ref={box}>
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-    <input ref={inp} type="search" value={q} onChange={(e) => { setQ(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} placeholder="Chercher un prospect : nom, numéro, email…" aria-label="Chercher un prospect" autoComplete="off" />
+    <input ref={inp} type="search" value={q} onChange={(e) => { setQ(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} placeholder="Chercher un prospect…" aria-label="Chercher un prospect" autoComplete="off" />
     {open && q.trim().length >= 2 && <div className="gs-res">
       {res === null && <div className="gs-none">Recherche…</div>}
       {res && !res.length && <div className="gs-none">Aucun prospect trouvé</div>}

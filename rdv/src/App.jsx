@@ -8,6 +8,18 @@ const CAPS = [['lt500', 'Moins de 500 €'], ['500-1000', 'Entre 500 € et 1 00
 const CAP_LBL = { '500-1000': 'entre 500 € et 1 000 €', '1000-3000': 'entre 1 000 € et 3 000 €', gt3000: 'plus de 3 000 €' }
 const SITUS = ['Salarié', 'Étudiant', 'Entrepreneur', 'Sans activité']
 const PREFIX = ['+33', '+32', '+41', '+352', '+212', '+213', '+216', '+351', '+40', '+1']
+// Numéro saisi « comme on veut » : +33 6…, 0033 6…, 33 6… ou 06… → on retrouve l'indicatif et les chiffres du numéro, sans doublon d'indicatif.
+const splitTel = (prefix, tel) => {
+  let d = String(tel || '').replace(/[^\d+]/g, ''); if (d.startsWith('00')) d = '+' + d.slice(2)
+  if (d.startsWith('+')) {
+    const pd = d.slice(1).replace(/\D/g, ''); const m = PREFIX.map((x) => x.slice(1)).sort((a, b) => b.length - a.length).find((x) => pd.startsWith(x))
+    if (m) return ['+' + m, pd.slice(m.length).replace(/^0+/, '')]
+    return [prefix, pd.replace(/^0+/, '')]
+  }
+  d = d.replace(/\D/g, ''); const pp = prefix.slice(1)
+  if (prefix === '+33' && d.startsWith(pp) && d.length === pp.length + 9) d = d.slice(pp.length)
+  return [prefix, d.replace(/^0+/, '')]
+}
 const dayKey = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(iso))
 const fmtT = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 const fmtDay = (k) => { const d = new Date(k + 'T12:00:00Z'); return { w: new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'short' }).format(d), n: d.getUTCDate() } }
@@ -47,7 +59,7 @@ function Temos({ onCta }) {
     {play && <div className="tmodal" onClick={() => setPlay(null)} role="dialog" aria-modal="true" aria-label={play[1]}>
       <div className="tbox" onClick={(e) => e.stopPropagation()}>
         <button className="tclose" onClick={() => setPlay(null)} aria-label="Fermer">✕</button>
-        <div className="tvid"><iframe src={`https://www.youtube-nocookie.com/embed/${play[0]}?autoplay=1&rel=0&playsinline=1`} title={play[1]} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen /></div>
+        <div className="tvid"><iframe src={`https://www.youtube-nocookie.com/embed/${play[0]}?autoplay=1&rel=0&playsinline=1`} title={play[1]} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" /></div>
         <b>{play[1]}</b>
       </div></div>}
   </section>
@@ -64,9 +76,14 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(null)
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
-  const go = (s) => { setErr(''); setStep(s); window.scrollTo(0, 0) }
+  const go = (s) => { setErr(''); setStep(s); window.scrollTo(0, 0); try { history.pushState({ s }, '') } catch { /* */ } }
+  // Le bouton « retour » du téléphone revient à l'étape précédente au lieu de quitter la page (et de renvoyer la personne sur TikTok).
+  useEffect(() => {
+    const pop = (e) => { setErr(''); setStep((cur) => (cur === 'done' ? cur : (e.state && e.state.s) || 'intro')); window.scrollTo(0, 0) }
+    window.addEventListener('popstate', pop); return () => window.removeEventListener('popstate', pop)
+  }, [])
   // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
-  const leadBody = (stp, g) => { const d = g.tel.replace(/\D/g, '').replace(/^0+/, ''); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? g.prefix + d : '', phone_raw: d ? g.prefix + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC } }
+  const leadBody = (stp, g) => { const [pf, d] = splitTel(g.prefix, g.tel); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? pf + d : '', phone_raw: d ? pf + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC } }
   const saveLead = (stp, over = {}) => { if (!configured) return; rpc('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
   // On garde TOUT ce qui est tapé, même sans clic sur « Continuer » : sauvegarde auto 0,7 s après la dernière frappe, et à la fermeture / au changement d'onglet.
   const LS = { who: 'who', situ: 'situ', block: 'situ', budget: 'budget', block2: 'budget', slot: 'slot' }
@@ -93,11 +110,11 @@ export default function App() {
 
   const next = {
     who() {
-      const digits = f.tel.replace(/\D/g, '').replace(/^0+/, '')
+      const [pfx, digits] = splitTel(f.prefix, f.tel)
       if (!f.first_name.trim()) return setErr('Indique ton prénom.')
       if (digits.length < 8 || digits.length > 12) return setErr('Vérifie ton numéro WhatsApp, il semble incomplet.')
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(f.email.trim())) return setErr('Vérifie ton adresse email.')
-      saveLead('who'); go('situ')
+      if (pfx !== f.prefix || String(digits) !== f.tel) setF((x) => ({ ...x, prefix: pfx, tel: digits })); saveLead('who', { prefix: pfx, tel: digits }); go('situ')
     },
     situ() {
       if (!f.situation || !f.capital) return setErr('Réponds aux deux questions pour continuer.')
@@ -111,7 +128,7 @@ export default function App() {
   async function book() {
     setBusy(true); setErr('')
     try {
-      const r = await rpc('cand_book', { p: { first_name: f.first_name.trim(), phone: f.prefix + f.tel.replace(/\D/g, '').replace(/^0+/, ''), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
+      const r = await rpc('cand_book', { p: { first_name: f.first_name.trim(), phone: (() => { const [pf, d] = splitTel(f.prefix, f.tel); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
       setDone(r); go('done')
     } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
     setBusy(false)
@@ -146,7 +163,7 @@ export default function App() {
       <div className="field"><label htmlFor="p">Prénom</label><input id="p" value={f.first_name} onChange={(e) => set('first_name', e.target.value)} autoComplete="given-name" placeholder="Ton prénom" /></div>
       <div className="field"><label htmlFor="t">Numéro WhatsApp</label><div className="phone">
         <select value={f.prefix} onChange={(e) => set('prefix', e.target.value)} aria-label="Indicatif">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
-        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => set('tel', e.target.value)} onBlur={() => saveLead('who')} placeholder="6 12 34 56 78" /></div>
+        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => set('tel', e.target.value)} onBlur={() => { const [pf, d] = splitTel(f.prefix, f.tel); if (f.tel.trim() && (pf !== f.prefix || d !== f.tel.replace(/\s/g, ''))) setF((x) => ({ ...x, prefix: pf, tel: d })); saveLead('who', { prefix: pf, tel: d }) }} placeholder="6 12 34 56 78" /></div>
         <span className="muted s12">Je t'appelle sur ce numéro, vérifie-le bien.</span></div>
       <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => set('email', e.target.value)} onBlur={() => saveLead('who')} placeholder="ton@email.com" /></div>
       <div className="err">{err}</div><button className="btn" onClick={next.who}>Continuer →</button></div></section>}

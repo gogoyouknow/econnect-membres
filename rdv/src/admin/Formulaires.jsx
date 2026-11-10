@@ -1,3 +1,4 @@
+import LoadErr from './LoadErr'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 
@@ -26,14 +27,17 @@ const QS = [
 /** « Formulaires » : toutes les réponses au formulaire de réservation + où les gens s'arrêtent. */
 export default function Formulaires({ toast, onOpen }) {
   const [rows, setRows] = useState(null); const [days, setDays] = useState(30); const [f, setF] = useState('all'); const [q, setQ] = useState(''); const [more, setMore] = useState(24); const [openId, setOpenId] = useState(null)
+  const [lerr, setLerr] = useState('')
   const load = async () => {
-    let all = [], from = 0
-    for (;;) {
-      const { data, error } = await supabase.from('prospects_v').select('*').order('created_at', { ascending: false }).range(from, from + 999)
-      if (error) { toast(friendlyError(error), true); break }
-      all = all.concat(data || []); if (!data || data.length < 1000) break; from += 1000
-    }
-    setRows(all)
+    let all = [], from = 0, bad = ''
+    try {
+      for (;;) {
+        const { data, error } = await supabase.from('prospects_v').select('*').order('created_at', { ascending: false }).range(from, from + 999)
+        if (error) { bad = friendlyError(error); break }
+        all = all.concat(data || []); if (!data || data.length < 1000) break; from += 1000
+      }
+    } catch (e) { bad = friendlyError(e) }
+    setLerr(bad); if (!bad) setRows(all)
   }
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   useEffect(() => setMore(24), [days, f, q])
@@ -52,7 +56,8 @@ export default function Formulaires({ toast, onOpen }) {
       <div><h2 className="sh">Formulaire de réservation</h2><p className="muted">Toutes les réponses, même quand la personne s'arrête en route. Rien ne se perd.</p></div>
       <div className="pills">{[[7, '7 jours'], [30, '30 jours'], [0, 'Tout']].map(([d, l]) => <button key={d} className={`pill ${days === d ? 'on' : ''}`} onClick={() => setDays(d)}>{l}</button>)}</div>
     </div>
-    {rows === null && <p className="muted">Chargement…</p>}
+    {rows === null && !lerr && <p className="muted">Chargement…</p>}
+    <LoadErr msg={lerr} onRetry={load} />
     {rows && <>
       <div className="fm-fun">{fun.map((n, i) => <div key={i} className="fm-bar"><span className="fm-l">{labels[i]}</span>
         <span className="fm-t"><i style={{ width: total ? Math.max(2, Math.round(n / total * 100)) + '%' : '0%' }} className={i === 4 ? 'g' : ''} /></span>

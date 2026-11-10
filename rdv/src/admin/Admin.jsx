@@ -36,7 +36,7 @@ export default function Admin() {
   const [focus, setFocus] = useState(null)
   const [locked, setLocked] = useState(() => !!getFace())
   const [face, setFace] = useState(() => !!getFace())
-  const [pst, setPst] = useState('off')
+  const [pst, setPst] = useState('off'); const [retry, setRetry] = useState(0)
   useEffect(() => { pushState().then(setPst) }, [])
   const [keep, setKeep] = useState(true)
   const toast = (t, bad) => { setMsg({ t, bad }); setTimeout(() => setMsg(null), 3500) }
@@ -50,16 +50,16 @@ export default function Admin() {
   }, [])
   useEffect(() => {
     if (!sess) { setOk(null); return }
-    supabase.rpc('is_staff').then(({ data, error }) => setOk(error ? false : !!data))
-  }, [sess])
-  useEffect(() => { if (locked && sess && ok) faceUnlock().then((r) => r && setLocked(false)) }, [locked, sess, ok])
+    setOk(null); supabase.rpc('is_staff').then(({ data, error }) => setOk(error ? 'err' : !!data)).catch(() => setOk('err'))
+  }, [sess, retry])
+  useEffect(() => { if (locked && sess && ok === true) faceUnlock().then((r) => r && setLocked(false)) }, [locked, sess, ok])
   useEffect(() => {
     let t = 0
     const v = () => { if (document.visibilityState === 'hidden') t = Date.now(); else if (t && Date.now() - t > 60000 && getFace()) setLocked(true) }
     document.addEventListener('visibilitychange', v); return () => document.removeEventListener('visibilitychange', v)
   }, [])
   useEffect(() => {
-    if (!ok) return
+    if (ok !== true) return
     const q = () => supabase.from('cand_leads').select('capital,budget_confirmed').eq('booked', false).eq('follow', 'new').then(({ data }) => setNLeads((data || []).filter(l => l.capital !== 'lt500' && !['soon', 'no'].includes(l.budget_confirmed)).length))
     q(); const i = setInterval(q, 90000); return () => clearInterval(i)
   }, [ok])
@@ -100,6 +100,8 @@ export default function Admin() {
     {msg && <small className="err">{msg.t}</small>}
   </form></div>
   if (ok === null) return <div className="adm"><p className="muted ctr">Vérification…</p></div>
+  if (ok === 'err') return <div className="adm"><div className="login"><h1>Connexion impossible</h1><p className="muted">Je n'arrive pas à joindre le serveur (réseau faible ?). Tes données ne sont pas perdues.</p>
+    <button className="btn big" onClick={() => setRetry((n) => n + 1)}>Réessayer</button></div></div>
   if (!ok) return <div className="adm"><div className="login"><h1>Accès refusé</h1><p className="muted">Ce compte n'a pas accès à cet espace.</p>
     <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Changer de compte</button></div></div>
   const togglePush = async () => {
@@ -121,7 +123,7 @@ export default function Admin() {
     <button className="btn ghost" onClick={() => { supabase.auth.signOut(); setLocked(false) }}>Se déconnecter</button>{msg && <small className="err">{msg.t}</small>}</div></div>
   const today = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short' })
   return <div className="adm app">
-    <header className="bar"><Logo s={30} /><h1>Mes appels</h1><Search onPick={(id) => { setFocus({ id, t: Date.now() }); setTab('prospects') }} /><span className="date">{today}</span>{pst !== 'unsupported' && <button className="out" onClick={togglePush} aria-label="Notifications" title={pst === 'on' ? 'Notifications activées' : 'Activer les notifications'} style={{ color: pst === 'on' ? '#6FE3A1' : undefined }}><svg width="21" height="21" viewBox="0 0 24 24" fill={pst === 'on' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg></button>}{faceOk && <button className="out" onClick={toggleFace} aria-label="Face ID" title={face ? 'Face ID activé' : 'Activer Face ID'} style={{ color: face ? '#6FE3A1' : undefined }}><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M9 10v1.5M15 10v1.5M12 10v3.5M9 16c1.7 1.3 4.3 1.3 6 0" /></svg></button>}<button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
+    <header className="bar"><Logo s={30} /><h1>{{ appels: 'Mes appels', prospects: 'Prospects', formulaires: 'Formulaires', leads: 'Relances', dispos: 'Disponibilités' }[tab] || 'Mes appels'}</h1><Search onPick={(id) => { setFocus({ id, t: Date.now() }); setTab('prospects') }} /><span className="date">{today}</span>{pst !== 'unsupported' && <button className="out" onClick={togglePush} aria-label="Notifications" title={pst === 'on' ? 'Notifications activées' : 'Activer les notifications'} style={{ color: pst === 'on' ? '#6FE3A1' : undefined }}><svg width="21" height="21" viewBox="0 0 24 24" fill={pst === 'on' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg></button>}{faceOk && <button className="out" onClick={toggleFace} aria-label="Face ID" title={face ? 'Face ID activé' : 'Activer Face ID'} style={{ color: face ? '#6FE3A1' : undefined }}><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M9 10v1.5M15 10v1.5M12 10v3.5M9 16c1.7 1.3 4.3 1.3 6 0" /></svg></button>}<button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
     <div className={`scroll ${tab !== 'appels' ? 'light' : ''} ${tab === 'prospects' || tab === 'formulaires' ? 'wide' : ''}`}>
       {tab === 'prospects' ? <Prospects toast={toast} focus={focus} /> : tab === 'formulaires' ? <Formulaires toast={toast} onOpen={(id) => { setFocus({ id, t: Date.now() }); setTab('prospects') }} /> : tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : tab === 'dispos' ? <Dispos toast={toast} /> : <Candidatures toast={toast} tab={tab} />}
     </div>

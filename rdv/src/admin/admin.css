@@ -324,3 +324,16 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .rp-slots .chip{padding:10px 0;text-align:center;width:auto}
 @media (max-width:430px){.adm .bar .date{display:none}.adm .bar h1{white-space:nowrap}}
 .adm .pr-mb input[type=datetime-local]{width:100%;font-weight:400}
+/* Téléphone : iOS zoome (et décale la page) dès qu'on touche un champ dont le texte fait moins de 16 px → tous les champs à 16 px. */
+@media (max-width:899px){
+  .adm input,.adm select,.adm textarea,.adm .gs input,.adm .pr-tools select,.adm .pr-bulk input{font-size:16px}
+  /* zones de toucher d'au moins ~44 px, sans changer l'apparence des petits boutons */
+  .adm .out,.adm .tg{position:relative}
+  .adm .out::after,.adm .tg::after{content:'';position:absolute;inset:-9px -5px}
+  .adm .tg::after{inset:-10px -6px}
+  .adm .hcopy button,.adm .cpy{min-height:40px;padding:10px 14px}
+  .adm .linkbtn{padding-top:12px;padding-bottom:12px}
+  .adm .btn.sm{min-height:40px}
+}
+.adm .lerr{border-color:#E8B4B4;background:#FDF1F1;color:#7A1F1F;text-align:left;line-height:1.5}.adm .lerr .btn{margin-top:10px}
+@media (max-width:899px){.adm .mlink{min-height:44px}}

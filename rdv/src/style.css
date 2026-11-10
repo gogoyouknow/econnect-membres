@@ -49,7 +49,7 @@ input:focus,select:focus,button:focus-visible{border-color:var(--gold);box-shado
 .btn{height:54px;border:0;border-radius:14px;background:var(--gold);color:var(--gold-ink);font:700 16px var(--display);cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
 .btn:disabled{opacity:.35;cursor:not-allowed}
 .btn.wa{background:#4ade80}
-.link{background:none;border:0;color:var(--muted);font:500 13px var(--body);cursor:pointer;padding:6px;align-self:center;text-decoration:underline}
+.link{background:none;border:0;color:var(--muted);font:500 13px var(--body);cursor:pointer;padding:13px 16px;min-height:44px;align-self:center;text-decoration:underline}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .day{flex:0 0 62px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:12px;padding:9px 0;text-align:center;cursor:pointer;font:500 12px var(--body)}
 .day b{display:block;font:700 19px var(--display)}

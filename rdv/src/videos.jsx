@@ -26,7 +26,7 @@ export function PlayerModal({ play, onClose }) {
   return <div className="tmodal" onClick={onClose} role="dialog" aria-modal="true" aria-label={play[1]}>
     <div className="tbox" onClick={(e) => e.stopPropagation()}>
       <button className="tclose" onClick={onClose} aria-label="Fermer">✕</button>
-      <div className="tvid"><iframe src={`https://www.youtube-nocookie.com/embed/${play[0]}?autoplay=1&rel=0&playsinline=1`} title={play[1]} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen /></div>
+      <div className="tvid"><iframe src={`https://www.youtube-nocookie.com/embed/${play[0]}?autoplay=1&rel=0&playsinline=1`} title={play[1]} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" /></div>
       <b>{play[1]}</b>
     </div></div>
 }
