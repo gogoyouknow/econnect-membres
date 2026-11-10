@@ -6,6 +6,18 @@ import Prospects from './Prospects'
 const Logo = ({ s = 30 }) => <svg className="logo" viewBox="0 0 1024 1024" width={s} height={s} aria-hidden="true"><path d="M 686.6 354.8 A 235 235 0 1 0 686.6 669.2" fill="none" stroke="#fff" strokeWidth="125" strokeLinecap="round" /><circle cx="742" cy="512" r="62" fill="#6FE3A1" /></svg>
 import Dispos from './Dispos'
 
+const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const unb64 = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+const rnd = (n) => crypto.getRandomValues(new Uint8Array(n))
+const LKEY = 'calio_faceid'
+const faceOk = typeof window !== 'undefined' && !!window.PublicKeyCredential
+const getFace = () => { try { return localStorage.getItem(LKEY) } catch { return null } }
+// Face ID / Touch ID : vérifie que c'est bien toi (clé stockée dans l'iPhone, rien n'est envoyé nulle part).
+const faceUnlock = async () => {
+  const id = getFace(); if (!id) return true
+  try { await navigator.credentials.get({ publicKey: { challenge: rnd(32), allowCredentials: [{ type: 'public-key', id: unb64(id) }], userVerification: 'required', rpId: location.hostname, timeout: 60000 } }); return true } catch { return false }
+}
+
 const Ic = ({ d }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">{d}</svg>
 
 export default function Admin() {
@@ -18,9 +30,15 @@ export default function Admin() {
   const [showPw, setShowPw] = useState(false)
   const [sent, setSent] = useState(false)
   const [nLeads, setNLeads] = useState(0)
+  const [locked, setLocked] = useState(() => !!getFace())
+  const [face, setFace] = useState(() => !!getFace())
+  const [keep, setKeep] = useState(true)
   const toast = (t, bad) => { setMsg({ t, bad }); setTimeout(() => setMsg(null), 3500) }
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSess(data.session || null))
+    supabase.auth.getSession().then(({ data }) => {
+      let off = false; try { off = localStorage.getItem('calio_keep') === '0' && !sessionStorage.getItem('calio_sess') } catch { /* */ }
+      if (data.session && off) { supabase.auth.signOut(); setSess(null) } else setSess(data.session || null)
+    })
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSess(s || null))
     return () => sub.subscription.unsubscribe()
   }, [])
@@ -28,6 +46,12 @@ export default function Admin() {
     if (!sess) { setOk(null); return }
     supabase.rpc('is_staff').then(({ data, error }) => setOk(error ? false : !!data))
   }, [sess])
+  useEffect(() => { if (locked && sess && ok) faceUnlock().then((r) => r && setLocked(false)) }, [locked, sess, ok])
+  useEffect(() => {
+    let t = 0
+    const v = () => { if (document.visibilityState === 'hidden') t = Date.now(); else if (t && Date.now() - t > 60000 && getFace()) setLocked(true) }
+    document.addEventListener('visibilitychange', v); return () => document.removeEventListener('visibilitychange', v)
+  }, [])
   useEffect(() => {
     if (!ok) return
     const q = () => supabase.from('cand_leads').select('capital,budget_confirmed').eq('booked', false).eq('follow', 'new').then(({ data }) => setNLeads((data || []).filter(l => l.capital !== 'lt500' && !['soon', 'no'].includes(l.budget_confirmed)).length))
@@ -38,6 +62,7 @@ export default function Admin() {
     const f = new FormData(e.target)
     const { error } = await supabase.auth.signInWithPassword({ email: String(f.get('email')).trim(), password: String(f.get('password')) })
     setBusy(false)
+    if (!error) { try { localStorage.setItem('calio_keep', f.get('keep') ? '1' : '0'); sessionStorage.setItem('calio_sess', '1') } catch { /* */ } }
     if (error) toast(/invalid login/i.test(error.message) ? 'Email ou mot de passe incorrect' : 'Erreur : ' + error.message, true)
   }
   const sendReset = async (e) => {
@@ -60,8 +85,9 @@ export default function Admin() {
   </form></div>
   if (!sess) return <div className="adm"><form className="login" onSubmit={login}>
     <Logo s={44} /><b className="brand">CALIO</b><h1>Mes appels</h1><p className="muted">Connecte-toi avec ton compte habituel.</p>
-    <input name="email" type="email" placeholder="Email" autoComplete="username" required />
-    <input name="password" type={showPw ? 'text' : 'password'} placeholder="Mot de passe" autoComplete="current-password" required />
+    <input id="email" name="email" type="email" inputMode="email" placeholder="Email" autoComplete="username" autoCapitalize="none" required />
+    <input id="password" name="password" type={showPw ? 'text' : 'password'} placeholder="Mot de passe" autoComplete="current-password" required />
+    <label className="showpw"><input type="checkbox" name="keep" checked={keep} onChange={e => setKeep(e.target.checked)} /> Rester connecté</label>
     <label className="showpw"><input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} /> Afficher le mot de passe</label>
     <button className="btn big" disabled={busy}>{busy ? '…' : 'Me connecter'}</button>
     <button type="button" className="btn ghost" onClick={() => setForgot(true)}>Mot de passe oublié</button>
@@ -70,9 +96,20 @@ export default function Admin() {
   if (ok === null) return <div className="adm"><p className="muted ctr">Vérification…</p></div>
   if (!ok) return <div className="adm"><div className="login"><h1>Accès refusé</h1><p className="muted">Ce compte n'a pas accès à cet espace.</p>
     <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Changer de compte</button></div></div>
+  const unlock = () => faceUnlock().then((r) => r ? setLocked(false) : toast('Face ID non reconnu', true))
+  const toggleFace = async () => {
+    if (face) { try { localStorage.removeItem(LKEY) } catch { /* */ } setFace(false); return toast('Face ID désactivé') }
+    try {
+      const c = await navigator.credentials.create({ publicKey: { challenge: rnd(32), rp: { name: 'Calio', id: location.hostname }, user: { id: rnd(16), name: sess.user.email || 'calio', displayName: 'Calio' }, pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }], authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' }, timeout: 60000 } })
+      localStorage.setItem(LKEY, b64(c.rawId)); setFace(true); toast('Face ID activé : Calio se verrouille quand tu la quittes')
+    } catch { toast("Impossible d'activer Face ID sur cet appareil", true) }
+  }
+  if (locked) return <div className="adm"><div className="login"><Logo s={44} /><b className="brand">CALIO</b><h1>Verrouillé</h1><p className="muted">Déverrouille avec Face ID pour ouvrir tes appels.</p>
+    <button className="btn big" onClick={unlock}>Déverrouiller</button>
+    <button className="btn ghost" onClick={() => { supabase.auth.signOut(); setLocked(false) }}>Se déconnecter</button>{msg && <small className="err">{msg.t}</small>}</div></div>
   const today = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short' })
   return <div className="adm app">
-    <header className="bar"><Logo s={30} /><h1>Mes appels</h1><span className="date">{today}</span><button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
+    <header className="bar"><Logo s={30} /><h1>Mes appels</h1><span className="date">{today}</span>{faceOk && <button className="out" onClick={toggleFace} aria-label="Face ID" title={face ? 'Face ID activé' : 'Activer Face ID'} style={{ color: face ? '#6FE3A1' : undefined }}><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M9 10v1.5M15 10v1.5M12 10v3.5M9 16c1.7 1.3 4.3 1.3 6 0" /></svg></button>}<button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
     <div className={`scroll ${tab !== 'appels' ? 'light' : ''} ${tab === 'prospects' ? 'wide' : ''}`}>
       {tab === 'prospects' ? <Prospects toast={toast} /> : tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : tab === 'dispos' ? <Dispos toast={toast} /> : <Candidatures toast={toast} tab={tab} />}
     </div>
