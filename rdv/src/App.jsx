@@ -1,3 +1,4 @@
+import { mailProblem, mailShape } from './mailcheck'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { rpc, configured } from './api'
 import Logo from './Logo'
@@ -101,7 +102,7 @@ export default function App() {
   const [slots, setSlots] = useState(null)
   const [day, setDay] = useState('')
   const [pick, setPick] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState(false); const [mailBad, setMailBad] = useState(false)
   const [done, setDone] = useState(null)
   const [mine, setMine] = useState(null); const [resched, setResched] = useState(false)
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
@@ -146,10 +147,11 @@ export default function App() {
       if (f.wa_ok !== false && isFixe(f.prefix, f.tel)) { set('wa_ok', false); return setErr("Ce numéro est un fixe : il n'a pas WhatsApp. Indique ci-dessous ton numéro de portable, c'est là qu'on se parlera.") }
       if (!telOk(f.prefix, f.tel)) { setTBlur(true); return setErr("Ce numéro n'a pas l'air valide : vérifie l'indicatif et les chiffres (exemple : 6 12 34 56 78).") }
       if (f.wa_ok === false && (!telOk(f.wprefix, f.wtel) || isFixe(f.wprefix, f.wtel))) { setTBlur(true); return setErr("Entre un numéro WhatsApp valide, c'est lui qui me permet de te joindre.") }
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(f.email.trim())) return setErr('Vérifie ton adresse email.')
+      if (!mailShape(f.email)) return setErr("Vérifie ton adresse email : elle n'a pas l'air correcte (exemple : prenom@gmail.com).")
       if (pfx !== f.prefix || String(digits) !== f.tel) setF((x) => ({ ...x, prefix: pfx, tel: digits })); saveLead('who', { prefix: pfx, tel: digits })
       // Déjà un rendez-vous à venir ? On ne le laisse pas en reprendre un deuxième : on propose de le modifier.
       setBusy(true)
+      { const pb = await mailProblem(f.email); if (pb) { setBusy(false); setMailBad(true); return setErr(pb) } }
       try { const m = await rpc('cand_mine', { p: { email: f.email.trim().toLowerCase(), phone: effTel({ ...f, prefix: pfx, tel: digits }).join('') } }); if (m && m.found) { setBusy(false); setMine(m); return go('mine') } } catch { /* en cas de souci réseau on continue : le serveur refusera le doublon */ }
       setBusy(false); go('situ')
     },
@@ -233,7 +235,7 @@ export default function App() {
           <select value={f.wprefix} onChange={(e) => set('wprefix', e.target.value)} aria-label="Indicatif WhatsApp">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
           <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => set('wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
         <span className="muted s12">{f.wa_ok === false ? 'Indique le numéro sur lequel tu as WhatsApp : c\'est là que tu me confirmes ton appel.' : 'C\'est sur WhatsApp qu\'on se contacte, toi et moi : c\'est là que tu me confirmes ton rendez-vous et que je t\'écris ou t\'appelle. Vérifie-le bien.'}</span></div>
-      <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => set('email', e.target.value)} onBlur={() => saveLead('who')} placeholder="ton@email.com" />
+      <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => { set('email', e.target.value); setMailBad(false); setErr('') }} onBlur={() => { saveLead('who'); if (f.email.trim().includes('@')) mailProblem(f.email).then((pb) => pb && setErr(pb)) }} aria-invalid={mailBad || undefined} placeholder="ton@email.com" />
         {mailFix(f.email) && <button type="button" className="mailfix" onClick={() => set('email', mailFix(f.email))}>Tu voulais dire <b>{mailFix(f.email)}</b> ? <u>Corriger</u></button>}</div>
       <div className="err">{err}</div><button className="btn" disabled={busy} onClick={next.who}>{busy ? 'Un instant…' : 'Continuer →'}</button></div></section>}
 

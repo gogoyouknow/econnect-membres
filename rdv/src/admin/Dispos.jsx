@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { usePS } from './persist'
 import { supabase, friendlyError } from './supabase'
 
 const TZ = 'Europe/Paris'
@@ -31,7 +32,7 @@ function Ranges({ ranges, onChange }) {
 export default function Dispos({ toast }) {
   const todayK = parisKey(new Date().toISOString())[0]
   const [ty, tm] = todayK.split('-').map(Number)
-  const [sub, setSub] = useState('horaires')
+  const [sub, setSub] = usePS('di_sub', 'horaires')
   const [ym, setYm] = useState({ y: ty, m: tm - 1 })
   const [sel, setSel] = useState(todayK)
   const [week, setWeek] = useState(null); const [cfg, setCfg] = useState(null); const [blocked, setBlocked] = useState([]); const [over, setOver] = useState({})

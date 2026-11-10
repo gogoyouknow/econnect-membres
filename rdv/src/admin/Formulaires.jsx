@@ -1,4 +1,5 @@
 import LoadErr from './LoadErr'
+import { usePS } from './persist'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 
@@ -26,7 +27,7 @@ const QS = [
 
 /** « Formulaires » : toutes les réponses au formulaire de réservation + où les gens s'arrêtent. */
 export default function Formulaires({ toast, onOpen }) {
-  const [rows, setRows] = useState(null); const [days, setDays] = useState('today'); const [f, setF] = useState('all'); const [q, setQ] = useState(''); const [more, setMore] = useState(24); const [openId, setOpenId] = useState(null)
+  const [rows, setRows] = useState(null); const [days, setDays] = usePS('fo_days', 'today'); const [f, setF] = usePS('fo_f', 'all'); const [q, setQ] = useState(''); const [more, setMore] = useState(24); const [openId, setOpenId] = useState(null)
   const [lerr, setLerr] = useState('')
   const load = async () => {
     let all = [], from = 0, bad = ''

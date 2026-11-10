@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { usePS } from './persist'
 import { supabase, friendlyError } from './supabase'
 import LoadErr from './LoadErr'
 
@@ -26,7 +27,7 @@ export function OutcomeChips({ c, onPick }) {
 
 /** Onglet « Closing » : taux de closing global, par closer et par semaine, + appels dont le résultat reste à renseigner. */
 export default function Closing({ toast }) {
-  const [rows, setRows] = useState(null); const [per, setPer] = useState('30'); const [err, setErr] = useState('')
+  const [rows, setRows] = useState(null); const [per, setPer] = usePS('cl_per', '30'); const [err, setErr] = useState('')
   const load = () => supabase.from('candidatures').select('id,first_name,last_name,starts_at,status,closer,outcome,outcome_at').order('starts_at', { ascending: false }).limit(2000)
     .then(({ data, error }) => { if (error) return setErr(friendlyError(error)); setErr(''); setRows(data || []) })
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])

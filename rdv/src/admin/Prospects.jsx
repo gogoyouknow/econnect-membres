@@ -1,4 +1,5 @@
 import LoadErr from './LoadErr'
+import { usePS } from './persist'
 import Portal from './Portal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
@@ -97,10 +98,10 @@ const normPhone = (raw) => {
 /** « Prospects » : la base de contacts (toutes les personnes qui ont laissé leurs infos, même en partie). */
 export default function Prospects({ toast, focus }) {
   const [rows, setRows] = useState(null)
-  const [view, setView] = useState('all'); const [q, setQ] = useState(''); const [fSrc, setFSrc] = useState(''); const [fSit, setFSit] = useState('')
+  const [view, setView] = usePS('pr_view', 'all'); const [q, setQ] = useState(''); const [fSrc, setFSrc] = usePS('pr_src', ''); const [fSit, setFSit] = usePS('pr_sit', '')
   const [sort, setSort] = useState({ k: 'updated_at', dir: -1 }); const [page, setPage] = useState(0)
   const [cols, setCols] = useState(lsGet); const [colMenu, setColMenu] = useState(false)
-  const [sel, setSel] = useState(() => new Set()); const [openId, setOpenId] = useState(null)
+  const [sel, setSel] = useState(() => new Set()); const [openId, setOpenId] = usePS('pr_open', null)
   const [oq, setOq] = useState(null)
   const [add, setAdd] = useState(false); const [imp, setImp] = useState(null); const [tagIn, setTagIn] = useState('')
   const file = useRef(null)

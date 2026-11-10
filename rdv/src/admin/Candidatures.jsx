@@ -1,4 +1,5 @@
 import LoadErr from './LoadErr'
+import { usePS } from './persist'
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import Portal from './Portal'
@@ -41,7 +42,7 @@ const countdown = (iso) => {
 
 /** Mes appels : accueil (prochain appel + liste) et disponibilités. `tab` = 'appels' | 'dispos'. */
 export default function Candidatures({ toast, tab: main }) {
-  const [rows, setRows] = useState([]); const [tab, setTab] = useState('avenir'); const [open, setOpen] = useState(null)
+  const [rows, setRows] = useState([]); const [tab, setTab] = usePS('ca_tab', 'avenir'); const [open, setOpen] = usePS('ca_open', null)
   const [tpl, setTpl] = useState(DEFAULT_MSG); const [edit, setEdit] = useState(null); const [qs, setQs] = useState({}); const [ev, setEv] = useState({}); const [rep, setRep] = useState(null)
   const [lerr, setLerr] = useState('')
   const load = () => supabase.from('candidatures').select('*').order('starts_at', { ascending: true }).limit(500).then(({ data, error }) => { if (error) return setLerr(friendlyError(error)); setLerr(''); setRows(data || []) }).catch((e) => setLerr(friendlyError(e)))

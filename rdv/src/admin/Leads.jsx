@@ -1,4 +1,5 @@
 import LoadErr from './LoadErr'
+import { usePS } from './persist'
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import { openWA, waWeb } from './whatsapp'
@@ -28,7 +29,7 @@ const unqualified = (l) => l.capital === 'lt500' || ['soon', 'no'].includes(l.bu
 
 /** « Relances » : les personnes qui ont laissé leurs coordonnées sans réserver d'appel, leur suivi, les messages modèles et la séquence « plus tard ». */
 export default function Leads({ toast, onChange }) {
-  const [rows, setRows] = useState(null); const [tab, setTab] = useState('todo'); const [open, setOpen] = useState(null); const [lerr, setLerr] = useState('')
+  const [rows, setRows] = useState(null); const [tab, setTab] = usePS('le_tab', 'todo'); const [open, setOpen] = usePS('le_open', null); const [lerr, setLerr] = useState('')
   const [seq, setSeq] = useState([]); const [tpl, setTpl] = useState({}); const [cfg, setCfg] = useState(null)
   const load = () => supabase.from('cand_leads').select('*').order('updated_at', { ascending: false }).limit(500).then(({ data, error }) => { if (error) return setLerr(friendlyError(error)); setLerr(''); setRows(data || []); onChange && onChange((data || []).filter(l => !l.booked && l.follow === 'new' && !unqualified(l)).length) }).catch((e) => setLerr(friendlyError(e)))
   const loadMsgs = () => {
