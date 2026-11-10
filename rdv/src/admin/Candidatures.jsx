@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
-import { DEFAULT_MSG, fillMsg, waWeb, openWA, NURTURE_URL } from './whatsapp'
+import { DEFAULT_MSG, RESCHEDULE_MSG, fillMsg, waWeb, openWA, NURTURE_URL } from './whatsapp'
 import { copyText } from './copy'
 import PrepTrack from './PrepTrack'
 
@@ -16,6 +16,16 @@ const dayLabel = (iso) => {
   const s = new Date(iso).toLocaleDateString('fr-FR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' })
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
+
+// « 2026-11-12T17:30 » (heure de Paris, saisie à la main) → instant précis
+const parisISO = (v) => {
+  const [d, t] = String(v).split('T'); if (!d || !t) return ''
+  const [Y, M, D] = d.split('-').map(Number), [h, m] = t.split(':').map(Number)
+  const guess = Date.UTC(Y, M - 1, D, h, m)
+  const off = (ts) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(ts)).map((x) => [x.type, x.value])); return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - ts }
+  const a = guess - off(guess); const iso = new Date(guess - off(a)).toISOString(); return iso
+}
+const dayShort = (iso) => new Date(iso).toLocaleDateString('fr-FR', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short' })
 const wa = (p) => { const d = String(p || '').replace(/[^\d]/g, ''); return d ? 'https://wa.me/' + d : '' }
 const countdown = (iso) => {
   const m = Math.round((new Date(iso).getTime() - Date.now()) / 60000)
@@ -29,11 +39,22 @@ const countdown = (iso) => {
 /** Mes appels : accueil (prochain appel + liste) et disponibilités. `tab` = 'appels' | 'dispos'. */
 export default function Candidatures({ toast, tab: main }) {
   const [rows, setRows] = useState([]); const [tab, setTab] = useState('avenir'); const [open, setOpen] = useState(null)
-  const [tpl, setTpl] = useState(DEFAULT_MSG); const [edit, setEdit] = useState(null); const [qs, setQs] = useState({}); const [ev, setEv] = useState({})
+  const [tpl, setTpl] = useState(DEFAULT_MSG); const [edit, setEdit] = useState(null); const [qs, setQs] = useState({}); const [ev, setEv] = useState({}); const [rep, setRep] = useState(null)
   const load = () => supabase.from('candidatures').select('*').order('starts_at', { ascending: true }).limit(500).then(({ data }) => setRows(data || []))
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   const loadQs = () => supabase.from('cand_questions').select('candidature_id,name,body,updated_at').not('candidature_id', 'is', null).then(({ data }) => { const m = {}; (data || []).forEach((q) => { if (q.body && q.body.trim()) m[q.candidature_id] = q }); setQs(m) })
-  useEffect(() => { if (edit === null) return; const b = document.body, h = document.documentElement; const o = [b.style.overflow, h.style.overflow]; b.style.overflow = h.style.overflow = 'hidden'; return () => { b.style.overflow = o[0]; h.style.overflow = o[1] } }, [edit !== null])
+  useEffect(() => { if (edit === null && !rep) return; const b = document.body, h = document.documentElement; const o = [b.style.overflow, h.style.overflow]; b.style.overflow = h.style.overflow = 'hidden'; return () => { b.style.overflow = o[0]; h.style.overflow = o[1] } }, [edit !== null || !!rep])
+  const openRep = (c) => setRep({ c, slots: null, day: '', pick: '', custom: '', busy: false, done: '' })
+  useEffect(() => { if (!rep || rep.slots) return; supabase.rpc('cand_slots').then(({ data }) => setRep((r) => r && ({ ...r, slots: data || [], day: r.day || (data && data[0] ? dayKey(data[0]) : '') }))) }, [rep && rep.c.id])
+  const doRep = async () => {
+    const iso = rep.pick || (rep.custom ? parisISO(rep.custom) : ''); if (!iso) return
+    if (new Date(iso).getTime() < Date.now() - 60000) return toast('Choisis un horaire à venir', true)
+    setRep({ ...rep, busy: true })
+    const patch = { starts_at: iso }; if (['absent', 'annule'].includes(rep.c.status)) patch.status = 'reserve'
+    const { error } = await supabase.from('candidatures').update(patch).eq('id', rep.c.id)
+    if (error) { setRep((r) => ({ ...r, busy: false })); return toast(error.code === '23505' ? 'Ce créneau est déjà pris' : friendlyError(error), true) }
+    load(); setRep((r) => ({ ...r, busy: false, done: iso })); toast('Appel replanifié')
+  }
   const loadEv = () => supabase.from('cand_page_events').select('candidature_id,kind,label,created_at').not('candidature_id', 'is', null).order('created_at', { ascending: true }).limit(2000).then(({ data }) => { const m = {}; (data || []).forEach((e) => { (m[e.candidature_id] = m[e.candidature_id] || []).push(e) }); setEv(m) })
   useEffect(() => { loadQs(); loadEv(); const i = setInterval(() => { loadQs(); loadEv() }, 60000); return () => clearInterval(i) }, [])
   useEffect(() => { supabase.from('cand_templates').select('body').eq('key', 'wa_confirm').maybeSingle().then(({ data }) => data?.body && setTpl(data.body)) }, [])
@@ -63,7 +84,7 @@ export default function Candidatures({ toast, tab: main }) {
             <a className="wabtn" href={waWeb(next.phone, fillMsg(tpl, next))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, next.phone, fillMsg(tpl, next))}>WhatsApp</a>
           </div>
           <PrepTrack ev={ev[next.id]} compact />
-          <div className="hcopy"><button onClick={() => copyText(next.phone, toast, 'Numéro copié')}>Copier le numéro</button><button onClick={() => copyText(NURTURE_URL + '?t=' + next.qtoken, toast, 'Lien personnel copié')}>Copier le lien personnel</button></div>
+          <div className="hcopy"><button onClick={() => openRep(next)}>Replanifier</button><button onClick={() => copyText(next.phone, toast, 'Numéro copié')}>Copier le numéro</button><button onClick={() => copyText(NURTURE_URL + '?t=' + next.qtoken, toast, 'Lien personnel copié')}>Copier le lien personnel</button></div>
           {qs[next.id] && <div className="hq"><b>💬 Ses questions pour l'appel</b><p>{qs[next.id].body}</p><button className="cpy" onClick={() => copyText(qs[next.id].body, toast, 'Questions copiées')}>Copier les questions</button></div>}
         </> : <><div className="hk">Aucun appel à venir</div><div className="hempty">Dès qu'une personne réserve depuis ta bio, elle apparaît ici.</div></>}
       </div>
@@ -91,10 +112,12 @@ export default function Candidatures({ toast, tab: main }) {
               {live(c) && <a className="btn sm" style={{ textDecoration: 'none' }} href={waWeb(c.phone, fillMsg(tpl, c))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, c.phone, fillMsg(tpl, c))}>Envoyer le message WhatsApp</a>}
               {c.status === 'reserve' && <button className="btn sm" onClick={() => upd(c, { status: 'confirme' })}>✓ Message WhatsApp reçu</button>}
               {live(c) && <>
+                <button className="btn ghost sm" onClick={() => openRep(c)}>Replanifier</button>
                 <button className="btn ghost sm" onClick={() => upd(c, { status: 'fait' })}>Appel fait</button>
                 <button className="btn ghost sm" onClick={() => upd(c, { status: 'absent' })}>Absent</button>
                 <button className="btn ghost sm" onClick={() => confirm('Annuler et libérer ce créneau ?') && upd(c, { status: 'annule' })}>Annuler</button></>}
               {c.status === 'annule' && <button className="btn ghost sm" onClick={() => upd(c, { status: 'reserve' })}>Rétablir</button>}
+              {['absent', 'annule'].includes(c.status) && <button className="btn ghost sm" onClick={() => openRep(c)}>Replanifier</button>}
             </div>
             <textarea rows={2} defaultValue={c.note} placeholder="Note (objection, suite à donner…)" onBlur={e => e.target.value !== c.note && upd(c, { note: e.target.value })} />
           </div>}
@@ -102,6 +125,29 @@ export default function Candidatures({ toast, tab: main }) {
       </div>)}
       <p className="muted small">Sans message WhatsApp reçu dans le délai réglé, le créneau est libéré automatiquement.</p>
     </div>
+    {rep && <div className="pr-modal" onClick={() => setRep(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
+      {rep.done ? <>
+        <h3>✓ Appel replanifié</h3>
+        <p>{rep.c.first_name} : {dayLabel(rep.done)} à {timeOf(rep.done)}.</p>
+        <p className="muted" style={{ fontSize: 13 }}>Prévenez la personne tout de suite, avec le nouveau jour et la nouvelle heure déjà écrits.</p>
+        <div className="acts">
+          <a className="btn" style={{ textDecoration: 'none' }} href={waWeb(rep.c.phone, fillMsg(RESCHEDULE_MSG, { first_name: rep.c.first_name, starts_at: rep.done }))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, rep.c.phone, fillMsg(RESCHEDULE_MSG, { first_name: rep.c.first_name, starts_at: rep.done }))}>Prévenir sur WhatsApp</a>
+          <button className="btn ghost" onClick={() => setRep(null)}>Fermer</button></div>
+      </> : <>
+        <h3>Replanifier l'appel de {rep.c.first_name}</h3>
+        <p className="muted" style={{ fontSize: 13 }}>Prévu : {dayLabel(rep.c.starts_at)} à {timeOf(rep.c.starts_at)}</p>
+        {rep.slots === null && <p className="muted">Je regarde les disponibilités…</p>}
+        {rep.slots && !rep.slots.length && <p className="muted">Aucun créneau libre dans tes horaires. Choisis un autre horaire ci-dessous.</p>}
+        {!!(rep.slots && rep.slots.length) && <>
+          <div className="lq">Jour</div>
+          <div className="chips rp-days">{[...new Set(rep.slots.map(dayKey))].slice(0, 21).map((k) => { const iso = rep.slots.find((x) => dayKey(x) === k); return <button key={k} className={`chip ${rep.day === k && !rep.custom ? 'sel' : ''}`} onClick={() => setRep({ ...rep, day: k, pick: '', custom: '' })}>{dayShort(iso)}</button> })}</div>
+          <div className="lq">Heure</div>
+          <div className="chips rp-slots">{rep.slots.filter((x) => dayKey(x) === rep.day).map((x) => <button key={x} className={`chip ${rep.pick === x ? 'sel' : ''}`} onClick={() => setRep({ ...rep, pick: x, custom: '' })}>{timeOf(x)}</button>)}</div>
+        </>}
+        <label className="lq">Ou un autre horaire (heure de Paris)<input type="datetime-local" value={rep.custom} onChange={(e) => setRep({ ...rep, custom: e.target.value, pick: '' })} /></label>
+        <div className="acts"><button className="btn" disabled={rep.busy || !(rep.pick || rep.custom)} onClick={doRep}>{rep.busy ? 'Déplacement…' : "Déplacer l'appel"}</button><button className="btn ghost" onClick={() => setRep(null)}>Annuler</button></div>
+      </>}
+    </div></div>}
     {edit !== null && <div className="pr-modal" onClick={() => setEdit(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
       <h3>Message WhatsApp prérempli</h3>
       <p className="muted" style={{ fontSize: 13 }}>S'ouvre dans WhatsApp Business quand tu touches le bouton. Tu peux utiliser <b>{'{prenom}'}</b> <b>{'{jour}'}</b> <b>{'{heure}'}</b> et <b>{'{lien}'}</b> (la page Découvre).</p>

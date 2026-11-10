@@ -314,3 +314,13 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm{overflow-x:clip;max-width:100%;touch-action:pan-y;overscroll-behavior-x:none}
 .adm .pr-side,.adm .fm-tools .pills,.adm .pr-tw,.adm .pills{touch-action:pan-x pan-y}
 @media (min-width:900px){.adm{overflow-x:visible}}
+
+/* Replanifier */
+.adm .pr-mb .chip{background:#fff;color:#12151C;border:1px solid #D5D9E0;font-weight:600}
+.adm .pr-mb .chip.sel{background:#12151C;color:#fff;border-color:#12151C}
+.adm .rp-days{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden;margin:6px 0 4px;padding-bottom:6px;touch-action:pan-x pan-y}
+.adm .rp-days .chip{flex:none;white-space:nowrap}
+.adm .rp-slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:6px 0 4px;max-height:176px;overflow-y:auto}
+.adm .rp-slots .chip{padding:10px 0;text-align:center;width:auto}
+@media (max-width:430px){.adm .bar .date{display:none}.adm .bar h1{white-space:nowrap}}
+.adm .pr-mb input[type=datetime-local]{width:100%;font-weight:400}

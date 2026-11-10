@@ -18,11 +18,11 @@ Deno.serve(async (req) => {
   if (!token) return new Response('no token', { status: 401 })
 
   // clés VAPID (créées une seule fois)
-  let cfg = await rpc('push_payload', { p_token: token, p_user: msg.user_id ?? '00000000-0000-0000-0000-000000000000' })
+  let cfg = await rpc('push_payload', { p_token: token, p_user: msg.user_id ?? '00000000-0000-0000-0000-000000000000', p_app: msg.app ?? 'membres' })
   if (!cfg.vapid_public || !cfg.vapid_private) {
     const k = webpush.generateVAPIDKeys()
     await rpc('push_set_keys', { p_token: token, p_public: k.publicKey, p_private: k.privateKey })
-    cfg = await rpc('push_payload', { p_token: token, p_user: msg.user_id ?? '00000000-0000-0000-0000-000000000000' })
+    cfg = await rpc('push_payload', { p_token: token, p_user: msg.user_id ?? '00000000-0000-0000-0000-000000000000', p_app: msg.app ?? 'membres' })
   }
   if (msg.setup) return Response.json({ ok: true, vapid_public: cfg.vapid_public })
   if (!msg.user_id) return Response.json({ ok: false, error: 'user_id manquant' }, { status: 400 })
