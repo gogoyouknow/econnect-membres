@@ -2,8 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { rpc, configured } from './api'
 import Logo from './Logo'
 import { TEMOS, Thumb } from './videos'
+import Vidalytics from './Vidalytics'
 
 const TZ = 'Europe/Paris'
+// Avec QUI l'appel : lien ?closer_id=clement (ou rien) → Clément ; ?closer_id=amandine / 9512 / assigned_to=amandine → Amandine. Même règle que l'ancienne page de confirmation.
+const QS = new URLSearchParams(typeof location !== 'undefined' ? location.search : '')
+const gq = (k) => (QS.get(k) || '').trim().toLowerCase()
+const CLOSER = (() => { const c = gq('closer_id'); return (c === '9512' || c === 'amandine' || gq('assigned_to').includes('amandine') || (!c && gq('utm_campaign').includes('amandine'))) ? 'amandine' : 'clement' })()
+const CLOSER_NAME = { clement: 'Clément', amandine: 'Amandine' }[CLOSER]
+const WA_DEF = { clement: '33756849421', amandine: '33763850319' }[CLOSER]
 const CAPS = [['lt500', 'Moins de 500 €'], ['500-1000', 'Entre 500 € et 1 000 €'], ['1000-3000', 'Entre 1 000 € et 3 000 €'], ['gt3000', 'Plus de 3 000 €']]
 const CAP_LBL = { '500-1000': 'entre 500 € et 1 000 €', '1000-3000': 'entre 1 000 € et 3 000 €', gt3000: 'plus de 3 000 €' }
 const SITUS = ['Salarié', 'Étudiant', 'Entrepreneur', 'Sans activité']
@@ -80,6 +87,7 @@ export default function App() {
   const [pick, setPick] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(null)
+  const [mine, setMine] = useState(null); const [resched, setResched] = useState(false)
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
   const [tBlur, setTBlur] = useState(false); const [pvReady, setPvReady] = useState(false)
   useEffect(() => { loadPV().then(() => setPvReady(true)) }, [])
@@ -111,18 +119,22 @@ export default function App() {
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
   const loadSlots = () => rpc('cand_slots').then((s) => setSlots(s || [])).catch(() => setSlots([]))
-  useEffect(() => { if (step === 'slot') { loadSlots(); saveLead('slot') } }, [step])
+  useEffect(() => { if (step === 'slot') { loadSlots(); if (!resched) saveLead('slot') } }, [step])
   const days = useMemo(() => { const m = new Map(); (slots || []).forEach((s) => { const k = dayKey(s); if (!m.has(k)) m.set(k, []); m.get(k).push(s) }); return [...m.entries()] }, [slots])
   useEffect(() => { if (days.length && !days.find((d) => d[0] === day)) setDay(days[0][0]) }, [days])
 
   const next = {
-    who() {
+    async who() {
       const [pfx, digits] = splitTel(f.prefix, f.tel)
       if (!f.first_name.trim()) return setErr('Indique ton prénom.')
       if (!telOk(f.prefix, f.tel)) { setTBlur(true); return setErr("Ce numéro n'a pas l'air valide : vérifie l'indicatif et les chiffres (exemple : 6 12 34 56 78).") }
       if (f.wa_ok === false && !telOk(f.wprefix, f.wtel)) { setTBlur(true); return setErr("Entre un numéro WhatsApp valide, c'est lui qui me permet de te joindre.") }
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(f.email.trim())) return setErr('Vérifie ton adresse email.')
-      if (pfx !== f.prefix || String(digits) !== f.tel) setF((x) => ({ ...x, prefix: pfx, tel: digits })); saveLead('who', { prefix: pfx, tel: digits }); go('situ')
+      if (pfx !== f.prefix || String(digits) !== f.tel) setF((x) => ({ ...x, prefix: pfx, tel: digits })); saveLead('who', { prefix: pfx, tel: digits })
+      // Déjà un rendez-vous à venir ? On ne le laisse pas en reprendre un deuxième : on propose de le modifier.
+      setBusy(true)
+      try { const m = await rpc('cand_mine', { p: { email: f.email.trim().toLowerCase(), phone: effTel({ ...f, prefix: pfx, tel: digits }).join('') } }); if (m && m.found) { setBusy(false); setMine(m); return go('mine') } } catch { /* en cas de souci réseau on continue : le serveur refusera le doublon */ }
+      setBusy(false); go('situ')
     },
     situ() {
       if (!f.situation || !f.capital) return setErr('Réponds aux deux questions pour continuer.')
@@ -136,16 +148,36 @@ export default function App() {
   async function book() {
     setBusy(true); setErr('')
     try {
-      const r = await rpc('cand_book', { p: { first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
+      const tel_ = (() => { const [pf, d] = effTel(f); return pf + d })()
+      if (resched) {
+        const r = await rpc('cand_resched', { p: { email: f.email.trim().toLowerCase(), phone: tel_, starts_at: pick } })
+        setDone({ ...r, moved: true }); setResched(false); go('done'); setBusy(false); return
+      }
+      const r = await rpc('cand_book', { p: { closer: CLOSER, first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
       setDone(r); go('done')
     } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
     setBusy(false)
   }
   const jour = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, weekday: 'long' }).format(new Date(iso))
-  const waMsg = done ? `Salut Clément, c’est ${f.first_name.trim()}. Je viens de réserver mon appel pour ${jour(done.starts_at)} à ${fmtT(done.starts_at).replace(':', 'h')}.` : ''
-  const waNum = (done?.wa || cfg.wa)
+  const bk = done || mine
+  const cn = bk?.closer_name || CLOSER_NAME
+  const waNum = bk?.wa || (CLOSER === 'amandine' ? WA_DEF : cfg.wa)
+  const waMsg = bk ? `Salut ${cn}, c’est ${(bk.first_name || f.first_name).trim()}. Je viens de ${done?.moved ? 'déplacer' : 'réserver'} mon appel pour ${bk.when}.` : ''
+  const waHref = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`
   const copy = () => { try { navigator.clipboard.writeText('+' + waNum) } catch {} }
+  const waClick = () => { try { rpc('cand_wa_click', { p: { email: f.email.trim().toLowerCase(), phone: effTel(f).join('') } }).catch(() => {}) } catch { /* */ } }
   const cur = days.find((d) => d[0] === day)
+  const relH = bk?.release_hours || cfg.release_hours
+  const confirmBtn = () => <div className="card confirm"><p><b>Tu n'as pas encore envoyé ton message ?</b></p><p className="muted s13">C'est la seule chose qui confirme ton créneau.</p>
+    <a className="btn wa" href={waHref} target="_blank" rel="noopener noreferrer" onClick={waClick}>JE CONFIRME SUR WHATSAPP</a></div>
+  const confirmCard = () => <div className="card confirm">
+    <p><b>Envoie-moi ce message sur WhatsApp</b></p><p className="muted s13">C'est la seule chose qui confirme ton créneau.</p>
+    <div className="msg">{waMsg}</div>
+    <a className="btn wa" href={waHref} target="_blank" rel="noopener noreferrer" onClick={waClick}>JE CONFIRME SUR WHATSAPP</a>
+    <div className="copyrow">Le bouton ne s'ouvre pas ? Écris-moi au <code>+{waNum}</code> <button className="ghost" onClick={copy}>Copier</button></div>
+    <p className="note">Sans message dans les {relH} heures, je libère ton créneau pour quelqu'un d'autre.</p></div>
+  const prepVideo = () => <div className="prep"><span className="eyebrow">En attendant mon appel</span><h2>Regarde cette vidéo afin de préparer notre appel</h2>
+    <p className="muted s13"><b className="gold">#1</b> Écoute la vidéo entièrement (1 minute)</p><Vidalytics /></div>
 
   return <div className="shell">
     <header><Logo /></header>
@@ -179,7 +211,7 @@ export default function App() {
           <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => set('wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
         <span className="muted s12">{f.wa_ok === false ? 'Indique le numéro sur lequel tu as WhatsApp : c\'est là que tu me confirmes ton appel.' : 'C\'est sur WhatsApp qu\'on se contacte, toi et moi : c\'est là que tu me confirmes ton rendez-vous et que je t\'écris ou t\'appelle. Vérifie-le bien.'}</span></div>
       <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => set('email', e.target.value)} onBlur={() => saveLead('who')} placeholder="ton@email.com" /></div>
-      <div className="err">{err}</div><button className="btn" onClick={next.who}>Continuer →</button></div></section>}
+      <div className="err">{err}</div><button className="btn" disabled={busy} onClick={next.who}>{busy ? 'Un instant…' : 'Continuer →'}</button></div></section>}
 
     {step === 'situ' && <section className="screen"><h2>Ta situation</h2><div className="card">
       <div className="field"><span className="lbl">Que fais-tu dans la vie ?</span><div className="chips">{SITUS.map((s) => <button key={s} className={`chip ${f.situation === s ? 'sel' : ''}`} onClick={() => { set('situation', s); saveLead('situ', { situation: s }) }}>{s}</button>)}</div></div>
@@ -205,26 +237,32 @@ export default function App() {
       <p className="muted">Dès que tu peux investir, reviens réserver. En attendant, continue de suivre mes contenus.</p></div>
       <button className="link" onClick={() => go('budget')}>← Modifier ma réponse</button></section>}
 
-    {step === 'slot' && <section className="screen"><h2>Choisis ton créneau</h2><div className="card">
+    {step === 'slot' && <section className="screen"><h2>{resched ? 'Choisis ton nouveau créneau' : 'Choisis ton créneau'}</h2><div className="card">
       {slots === null && <p className="muted">Je regarde mes disponibilités…</p>}
       {slots && !days.length && <p className="muted">Aucun créneau libre pour le moment. Reviens bientôt.</p>}
       {!!days.length && <><div className="days">{days.map(([k]) => { const d = fmtDay(k); return <button key={k} className={`day ${k === day ? 'sel' : ''}`} onClick={() => { setDay(k); setPick('') }}>{d.w}<b>{d.n}</b></button> })}</div>
         <div className="slots">{(cur?.[1] || []).map((s) => <button key={s} className={`slot ${pick === s ? 'sel' : ''}`} onClick={() => setPick(s)}>{fmtT(s)}</button>)}</div></>}
       <p className="note">Heure de Paris · appel de {cfg.slot_min} minutes</p>
       <div className="err">{err}</div>
-      <button className="btn" disabled={!pick || busy} onClick={book}>{busy ? 'Réservation…' : 'Confirmer ce créneau'}</button></div>
-      <button className="link" onClick={() => go('budget')}>← Retour</button></section>}
+      <button className="btn" disabled={!pick || busy} onClick={book}>{busy ? (resched ? 'Un instant…' : 'Réservation…') : resched ? 'Déplacer mon rendez-vous' : 'Confirmer ce créneau'}</button></div>
+      <button className="link" onClick={() => { if (resched) { setResched(false); go('mine') } else go('budget') }}>← Retour</button></section>}
+
+    {step === 'mine' && mine && <section className="screen">
+      <div className="col"><span className="eyebrow">Tu as déjà réservé</span><h2>{mine.status === 'confirme' ? 'Ton rendez-vous est confirmé ✓' : "Tu as déjà un rendez-vous, il n'est pas encore confirmé"}</h2></div>
+      <div className="recap"><span className="muted s12">Ton appel</span><b>{mine.when.replace(' à ', ' · ')}</b></div>
+      {mine.status !== 'confirme' && confirmCard()}
+      <div className="card"><p><b>Tu veux changer l'horaire ?</b></p><p className="muted s13">Pas besoin d'en réserver un deuxième : je déplace celui-ci.</p>
+        <button className="btn ghost" onClick={() => { setPick(''); setResched(true); go('slot') }}>Modifier mon rendez-vous</button></div>
+      {prepVideo()}
+      {mine.status !== 'confirme' && confirmBtn()}</section>}
 
     {step === 'done' && done && <section className="screen">
-      <div className="col"><span className="eyebrow">Étape 1 sur 2 faite</span><h2>Ton appel n'est pas encore confirmé</h2></div>
-      <div className="recap"><span className="muted s12">Créneau réservé</span><b>{done.when.replace(' à ', ' · ')}</b></div>
-      <div className="card"><div className="steps">
-        <div><span className="ok">✓</span><p><b>Créneau réservé</b></p></div>
-        <div><span>2</span><div><p><b>Envoie-moi ce message sur WhatsApp</b></p><p className="muted s13">C'est ce qui confirme ta place. Je t'appelle dans les 5 minutes.</p></div></div></div>
-        <div className="msg">{waMsg}</div>
-        <a className="btn wa" href={`https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`} target="_blank" rel="noopener noreferrer">Envoyer sur WhatsApp</a>
-        <div className="copyrow">Le bouton ne s'ouvre pas ? Écris-moi au <code>+{waNum}</code> <button className="ghost" onClick={copy}>Copier</button></div>
-        <p className="note">Sans message dans les {done.release_hours} heures, je libère ton créneau pour quelqu'un d'autre.</p></div></section>}
+      <div className="col"><span className="eyebrow">{done.status === 'confirme' ? 'Rendez-vous déplacé' : 'Étape 1 sur 2 faite'}</span>
+        <h2>{done.status === 'confirme' ? 'Ton rendez-vous est déplacé ✓' : "Ton appel n'est pas encore confirmé"}</h2></div>
+      <div className="recap"><span className="muted s12">{done.moved ? 'Nouveau créneau' : 'Créneau réservé'}</span><b>{done.when.replace(' à ', ' · ')}</b></div>
+      {done.status !== 'confirme' && confirmCard()}
+      {prepVideo()}
+      {done.status !== 'confirme' && confirmBtn()}</section>}
     {!configured && <p className="err">Configuration manquante (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).</p>}
   </div>
 }

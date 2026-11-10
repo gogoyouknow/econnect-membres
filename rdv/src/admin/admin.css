@@ -338,3 +338,9 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .lerr{border-color:#E8B4B4;background:#FDF1F1;color:#7A1F1F;text-align:left;line-height:1.5}.adm .lerr .btn{margin-top:10px}
 @media (max-width:899px){.adm .mlink{min-height:44px}}
 .adm .hz{margin:0 0 16px}.adm .hz-c{margin-top:12px;max-width:200px}.adm .hz .chip{min-height:38px}
+
+/* Les filtres passent à la ligne au lieu de défiler latéralement (téléphone). */
+@media (max-width:899px){
+  .adm .pills,.adm .fm-tools .pills,.adm .fm-head .pills{flex-wrap:wrap;overflow-x:visible;touch-action:pan-y}
+  .adm .pill{flex:0 1 auto}
+}

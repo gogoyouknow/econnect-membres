@@ -117,3 +117,19 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
 .qst.saved{color:var(--ok)}.qst.err{color:var(--warn)}
 
 .chk{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:14px;color:var(--fg);font:500 14px var(--body);min-height:44px;cursor:pointer}.chk input{width:22px;height:22px;accent-color:#e9c53e;flex:none}
+
+/* Jamais de défilement latéral sur téléphone : la page ne bouge que de haut en bas. */
+html,body{max-width:100%;overflow-x:clip;overscroll-behavior-x:none}
+body{touch-action:pan-y}
+.shell,.shell *{min-width:0}
+.shell input,.shell select,.shell textarea,.shell button{max-width:100%}
+.shell img,.shell video,.shell iframe{max-width:100%}
+
+/* Écran de confirmation : bouton WhatsApp vert, vidéo de préparation */
+.btn.wa{background:#25d366;color:#0b0b0c;font-weight:800;letter-spacing:.02em;text-align:center;text-decoration:none}
+.card.confirm{display:flex;flex-direction:column;gap:12px}
+.prep{display:flex;flex-direction:column;gap:10px}
+.prep h2{margin:0}
+.prep .gold{color:var(--gold)}
+.vid{border-radius:14px;overflow:hidden;background:#000;width:100%;min-height:120px}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
