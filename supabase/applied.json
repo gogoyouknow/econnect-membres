@@ -41,5 +41,6 @@
   "0040_prospects.sql",
   "0041_cand_templates.sql",
   "0042_cand_questions.sql",
-  "0043_prep_tracking.sql"
+  "0043_prep_tracking.sql",
+  "0044_calio_push.sql"
 ]
