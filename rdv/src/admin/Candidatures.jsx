@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
-import { DEFAULT_MSG, fillMsg, waWeb, openWA } from './whatsapp'
+import { DEFAULT_MSG, fillMsg, waWeb, openWA, NURTURE_URL } from './whatsapp'
+import { copyText } from './copy'
 import PrepTrack from './PrepTrack'
 
 const ST = { reserve: ['À confirmer', 'wait'], confirme: ['Confirmé', 'ok'], fait: ['Fait', 'done'], absent: ['Absent', 'done'], annule: ['Annulé', 'done'] }
@@ -61,7 +62,8 @@ export default function Candidatures({ toast, tab: main }) {
             <a className="wabtn" href={waWeb(next.phone, fillMsg(tpl, next))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, next.phone, fillMsg(tpl, next))}>WhatsApp</a>
           </div>
           <PrepTrack ev={ev[next.id]} compact />
-          {qs[next.id] && <div className="hq"><b>💬 Ses questions pour l'appel</b><p>{qs[next.id].body}</p></div>}
+          <div className="hcopy"><button onClick={() => copyText(next.phone, toast, 'Numéro copié')}>Copier le numéro</button><button onClick={() => copyText(NURTURE_URL + '?t=' + next.qtoken, toast, 'Lien personnel copié')}>Copier le lien personnel</button></div>
+          {qs[next.id] && <div className="hq"><b>💬 Ses questions pour l'appel</b><p>{qs[next.id].body}</p><button className="cpy" onClick={() => copyText(qs[next.id].body, toast, 'Questions copiées')}>Copier les questions</button></div>}
         </> : <><div className="hk">Aucun appel à venir</div><div className="hempty">Dès qu'une personne réserve depuis ta bio, elle apparaît ici.</div></>}
       </div>
       {next && <button className="linkbtn mlink" onClick={() => setEdit(tpl)}>Modifier le message WhatsApp prérempli</button>}
@@ -78,10 +80,10 @@ export default function Candidatures({ toast, tab: main }) {
             <span className={`badge ${ST[c.status][1]}`}>{ST[c.status][0]}</span>
           </div>
           {open === c.id && <div className="cdet">
-            <div className="drow"><label>WhatsApp</label><a href={waWeb(c.phone, fillMsg(tpl, c))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, c.phone, fillMsg(tpl, c))}>{c.phone}</a></div>
+            <div className="drow"><label>WhatsApp</label><a href={waWeb(c.phone, fillMsg(tpl, c))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, c.phone, fillMsg(tpl, c))}>{c.phone}</a> <button className="cpy" onClick={() => copyText(c.phone, toast, 'Numéro copié')}>Copier</button></div>
             <div className="drow"><label>Email</label><a href={`mailto:${c.email}`}>{c.email}</a></div>
             <div className="cq"><label>Page de préparation</label><PrepTrack ev={ev[c.id]} /></div>
-            {qs[c.id] && <div className="cq"><label>💬 Ses questions pour l'appel</label><p>{qs[c.id].body}</p></div>}
+            {qs[c.id] && <div className="cq"><label>💬 Ses questions pour l'appel</label><p>{qs[c.id].body}</p><button className="cpy" onClick={() => copyText(qs[c.id].body, toast, 'Questions copiées')}>Copier les questions</button></div>}
             <div className="drow"><label>Budget</label><span>{CAPL[c.capital] || c.capital} · confirmé disponible</span></div>
             <div className="drow"><label>Réservé le</label><span>{new Date(c.created_at).toLocaleString('fr-FR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
             <div className="acts">

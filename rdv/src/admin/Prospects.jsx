@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import { openWA, fillMsg, waWeb, NURTURE_MSG, NURTURE_URL } from './whatsapp'
 import PrepTrack, { usePrep } from './PrepTrack'
+import { copyText } from './copy'
 
 const TZ = 'Europe/Paris'
 const STAGE = { rdv: 'Appel prévu', qualifie: 'Qualifié', potentiel: 'Potentiel', incomplet: 'Incomplet', disqualifie: 'Pas prêt', fait: 'Appel fait', absent: 'Absent', annule: 'Annulé' }
@@ -261,6 +262,7 @@ export default function Prospects({ toast, focus }) {
         <div className="acts">
           {open.phone && <a className="btn sm" style={{ textDecoration: 'none' }} href={wa(open.phone)} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, open.phone, '')}>WhatsApp</a>}
           {open.phone && <a className="btn ghost sm" style={{ textDecoration: 'none' }} href={`tel:${open.phone}`}>Appeler</a>}
+          {(open.phone || open.phone_raw) && <button className="btn ghost sm" onClick={() => copyText(open.phone || open.phone_raw, toast, 'Numéro copié')}>Copier le numéro</button>}
           {open.email && <a className="btn ghost sm" style={{ textDecoration: 'none' }} href={`mailto:${open.email}`}>Email</a>}
         </div>
         <h4>Coordonnées</h4>
@@ -283,7 +285,7 @@ export default function Prospects({ toast, focus }) {
           {open.phone && <a className="btn sm" style={{ textDecoration: 'none' }} href={waWeb(open.phone, nurture)} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, open.phone, nurture)}>Envoyer la page sur WhatsApp</a>}
           <button className="btn ghost sm" onClick={copyLink}>Copier le lien personnel</button>
         </div>
-        {oq && <><h4>Ses questions pour l'appel</h4><div className="cq" style={{ marginTop: 0 }}><p>{oq.body}</p></div></>}
+        {oq && <><h4>Ses questions pour l'appel</h4><div className="cq" style={{ marginTop: 0 }}><p>{oq.body}</p><button className="cpy" onClick={() => copyText(oq.body, toast, 'Questions copiées')}>Copier les questions</button></div></>}
         <h4>Parcours</h4>
         <ul className="pr-tl">
           <li><b>{dt(open.created_at)}</b> Première visite{open.source ? ` · via ${open.source}` : ''}</li>

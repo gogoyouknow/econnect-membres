@@ -301,3 +301,10 @@ body.admbody{background:#0E1116;background-image:none;padding:0;color:#E8ECF2;fo
 .pt li b{display:block;font-weight:600}.pt small{display:block;font-size:12.5px;color:#6B7280;margin-top:1px}
 .pt-c{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 0;font-size:12.5px;color:rgba(255,255,255,.45)}
 .pt-c span.ok{color:#6FE3A1;font-weight:600}.pt-c small{display:inline;color:inherit;opacity:.85;font-size:12px;margin:0}
+
+/* Texte sélectionnable et copiable (iPhone compris) + boutons « Copier » */
+.adm .hero,.adm .hq,.adm .cdet,.adm .cq,.adm .pr-dr,.adm .pt,.adm .drow{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+.adm .hcopy{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.adm .hcopy button,.adm .cpy{font:600 12.5px var(--body,inherit);color:inherit;background:rgba(127,127,127,.16);border:0;border-radius:999px;padding:7px 12px;cursor:pointer}
+.adm .cdet .cpy,.adm .pr-dr .cpy{color:#12151C;background:#EEF0F3}
+.adm .cpy{margin-top:8px}.adm .drow .cpy{margin:0 0 0 8px}
