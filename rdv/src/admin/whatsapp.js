@@ -16,7 +16,7 @@ export function fillMsg(tpl, c = {}) {
   const d = c.starts_at ? new Date(c.starts_at) : null
   const jour = d ? d.toLocaleDateString('fr-FR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' }) : ''
   const heure = d ? d.toLocaleTimeString('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).replace(':', 'h') : ''
-  return String(tpl || DEFAULT_MSG).replace(/\{prenom\}/g, c.first_name || '').replace(/\{jour\}/g, jour).replace(/\{heure\}/g, heure).replace(/\{lien\}/g, NURTURE_URL).replace(/ +,/g, ',').replace(/Salut ,/, 'Salut,')
+  return String(tpl || DEFAULT_MSG).replace(/\{prenom\}/g, c.first_name || '').replace(/\{jour\}/g, jour).replace(/\{heure\}/g, heure).replace(/\{lien\}/g, c.qtoken ? NURTURE_URL + '?t=' + c.qtoken : NURTURE_URL).replace(/ +,/g, ',').replace(/Salut ,/, 'Salut,')
 }
 
 /** onClick d'un lien : ouvre l'app WhatsApp Business. À utiliser avec href={waWeb(...)} comme secours. */

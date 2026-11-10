@@ -27,9 +27,11 @@ const countdown = (iso) => {
 /** Mes appels : accueil (prochain appel + liste) et disponibilités. `tab` = 'appels' | 'dispos'. */
 export default function Candidatures({ toast, tab: main }) {
   const [rows, setRows] = useState([]); const [tab, setTab] = useState('avenir'); const [open, setOpen] = useState(null)
-  const [tpl, setTpl] = useState(DEFAULT_MSG); const [edit, setEdit] = useState(null)
+  const [tpl, setTpl] = useState(DEFAULT_MSG); const [edit, setEdit] = useState(null); const [qs, setQs] = useState({})
   const load = () => supabase.from('candidatures').select('*').order('starts_at', { ascending: true }).limit(500).then(({ data }) => setRows(data || []))
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
+  const loadQs = () => supabase.from('cand_questions').select('candidature_id,name,body,updated_at').not('candidature_id', 'is', null).then(({ data }) => { const m = {}; (data || []).forEach((q) => { if (q.body && q.body.trim()) m[q.candidature_id] = q }); setQs(m) })
+  useEffect(() => { loadQs(); const i = setInterval(loadQs, 60000); return () => clearInterval(i) }, [])
   useEffect(() => { supabase.from('cand_templates').select('body').eq('key', 'wa_confirm').maybeSingle().then(({ data }) => data?.body && setTpl(data.body)) }, [])
   const saveTpl = async () => { const { error } = await supabase.from('cand_templates').upsert({ key: 'wa_confirm', body: edit, updated_at: new Date().toISOString() }); if (error) return toast(friendlyError(error), true); setTpl(edit); setEdit(null); toast('Message enregistré') }
   const upd = async (c, patch) => { const { error } = await supabase.from('candidatures').update(patch).eq('id', c.id); if (error) return toast(friendlyError(error), true); load() }
@@ -53,9 +55,10 @@ export default function Candidatures({ toast, tab: main }) {
           <div className="hk">Prochain appel · {countdown(next.starts_at)}</div>
           <div className="hrow">
             <div className="htime">{timeOf(next.starts_at)}</div>
-            <div className="hwho"><b>{next.first_name}</b><small>{[next.situation, CAPL[next.capital] || next.capital].filter(Boolean).join(' · ')}</small></div>
+            <div className="hwho"><b>{next.first_name}</b><small>{[next.situation, CAPL[next.capital] || next.capital].filter(Boolean).join(' · ')}{qs[next.id] ? ' · 💬 questions' : ''}</small></div>
             <a className="wabtn" href={waWeb(next.phone, fillMsg(tpl, next))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, next.phone, fillMsg(tpl, next))}>WhatsApp</a>
           </div>
+          {qs[next.id] && <div className="hq"><b>💬 Ses questions pour l'appel</b><p>{qs[next.id].body}</p></div>}
         </> : <><div className="hk">Aucun appel à venir</div><div className="hempty">Dès qu'une personne réserve depuis ta bio, elle apparaît ici.</div></>}
       </div>
       {next && <button className="linkbtn mlink" onClick={() => setEdit(tpl)}>Modifier le message WhatsApp prérempli</button>}
@@ -74,6 +77,7 @@ export default function Candidatures({ toast, tab: main }) {
           {open === c.id && <div className="cdet">
             <div className="drow"><label>WhatsApp</label><a href={waWeb(c.phone, fillMsg(tpl, c))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, c.phone, fillMsg(tpl, c))}>{c.phone}</a></div>
             <div className="drow"><label>Email</label><a href={`mailto:${c.email}`}>{c.email}</a></div>
+            {qs[c.id] && <div className="cq"><label>💬 Ses questions pour l'appel</label><p>{qs[c.id].body}</p></div>}
             <div className="drow"><label>Budget</label><span>{CAPL[c.capital] || c.capital} · confirmé disponible</span></div>
             <div className="drow"><label>Réservé le</label><span>{new Date(c.created_at).toLocaleString('fr-FR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
             <div className="acts">

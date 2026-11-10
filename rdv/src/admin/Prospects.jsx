@@ -81,6 +81,7 @@ export default function Prospects({ toast, focus }) {
   const [sort, setSort] = useState({ k: 'updated_at', dir: -1 }); const [page, setPage] = useState(0)
   const [cols, setCols] = useState(lsGet); const [colMenu, setColMenu] = useState(false)
   const [sel, setSel] = useState(() => new Set()); const [openId, setOpenId] = useState(null)
+  const [oq, setOq] = useState(null)
   const [add, setAdd] = useState(false); const [imp, setImp] = useState(null); const [tagIn, setTagIn] = useState('')
   const file = useRef(null)
 
@@ -113,6 +114,7 @@ export default function Prospects({ toast, focus }) {
   const pages = Math.max(1, Math.ceil(list.length / PAGE)); const cur = Math.min(page, pages - 1)
   const slice = list.slice(cur * PAGE, cur * PAGE + PAGE)
   const open = R.find((r) => r.id === openId)
+  useEffect(() => { setOq(null); if (!openId) return; supabase.from('cand_questions').select('body,updated_at').eq('lead_id', openId).maybeSingle().then(({ data }) => setOq(data && data.body && data.body.trim() ? data : null)) }, [openId])
 
   const week = Date.now() - 7 * 864e5
   const stats = { total: R.length, neu: R.filter((r) => new Date(r.created_at).getTime() > week).length, rdv: R.filter((r) => r.stage === 'rdv').length, relance: counts.relance || 0 }
@@ -271,6 +273,7 @@ export default function Prospects({ toast, focus }) {
         <div className="chips" style={{ marginTop: 0 }}>{(open.tags || []).map((t) => <button key={t} className="chip sel" onClick={() => upd([open.id], { tags: open.tags.filter((x) => x !== t) }, true)}>{t} ✕</button>)}
           <input className="pr-tagin" placeholder="+ tag" onKeyDown={(e) => { if (e.key === 'Enter') { addTag(open, e.target.value); e.target.value = '' } }} /></div>
         <label className="lq">Note<textarea rows={3} defaultValue={open.note || ''} placeholder="Note…" onBlur={(e) => e.target.value !== (open.note || '') && upd([open.id], { note: e.target.value }, true)} /></label>
+        {oq && <><h4>Ses questions pour l'appel</h4><div className="cq" style={{ marginTop: 0 }}><p>{oq.body}</p></div></>}
         <h4>Parcours</h4>
         <ul className="pr-tl">
           <li><b>{dt(open.created_at)}</b> Première visite{open.source ? ` · via ${open.source}` : ''}</li>

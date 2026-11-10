@@ -107,3 +107,9 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
 .faq details[open] summary::after{content:'–'}
 .faq details p{color:var(--muted);font-size:14px;padding:0 0 16px}
 .dend{text-align:left}
+
+/* Bloc-notes « mes questions » */
+.notes textarea{width:100%;min-height:170px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font:500 16px/1.5 var(--body);padding:14px;resize:vertical;outline:none}
+.notes textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.qst{font:500 12px var(--body);color:var(--muted)}
+.qst.saved{color:var(--ok)}.qst.err{color:var(--warn)}
