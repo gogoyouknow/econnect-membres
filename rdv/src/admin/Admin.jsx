@@ -8,6 +8,7 @@ import Search from './Search'
 const Logo = ({ s = 30 }) => <svg className="logo" viewBox="0 0 1024 1024" width={s} height={s} aria-hidden="true"><path d="M 686.6 354.8 A 235 235 0 1 0 686.6 669.2" fill="none" stroke="#fff" strokeWidth="125" strokeLinecap="round" /><circle cx="742" cy="512" r="62" fill="#6FE3A1" /></svg>
 import Dispos from './Dispos'
 import { pushState, enablePush, disablePush } from './push'
+import { useAutoUpdate } from './autoupdate'
 
 const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 const unb64 = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
@@ -24,6 +25,7 @@ const faceUnlock = async () => {
 const Ic = ({ d }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">{d}</svg>
 
 export default function Admin() {
+  const stale = useAutoUpdate()
   const [sess, setSess] = useState(undefined)
   const [ok, setOk] = useState(null)
   const [msg, setMsg] = useState(null)
@@ -123,6 +125,7 @@ export default function Admin() {
     <button className="btn ghost" onClick={() => { supabase.auth.signOut(); setLocked(false) }}>Se déconnecter</button>{msg && <small className="err">{msg.t}</small>}</div></div>
   const today = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short' })
   return <div className="adm app">
+    {stale && <button className="upd" onClick={() => location.reload()}>Une nouvelle version de Calio est disponible · Mettre à jour</button>}
     <header className="bar"><Logo s={30} /><h1>{{ appels: 'Mes appels', prospects: 'Prospects', formulaires: 'Formulaires', leads: 'Relances', dispos: 'Disponibilités' }[tab] || 'Mes appels'}</h1><Search onPick={(id) => { setFocus({ id, t: Date.now() }); setTab('prospects') }} /><span className="date">{today}</span>{pst !== 'unsupported' && <button className="out" onClick={togglePush} aria-label="Notifications" title={pst === 'on' ? 'Notifications activées' : 'Activer les notifications'} style={{ color: pst === 'on' ? '#6FE3A1' : undefined }}><svg width="21" height="21" viewBox="0 0 24 24" fill={pst === 'on' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg></button>}{faceOk && <button className="out" onClick={toggleFace} aria-label="Face ID" title={face ? 'Face ID activé' : 'Activer Face ID'} style={{ color: face ? '#6FE3A1' : undefined }}><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M9 10v1.5M15 10v1.5M12 10v3.5M9 16c1.7 1.3 4.3 1.3 6 0" /></svg></button>}<button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
     <div className={`scroll ${tab !== 'appels' ? 'light' : ''} ${tab === 'prospects' || tab === 'formulaires' ? 'wide' : ''}`}>
       {tab === 'prospects' ? <Prospects toast={toast} focus={focus} /> : tab === 'formulaires' ? <Formulaires toast={toast} onOpen={(id) => { setFocus({ id, t: Date.now() }); setTab('prospects') }} /> : tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : tab === 'dispos' ? <Dispos toast={toast} /> : <Candidatures toast={toast} tab={tab} />}

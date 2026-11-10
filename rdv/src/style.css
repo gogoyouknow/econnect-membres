@@ -50,8 +50,8 @@ input:focus,select:focus,button:focus-visible{border-color:var(--gold);box-shado
 .btn:disabled{opacity:.35;cursor:not-allowed}
 .btn.wa{background:#4ade80}
 .link{background:none;border:0;color:var(--muted);font:500 13px var(--body);cursor:pointer;padding:13px 16px;min-height:44px;align-self:center;text-decoration:underline}
-.days{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
-.day{flex:0 0 62px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:12px;padding:9px 0;text-align:center;cursor:pointer;font:500 12px var(--body)}
+.days{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px}
+.day{min-width:0;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:12px;padding:9px 0;text-align:center;cursor:pointer;font:500 12px var(--body)}
 .day b{display:block;font:700 19px var(--display)}
 .day.sel{border-color:var(--gold);background:var(--gold-soft);color:var(--gold)}
 .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -98,8 +98,8 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
 .dmain .tcard{display:block;width:100%}
 .dmain .tvid{display:block}
 .dmain>b{font:700 15px/1.3 var(--display)}
-.dpills{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
-.dpills .chip{flex:none;white-space:nowrap}
+.dpills{display:flex;flex-wrap:wrap;gap:8px}
+.dpills .chip{flex:0 1 auto}
 .dpills .chip small{opacity:.6;margin-left:4px}
 .faq{display:flex;flex-direction:column;gap:10px}
 .faq details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:0 16px}
