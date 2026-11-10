@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { rpc, configured } from './api'
+import Logo from './Logo'
 import { TEMOS, Thumb } from './videos'
 
 const TZ = 'Europe/Paris'
@@ -122,7 +123,7 @@ export default function App() {
   const cur = days.find((d) => d[0] === day)
 
   return <div className="shell">
-    <header><div className="logo"><svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect x="2" y="2" width="24" height="24" rx="6" stroke="#e9c53e" strokeWidth="2.4" /><path d="M9 19L19 9M11 9h8v8" stroke="#e9c53e" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>L'Accélérateur</div></header>
+    <header><Logo /></header>
     {n > 0 && <div className="progress">{[1, 2, 3, 4].map((i) => <i key={i} className={i <= n ? 'on' : ''} />)}</div>}
 
     {step === 'intro' && <section className="screen">

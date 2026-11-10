@@ -16,8 +16,10 @@ body{
 }
 .shell{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.logo{display:flex;align-items:center;gap:9px;font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:.01em;text-transform:uppercase}
-.logo svg{width:26px;height:26px}
+.logo{display:flex;align-items:center;gap:9px;font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:.04em;text-transform:uppercase}
+.logo svg{width:22px;height:22px}
+.logo .mark{width:36px;height:36px;border-radius:10px;background:#0a0a0a;border:1px solid #3a3a3e;display:grid;place-items:center;flex:none}
+.logo .mark svg{width:22px;height:22px}
 .ghost{background:none;border:1px solid var(--line);color:var(--muted);font:500 12px var(--body);padding:8px 12px;border-radius:999px;cursor:pointer}
 .progress{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .progress i{height:4px;border-radius:4px;background:var(--line);transition:background .3s}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { rpc, configured } from './api'
+import Logo from './Logo'
 import { TEMOS, Thumb, PlayerModal } from './videos'
 
 // ⚙️ Vidéo principale (explique la méthode). Pour la changer : remplace l'identifiant YouTube ci-dessous.
@@ -92,7 +93,7 @@ export default function Decouvrir() {
   const list = all ? cur[2] : cur[2].slice(0, 6)
   const vid = ([id, l, d]) => <button className="tcard" key={id} onClick={() => setPlay([id, l])}><Thumb id={id} dur={d} /><b>{l}</b></button>
   return <div className="shell">
-    <header><div className="logo"><svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect x="2" y="2" width="24" height="24" rx="6" stroke="#e9c53e" strokeWidth="2.4" /><path d="M9 19L19 9M11 9h8v8" stroke="#e9c53e" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>L'Accélérateur</div></header>
+    <header><Logo /></header>
 
     <section className="screen">
       <div className="col"><span className="eyebrow">Avant notre appel</span>
