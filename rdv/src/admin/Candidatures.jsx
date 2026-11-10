@@ -3,6 +3,7 @@ import { usePS } from './persist'
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import Portal from './Portal'
+import { closerName, useCloserNames } from './closerNames'
 import { ToSend, ConfSeqEditor } from './ConfSeq'
 import { OutcomeChips } from './Closing'
 import { DEFAULT_MSG, RESCHEDULE_MSG, fillMsg, waWeb, openWA, NURTURE_URL } from './whatsapp'
@@ -42,7 +43,8 @@ const countdown = (iso) => {
 }
 
 /** Mes appels : accueil (prochain appel + liste) et disponibilités. `tab` = 'appels' | 'dispos'. */
-export default function Candidatures({ toast, tab: main }) {
+export default function Candidatures({ toast, tab: main , closer }) {
+  useCloserNames()
   const [rows, setRows] = useState([]); const [tab, setTab] = usePS('ca_tab', 'avenir'); const [open, setOpen] = usePS('ca_open', null)
   const [tpl, setTpl] = useState(DEFAULT_MSG); const [edit, setEdit] = useState(null); const [qs, setQs] = useState({}); const [ev, setEv] = useState({}); const [rep, setRep] = useState(null)
   const [lerr, setLerr] = useState('')
@@ -94,7 +96,7 @@ export default function Candidatures({ toast, tab: main }) {
           {qs[next.id] && <div className="hq"><b>💬 Ses questions pour l'appel</b><p>{qs[next.id].body}</p><button className="cpy" onClick={() => copyText(qs[next.id].body, toast, 'Questions copiées')}>Copier les questions</button></div>}
         </> : lerr && !rows.length ? <><div className="hk">Appels indisponibles</div><div className="hempty">Je n'arrive pas à charger tes appels pour le moment (voir plus bas).</div></> : <><div className="hk">Aucun appel à venir</div><div className="hempty">Dès qu'une personne réserve depuis ta bio, elle apparaît ici.</div></>}
       </div>
-      {next && <button className="linkbtn mlink" onClick={() => setEdit(tpl)}>Modifier le message WhatsApp prérempli</button>}
+      {next && !closer && <button className="linkbtn mlink" onClick={() => setEdit(tpl)}>Modifier le message WhatsApp prérempli</button>}
       <div className="stats"><span><b className="y">{nToConfirm}</b> à confirmer</span><span><b>{nWeek}</b> cette semaine</span><span><b className="g">{nDone}</b> faits</span></div>
     </div>
     <div className="sheet-body">
@@ -115,7 +117,7 @@ export default function Candidatures({ toast, tab: main }) {
             <div className="cq"><label>Page de préparation</label><PrepTrack ev={ev[c.id]} /></div>
             {qs[c.id] && <div className="cq"><label>💬 Ses questions pour l'appel</label><p>{qs[c.id].body}</p><button className="cpy" onClick={() => copyText(qs[c.id].body, toast, 'Questions copiées')}>Copier les questions</button></div>}
             <div className="drow"><label>Budget</label><span>{CAPL[c.capital] || c.capital} · confirmé disponible</span></div>
-            {c.closer && c.closer !== 'clement' && <div className="drow"><label>Avec</label><span><b>{{ amandine: 'Amandine' }[c.closer] || c.closer}</b> · c'est son WhatsApp qui confirme</span></div>}
+            {c.closer && c.closer !== 'clement' && <div className="drow"><label>Avec</label><span><b>{closerName(c.closer)}</b> · c'est son WhatsApp qui confirme</span></div>}
             {c.status === 'reserve' && <div className="drow"><label>Confirmation</label><span style={{ color: c.wa_clicked_at ? '#166534' : '#92400E', fontWeight: 600 }}>{c.wa_clicked_at ? 'A ouvert WhatsApp pour t\'écrire' : 'N\'a pas encore cliqué sur WhatsApp'}</span></div>}
             <div className="drow"><label>Réservé le</label><span>{new Date(c.created_at).toLocaleString('fr-FR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
             {c.status === 'fait' && <div className="drow col"><label>Résultat de l'appel</label><OutcomeChips c={c} onPick={(x, v) => upd(x, { outcome: v, outcome_at: v ? new Date().toISOString() : null })} /></div>}
@@ -137,7 +139,7 @@ export default function Candidatures({ toast, tab: main }) {
         </div>)}
       </div>)}
       <p className="muted small">Sans message WhatsApp reçu dans le délai réglé, le créneau est libéré automatiquement.</p>
-      {tab === 'avenir' && <ConfSeqEditor toast={toast} />}
+      {tab === 'avenir' && !closer && <ConfSeqEditor toast={toast} />}
     </div>
     {rep && <Portal><div className="pr-modal" onClick={() => setRep(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
       {rep.done ? <>

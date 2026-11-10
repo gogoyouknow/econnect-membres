@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePS } from './persist'
 import { supabase, friendlyError } from './supabase'
 import LoadErr from './LoadErr'
+import { closerName, useCloserNames } from './closerNames'
 
 export const OUTCOMES = [['signe', 'Signé'], ['reflechit', 'Il réfléchit'], ['perdu', 'Pas signé']]
-const CLOSERS = { clement: 'Clément', amandine: 'Amandine' }
 const PERIODS = [['7', '7 jours'], ['30', '30 jours'], ['90', '90 jours'], ['all', 'Tout']]
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : null)
 const fmt = (v) => (v == null ? '–' : v + ' %')
-const cname = (k) => CLOSERS[k] || (k ? k[0].toUpperCase() + k.slice(1) : 'Clément')
+const cname = closerName
 
 function stats(list) {
   const done = list.filter((c) => c.status === 'fait'), abs = list.filter((c) => c.status === 'absent')
@@ -27,6 +27,7 @@ export function OutcomeChips({ c, onPick }) {
 
 /** Onglet « Closing » : taux de closing global, par closer et par semaine, + appels dont le résultat reste à renseigner. */
 export default function Closing({ toast }) {
+  useCloserNames()
   const [rows, setRows] = useState(null); const [per, setPer] = usePS('cl_per', '30'); const [err, setErr] = useState('')
   const load = () => supabase.from('candidatures').select('id,first_name,last_name,starts_at,status,closer,outcome,outcome_at').order('starts_at', { ascending: false }).limit(2000)
     .then(({ data, error }) => { if (error) return setErr(friendlyError(error)); setErr(''); setRows(data || []) })

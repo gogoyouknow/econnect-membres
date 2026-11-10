@@ -445,3 +445,9 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .cs-send .lq{font-weight:700;color:var(--ink);font-size:15px;margin-bottom:2px}
 .adm .cs-row .acts{display:flex;gap:8px}.adm .cs-row .acts .btn{flex:1;text-align:center;justify-content:center}
 .adm .btn.wa{background:#25D366;color:#0b0b0c;border-color:#25D366}
+/* Closers */
+.adm .clform{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0}
+.adm .clform .ti,.adm .clr .ti{width:100%;font:inherit;font-size:16px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;color:var(--ink)}
+.adm .clr{display:flex;flex-direction:column;gap:8px}.adm .clr.off{opacity:.55}
+.adm .clwa{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut);font-weight:600}
+.adm .clsent{margin-bottom:12px}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePS } from './persist'
 import { supabase, friendlyError } from './supabase'
+import Closers from './Closers'
 
 const TZ = 'Europe/Paris'
 const DOW = [[1, 'Lundi'], [2, 'Mardi'], [3, 'Mercredi'], [4, 'Jeudi'], [5, 'Vendredi'], [6, 'Samedi'], [0, 'Dimanche']]
@@ -147,7 +148,7 @@ export default function Dispos({ toast }) {
   const nFreeSel = sl.filter(t => free.has(sel + '|' + t)).length
 
   return <div className="sheet-body">
-    <div className="pills" style={{ marginBottom: 12 }}>{[['horaires', 'Horaires'], ['dates', 'Dates'], ['agenda', 'Agenda']].map(([k, l]) => <button key={k} className={`pill ${sub === k ? 'on' : ''}`} onClick={() => setSub(k)}>{l}{k === 'agenda' && gcal && !gcal.set ? ' •' : ''}</button>)}</div>
+    <div className="pills" style={{ marginBottom: 12 }}>{[['horaires', 'Horaires'], ['dates', 'Dates'], ['agenda', 'Agenda'], ['closers', 'Closers']].map(([k, l]) => <button key={k} className={`pill ${sub === k ? 'on' : ''}`} onClick={() => setSub(k)}>{l}{k === 'agenda' && gcal && !gcal.set ? ' •' : ''}</button>)}</div>
 
     {sub === 'horaires' && <>
       {cfg && <div className="settings hz">
@@ -211,6 +212,7 @@ export default function Dispos({ toast }) {
       </div>
     </>}
 
+    {sub === 'closers' && <Closers toast={toast} />}
     {sub === 'agenda' && <>
       <h2 className="sh">Google Agenda</h2>
       <div className="gcard" style={{ marginTop: 10 }}>

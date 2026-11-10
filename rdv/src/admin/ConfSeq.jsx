@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import { openWA, waWeb } from './whatsapp'
+import { closerName, useCloserNames } from './closerNames'
 
-const CN = { clement: 'Clément', amandine: 'Amandine' }
-const cname = (k) => CN[k] || (k ? k[0].toUpperCase() + k.slice(1) : 'Clément')
+const cname = closerName
 const TZ = 'Europe/Paris'
 const heure = (d) => d.toLocaleTimeString('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
 const dateFr = (d) => d.toLocaleDateString('fr-FR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' }) + ' à ' + heure(d)
@@ -14,6 +14,7 @@ const dueAt = (st, c, relH) => { const cr = new Date(c.created_at).getTime(), s 
   return st.anchor === 'after' ? cr + m : st.anchor === 'before' ? s - m : cr + relH * 3600000 - m }
 
 function useSeq() {
+  useCloserNames()
   const [seq, setSeq] = useState(null); const [relH, setRelH] = useState(4)
   const load = () => Promise.all([supabase.from('cand_cseq').select('*').order('pos'), supabase.from('cand_settings').select('release_hours').eq('id', 1).maybeSingle()])
     .then(([a, b]) => { setSeq(a.data || []); if (b.data) setRelH(b.data.release_hours) })
