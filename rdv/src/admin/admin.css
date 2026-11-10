@@ -375,3 +375,6 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .upd{flex:none;display:block;width:100%;background:#F5C451;color:#12151C;border:0;font:inherit;font-size:14px;font-weight:700;padding:11px 16px;cursor:pointer;text-align:center}
 .adm .dupnote{margin:10px 0;padding:10px 12px;border-radius:10px;background:#FFF8E1;border:1px solid #F5C451;color:#1B2230;font-size:13px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .adm .hcall{text-decoration:none}
+/* Le panneau blanc grandit avec son contenu (avant, il rétrécissait à la hauteur de l'écran et le contenu sortait en bas sur fond sombre) */
+.adm .scroll>*{flex-shrink:0}
+.adm .sheet-body{flex:1 0 auto}
