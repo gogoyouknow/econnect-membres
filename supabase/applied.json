@@ -40,5 +40,6 @@
   "0039_cand_leads_partiel.sql",
   "0040_prospects.sql",
   "0041_cand_templates.sql",
-  "0042_cand_questions.sql"
+  "0042_cand_questions.sql",
+  "0043_prep_tracking.sql"
 ]
