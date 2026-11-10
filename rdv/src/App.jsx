@@ -20,6 +20,11 @@ const splitTel = (prefix, tel) => {
   if (prefix === '+33' && d.startsWith(pp) && d.length === pp.length + 9) d = d.slice(pp.length)
   return [prefix, d.replace(/^0+/, '')]
 }
+// Numéro réellement utilisé pour te joindre sur WhatsApp : le numéro principal, ou celui indiqué si le principal n'est pas sur WhatsApp.
+const effTel = (g) => (g.wa_ok === false && String(g.wtel || '').trim() ? splitTel(g.wprefix, g.wtel) : splitTel(g.prefix, g.tel))
+let PV = null // validateur de numéros de mobile (chargé à la demande, ne ralentit pas la page)
+const loadPV = () => PV ? Promise.resolve(PV) : import('libphonenumber-js/mobile').then((m) => (PV = m)).catch(() => null)
+const telOk = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); if (d.length < 6) return false; if (PV) { try { return PV.isValidPhoneNumber(pf + d) } catch { /* */ } } return d.length >= 8 && d.length <= 12 }
 const dayKey = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(iso))
 const fmtT = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 const fmtDay = (k) => { const d = new Date(k + 'T12:00:00Z'); return { w: new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'short' }).format(d), n: d.getUTCDate() } }
@@ -67,7 +72,7 @@ function Temos({ onCta }) {
 
 export default function App() {
   const [step, setStep] = useState('intro')
-  const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', email: '', situation: '', capital: '', have: '' })
+  const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', wa_ok: true, wprefix: '+33', wtel: '', email: '', situation: '', capital: '', have: '' })
   const [err, setErr] = useState('')
   const [cfg, setCfg] = useState({ slot_min: 45, wa: '33756849421', release_hours: 4 })
   const [slots, setSlots] = useState(null)
@@ -76,6 +81,8 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(null)
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
+  const [tBlur, setTBlur] = useState(false); const [pvReady, setPvReady] = useState(false)
+  useEffect(() => { loadPV().then(() => setPvReady(true)) }, [])
   const go = (s) => { setErr(''); setStep(s); window.scrollTo(0, 0); try { history.pushState({ s }, '') } catch { /* */ } }
   // Le bouton « retour » du téléphone revient à l'étape précédente au lieu de quitter la page (et de renvoyer la personne sur TikTok).
   useEffect(() => {
@@ -83,7 +90,7 @@ export default function App() {
     window.addEventListener('popstate', pop); return () => window.removeEventListener('popstate', pop)
   }, [])
   // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
-  const leadBody = (stp, g) => { const [pf, d] = splitTel(g.prefix, g.tel); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? pf + d : '', phone_raw: d ? pf + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC } }
+  const leadBody = (stp, g) => { const [pf, d] = effTel(g); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? pf + d : '', phone_raw: d ? pf + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC } }
   const saveLead = (stp, over = {}) => { if (!configured) return; rpc('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
   // On garde TOUT ce qui est tapé, même sans clic sur « Continuer » : sauvegarde auto 0,7 s après la dernière frappe, et à la fermeture / au changement d'onglet.
   const LS = { who: 'who', situ: 'situ', block: 'situ', budget: 'budget', block2: 'budget', slot: 'slot' }
@@ -112,7 +119,8 @@ export default function App() {
     who() {
       const [pfx, digits] = splitTel(f.prefix, f.tel)
       if (!f.first_name.trim()) return setErr('Indique ton prénom.')
-      if (digits.length < 8 || digits.length > 12) return setErr('Vérifie ton numéro WhatsApp, il semble incomplet.')
+      if (!telOk(f.prefix, f.tel)) { setTBlur(true); return setErr("Ce numéro n'a pas l'air valide : vérifie l'indicatif et les chiffres (exemple : 6 12 34 56 78).") }
+      if (f.wa_ok === false && !telOk(f.wprefix, f.wtel)) { setTBlur(true); return setErr("Entre un numéro WhatsApp valide, c'est lui qui me permet de te joindre.") }
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(f.email.trim())) return setErr('Vérifie ton adresse email.')
       if (pfx !== f.prefix || String(digits) !== f.tel) setF((x) => ({ ...x, prefix: pfx, tel: digits })); saveLead('who', { prefix: pfx, tel: digits }); go('situ')
     },
@@ -128,7 +136,7 @@ export default function App() {
   async function book() {
     setBusy(true); setErr('')
     try {
-      const r = await rpc('cand_book', { p: { first_name: f.first_name.trim(), phone: (() => { const [pf, d] = splitTel(f.prefix, f.tel); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
+      const r = await rpc('cand_book', { p: { first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
       setDone(r); go('done')
     } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
     setBusy(false)
@@ -161,10 +169,15 @@ export default function App() {
 
     {step === 'who' && <section className="screen"><h2>Comment je t'appelle ?</h2><div className="card">
       <div className="field"><label htmlFor="p">Prénom</label><input id="p" value={f.first_name} onChange={(e) => set('first_name', e.target.value)} autoComplete="given-name" placeholder="Ton prénom" /></div>
-      <div className="field"><label htmlFor="t">Numéro WhatsApp</label><div className="phone">
+      <div className="field"><label htmlFor="t">Ton numéro WhatsApp</label><div className="phone">
         <select value={f.prefix} onChange={(e) => set('prefix', e.target.value)} aria-label="Indicatif">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
-        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => set('tel', e.target.value)} onBlur={() => { const [pf, d] = splitTel(f.prefix, f.tel); if (f.tel.trim() && (pf !== f.prefix || d !== f.tel.replace(/\s/g, ''))) setF((x) => ({ ...x, prefix: pf, tel: d })); saveLead('who', { prefix: pf, tel: d }) }} placeholder="6 12 34 56 78" /></div>
-        <span className="muted s12">Je t'appelle sur ce numéro, vérifie-le bien.</span></div>
+        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => set('tel', e.target.value)} onBlur={() => { setTBlur(true); const [pf, d] = splitTel(f.prefix, f.tel); if (f.tel.trim() && (pf !== f.prefix || d !== f.tel.replace(/\s/g, ''))) setF((x) => ({ ...x, prefix: pf, tel: d })); saveLead('who', { prefix: pf, tel: d }) }} placeholder="6 12 34 56 78" /></div>
+        {tBlur && f.tel.trim() && pvReady && !telOk(f.prefix, f.tel) && <span className="err s12" role="alert">Ce numéro n'a pas l'air valide. Vérifie l'indicatif et les chiffres.</span>}
+        <label className="chk"><input type="checkbox" checked={f.wa_ok !== false} onChange={(e) => set('wa_ok', e.target.checked)} /> Ce numéro est bien sur WhatsApp</label>
+        {f.wa_ok === false && <div className="phone" style={{ marginTop: 8 }}>
+          <select value={f.wprefix} onChange={(e) => set('wprefix', e.target.value)} aria-label="Indicatif WhatsApp">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
+          <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => set('wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
+        <span className="muted s12">{f.wa_ok === false ? 'Indique le numéro sur lequel tu as WhatsApp : c\'est là que tu me confirmes ton appel.' : 'C\'est sur WhatsApp qu\'on se contacte, toi et moi : c\'est là que tu me confirmes ton rendez-vous et que je t\'écris ou t\'appelle. Vérifie-le bien.'}</span></div>
       <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => set('email', e.target.value)} onBlur={() => saveLead('who')} placeholder="ton@email.com" /></div>
       <div className="err">{err}</div><button className="btn" onClick={next.who}>Continuer →</button></div></section>}
 
