@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 
 const TZ = 'Europe/Paris'
@@ -92,6 +92,13 @@ export default function Dispos({ toast }) {
     if (ins.length) { const { error } = await supabase.from('cand_hours').insert(ins); if (error) return toast(friendlyError(error), true) }
     toast('Horaires enregistrés'); load()
   }
+  const hz0 = useRef(0)
+  const setHorizon = async (n) => {
+    const prev = cfg.horizon_days; setCfg((c) => ({ ...c, horizon_days: n }))
+    const { error } = await supabase.from('cand_settings').update({ horizon_days: n }).eq('id', 1)
+    if (error) { setCfg((c) => ({ ...c, horizon_days: prev })); return toast(friendlyError(error), true) }
+    toast(`Réservable jusqu'à ${n} jour${n > 1 ? 's' : ''} à l'avance`); load()
+  }
   const saveCfg = async () => {
     const { error } = await supabase.from('cand_settings').update({ slot_min: +cfg.slot_min, step_min: +cfg.step_min, notice_min: Math.round(+(cfg.notice_h ?? cfg.notice_min / 60) * 60), horizon_days: +cfg.horizon_days, release_hours: +cfg.release_hours }).eq('id', 1)
     if (error) return toast(friendlyError(error), true); toast('Réglages enregistrés'); load()
@@ -140,6 +147,12 @@ export default function Dispos({ toast }) {
     <div className="pills" style={{ marginBottom: 12 }}>{[['horaires', 'Horaires'], ['dates', 'Dates'], ['agenda', 'Agenda']].map(([k, l]) => <button key={k} className={`pill ${sub === k ? 'on' : ''}`} onClick={() => setSub(k)}>{l}{k === 'agenda' && gcal && !gcal.set ? ' •' : ''}</button>)}</div>
 
     {sub === 'horaires' && <>
+      {cfg && <div className="settings hz">
+        <b>Jusqu'à combien de jours à l'avance peut-on réserver ?</b>
+        <p className="muted small" style={{ margin: '4px 0 0' }}>Aujourd'hui + {+cfg.horizon_days} jour{+cfg.horizon_days > 1 ? 's' : ''} : les candidats ne voient aucun créneau au-delà du {new Date(Date.now() + +cfg.horizon_days * 864e5).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long' })}.</p>
+        <div className="chips">{[1, 2, 3, 5, 7, 14, 21, 30].map((n) => <button key={n} type="button" className={`chip ${+cfg.horizon_days === n ? 'sel' : ''}`} onClick={() => setHorizon(n)}>{n} jour{n > 1 ? 's' : ''}</button>)}</div>
+        <div className="hz-c"><label className="lq" htmlFor="hz">Autre nombre de jours</label><input id="hz" type="number" inputMode="numeric" min="1" max="60" value={cfg.horizon_days} onChange={(e) => setCfg({ ...cfg, horizon_days: e.target.value })} onBlur={(e) => { const n = Math.min(60, Math.max(1, Math.round(+e.target.value || 14))); if (n !== +hz0.current) setHorizon(n); else setCfg((c) => ({ ...c, horizon_days: n })) }} onFocus={(e) => { hz0.current = e.target.value }} /></div>
+      </div>}
       <h2 className="sh">Mes horaires habituels</h2>
       <p className="muted" style={{ margin: '2px 0 10px' }}>Heure de Paris. C'est ce que voient les candidats chaque semaine.</p>
       <div className="wlist">{DOW.map(([dd, name]) => { const on = week[dd].length > 0; return <div key={dd} className="wrow">
@@ -158,7 +171,7 @@ export default function Dispos({ toast }) {
           <div><label className="lq">Durée de l'appel (min)</label><input type="number" min="15" max="120" value={cfg.slot_min} onChange={e => setCfg({ ...cfg, slot_min: e.target.value })} /></div>
           <div><label className="lq">Un créneau toutes les (min)</label><input type="number" min="5" max="120" value={cfg.step_min} onChange={e => setCfg({ ...cfg, step_min: e.target.value })} /></div>
           <div><label className="lq">Délai minimum (heures)</label><input type="number" min="0" max="72" value={cfg.notice_h ?? Math.round(cfg.notice_min / 60)} onChange={e => setCfg({ ...cfg, notice_h: e.target.value })} /></div>
-          <div><label className="lq">Réservable sur (jours)</label><input type="number" min="1" max="60" value={cfg.horizon_days} onChange={e => setCfg({ ...cfg, horizon_days: e.target.value })} /></div>
+          <div><label className="lq">Réservable jusqu'à (jours à l'avance)</label><input type="number" min="1" max="60" value={cfg.horizon_days} onChange={e => setCfg({ ...cfg, horizon_days: e.target.value })} /></div>
           <div><label className="lq">Libérer sans message après (h)</label><input type="number" min="1" max="48" value={cfg.release_hours} onChange={e => setCfg({ ...cfg, release_hours: e.target.value })} /></div>
         </div>
         <button className="btn big" onClick={saveCfg}>Enregistrer les réglages</button>

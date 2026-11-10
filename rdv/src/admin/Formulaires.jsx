@@ -26,7 +26,7 @@ const QS = [
 
 /** « Formulaires » : toutes les réponses au formulaire de réservation + où les gens s'arrêtent. */
 export default function Formulaires({ toast, onOpen }) {
-  const [rows, setRows] = useState(null); const [days, setDays] = useState(30); const [f, setF] = useState('all'); const [q, setQ] = useState(''); const [more, setMore] = useState(24); const [openId, setOpenId] = useState(null)
+  const [rows, setRows] = useState(null); const [days, setDays] = useState('today'); const [f, setF] = useState('all'); const [q, setQ] = useState(''); const [more, setMore] = useState(24); const [openId, setOpenId] = useState(null)
   const [lerr, setLerr] = useState('')
   const load = async () => {
     let all = [], from = 0, bad = ''
@@ -42,7 +42,11 @@ export default function Formulaires({ toast, onOpen }) {
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   useEffect(() => setMore(24), [days, f, q])
 
-  const inRange = useMemo(() => (rows || []).filter((r) => !days || new Date(r.created_at).getTime() > Date.now() - days * 864e5), [rows, days])
+  const inRange = useMemo(() => {
+    const day = (t) => new Date(t).toLocaleDateString('en-CA', { timeZone: TZ }) // jour de Paris, ex. 2026-11-10
+    const k = days === 'today' ? day(Date.now()) : days === 'yday' ? day(Date.now() - 864e5) : ''
+    return (rows || []).filter((r) => k ? day(r.created_at) === k : !days || new Date(r.created_at).getTime() > Date.now() - days * 864e5)
+  }, [rows, days])
   const fun = useMemo(() => [inRange.length, ...[1, 2, 3].map((i) => inRange.filter((r) => reached(r, i)).length), inRange.filter((r) => r.call_id).length], [inRange])
   const labels = ['Ont commencé le formulaire', 'Sont arrivés à la question « situation »', 'Sont arrivés à la question « budget »', 'Ont vu les créneaux', 'Ont réservé un appel']
   const list = useMemo(() => {
@@ -54,7 +58,7 @@ export default function Formulaires({ toast, onOpen }) {
   return <div className="fm">
     <div className="fm-head">
       <div><h2 className="sh">Formulaire de réservation</h2><p className="muted">Toutes les réponses, même quand la personne s'arrête en route. Rien ne se perd.</p></div>
-      <div className="pills">{[[7, '7 jours'], [30, '30 jours'], [0, 'Tout']].map(([d, l]) => <button key={d} className={`pill ${days === d ? 'on' : ''}`} onClick={() => setDays(d)}>{l}</button>)}</div>
+      <div className="pills">{[['today', "Aujourd'hui"], ['yday', 'Hier'], [7, '7 jours'], [30, '30 jours'], [0, 'Tout']].map(([d, l]) => <button key={d} className={`pill ${days === d ? 'on' : ''}`} onClick={() => setDays(d)}>{l}</button>)}</div>
     </div>
     {rows === null && !lerr && <p className="muted">Chargement…</p>}
     <LoadErr msg={lerr} onRetry={load} />
