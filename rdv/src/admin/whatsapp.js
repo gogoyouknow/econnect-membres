@@ -7,6 +7,10 @@ C'est bien noté pour notre appel {jour} à {heure}.
 Avant qu'on se parle, regarde cette page : tu y trouveras comment j'accompagne mes élèves, leurs témoignages et les réponses aux questions qu'on me pose le plus : {lien}
 Réponds-moi juste « OK » pour confirmer que tu seras là.`
 
+export const NURTURE_MSG = `Salut {prenom}, c'est Clément 👋
+Avant qu'on se parle, regarde cette page : tu y trouveras comment j'accompagne mes élèves, leurs témoignages et les réponses aux questions qu'on me pose le plus : {lien}
+Tu peux aussi y écrire les questions que tu veux me poser, je les lis avant notre appel.`
+
 const TZ = 'Europe/Paris'
 export const digits = (p) => String(p || '').replace(/[^\d]/g, '')
 export const waWeb = (p, text) => { const d = digits(p); return d ? 'https://wa.me/' + d + (text ? '?text=' + encodeURIComponent(text) : '') : '' }

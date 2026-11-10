@@ -48,14 +48,17 @@ const FAQ = [
 const TOKEN = (() => { try { return new URLSearchParams(location.search).get('t') || '' } catch { return '' } })()
 const SID = (() => { try { return localStorage.getItem('cand_sid') || '' } catch { return '' } })()
 
+// Suivi : la page prévient Calio quand elle est ouverte, quand une vidéo est lancée, quand des questions sont écrites (seulement si la personne est identifiée).
+const track = (kind, label) => { if (!configured || (!TOKEN && !SID)) return; rpc('cand_page_track', { p: { t: TOKEN, sid: SID, kind, label: label || '' } }).catch(() => { }) }
+
 function Notes() {
   const [body, setBody] = useState(''); const [name, setName] = useState(''); const [st, setSt] = useState('')
-  const loaded = useRef(false); const dirty = useRef(false)
+  const loaded = useRef(false); const dirty = useRef(false); const noted = useRef(false)
   useEffect(() => {
     if (!configured || (!TOKEN && !SID)) { loaded.current = true; return }
     rpc('cand_questions_get', { p: { t: TOKEN, sid: SID } }).then((r) => { if (r && !dirty.current) { setBody(r.body || ''); setName(r.name || '') } }).catch(() => { }).finally(() => { loaded.current = true })
   }, [])
-  const save = (b, n) => { if (!configured || (!TOKEN && !SID)) return Promise.resolve(); setSt('saving'); return rpc('cand_questions_save', { p: { t: TOKEN, sid: SID, body: b, name: n } }).then(() => setSt('saved')).catch(() => setSt('err')) }
+  const save = (b, n) => { if (!configured || (!TOKEN && !SID)) return Promise.resolve(); setSt('saving'); return rpc('cand_questions_save', { p: { t: TOKEN, sid: SID, body: b, name: n } }).then(() => { setSt('saved'); if (!noted.current && b.trim()) { noted.current = true; track('notes') } }).catch(() => setSt('err')) }
   useEffect(() => {
     if (!dirty.current) return
     const t = setTimeout(() => save(body, name), 900)
@@ -81,17 +84,18 @@ function Main() {
   const [on, setOn] = useState(false)
   return <div className="dmain">
     {on ? <div className="tvid big"><iframe src={`https://www.youtube-nocookie.com/embed/${MAIN[0]}?autoplay=1&rel=0&playsinline=1`} title={MAIN[1]} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen /></div>
-      : <button className="tcard big" onClick={() => setOn(true)} aria-label={`Lire : ${MAIN[1]}`}><Thumb id={MAIN[0]} dur={MAIN[2]} big /></button>}
+      : <button className="tcard big" onClick={() => { setOn(true); track('play', MAIN[1]) }} aria-label={`Lire : ${MAIN[1]}`}><Thumb id={MAIN[0]} dur={MAIN[2]} big /></button>}
     <b>{MAIN[1]}</b>
   </div>
 }
 
 export default function Decouvrir() {
   const [cat, setCat] = useState('start'); const [all, setAll] = useState(false); const [play, setPlay] = useState(null)
-  useEffect(() => { document.title = 'Avant notre appel · E-Connect' }, [])
+  useEffect(() => { document.title = 'Avant notre appel · E-Connect'; track('open') }, [])
+  const playVid = (a) => { setPlay(a); track('play', a[1]) }
   const cur = CATS.find((c) => c[0] === cat)
   const list = all ? cur[2] : cur[2].slice(0, 6)
-  const vid = ([id, l, d]) => <button className="tcard" key={id} onClick={() => setPlay([id, l])}><Thumb id={id} dur={d} /><b>{l}</b></button>
+  const vid = ([id, l, d]) => <button className="tcard" key={id} onClick={() => playVid([id, l])}><Thumb id={id} dur={d} /><b>{l}</b></button>
   return <div className="shell">
     <header><Logo /></header>
 
@@ -112,7 +116,7 @@ export default function Decouvrir() {
     <section className="temos">
       <h2>Ils étaient exactement comme toi</h2>
       <p className="muted s13">Ils avaient les mêmes doutes que toi avant de commencer. Écoute-les, ce sont eux qui en parlent le mieux.</p>
-      <button className="tcard big" onClick={() => setPlay([TEMOS[0][0], TEMOS[0][1]])}><Thumb id={TEMOS[0][0]} dur={TEMOS[0][2]} big /><b>{TEMOS[0][1]}</b></button>
+      <button className="tcard big" onClick={() => playVid([TEMOS[0][0], TEMOS[0][1]])}><Thumb id={TEMOS[0][0]} dur={TEMOS[0][2]} big /><b>{TEMOS[0][1]}</b></button>
       <div className="tgrid">{TEMOS.slice(1, 5).map(vid)}</div>
     </section>
 

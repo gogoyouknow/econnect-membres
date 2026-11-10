@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
-import { openWA } from './whatsapp'
+import { openWA, fillMsg, waWeb, NURTURE_MSG, NURTURE_URL } from './whatsapp'
+import PrepTrack, { usePrep } from './PrepTrack'
 
 const TZ = 'Europe/Paris'
 const STAGE = { rdv: 'Appel prévu', qualifie: 'Qualifié', potentiel: 'Potentiel', incomplet: 'Incomplet', disqualifie: 'Pas prêt', fait: 'Appel fait', absent: 'Absent', annule: 'Annulé' }
@@ -114,7 +115,10 @@ export default function Prospects({ toast, focus }) {
   const pages = Math.max(1, Math.ceil(list.length / PAGE)); const cur = Math.min(page, pages - 1)
   const slice = list.slice(cur * PAGE, cur * PAGE + PAGE)
   const open = R.find((r) => r.id === openId)
-  useEffect(() => { setOq(null); if (!openId) return; supabase.from('cand_questions').select('body,updated_at').eq('lead_id', openId).maybeSingle().then(({ data }) => setOq(data && data.body && data.body.trim() ? data : null)) }, [openId])
+  const pev = usePrep('lead_id', openId)
+  const nurture = open ? fillMsg(NURTURE_MSG, { first_name: open.first_name, qtoken: open.qtoken }) : ''
+  const copyLink = () => { try { navigator.clipboard.writeText(NURTURE_URL + '?t=' + open.qtoken); toast('Lien personnel copié') } catch { toast('Copie impossible', true) } }
+  useEffect(() => { setOq(null); if (!openId) return; supabase.from('cand_questions').select('body,updated_at').eq('lead_id', openId).order('updated_at', { ascending: false }).limit(1).then(({ data }) => { const d = data && data[0]; setOq(d && d.body && d.body.trim() ? d : null) }) }, [openId])
 
   const week = Date.now() - 7 * 864e5
   const stats = { total: R.length, neu: R.filter((r) => new Date(r.created_at).getTime() > week).length, rdv: R.filter((r) => r.stage === 'rdv').length, relance: counts.relance || 0 }
@@ -273,6 +277,12 @@ export default function Prospects({ toast, focus }) {
         <div className="chips" style={{ marginTop: 0 }}>{(open.tags || []).map((t) => <button key={t} className="chip sel" onClick={() => upd([open.id], { tags: open.tags.filter((x) => x !== t) }, true)}>{t} ✕</button>)}
           <input className="pr-tagin" placeholder="+ tag" onKeyDown={(e) => { if (e.key === 'Enter') { addTag(open, e.target.value); e.target.value = '' } }} /></div>
         <label className="lq">Note<textarea rows={3} defaultValue={open.note || ''} placeholder="Note…" onBlur={(e) => e.target.value !== (open.note || '') && upd([open.id], { note: e.target.value }, true)} /></label>
+        <h4>Page de préparation</h4>
+        <PrepTrack ev={pev} />
+        <div className="acts" style={{ marginTop: 8 }}>
+          {open.phone && <a className="btn sm" style={{ textDecoration: 'none' }} href={waWeb(open.phone, nurture)} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, open.phone, nurture)}>Envoyer la page sur WhatsApp</a>}
+          <button className="btn ghost sm" onClick={copyLink}>Copier le lien personnel</button>
+        </div>
         {oq && <><h4>Ses questions pour l'appel</h4><div className="cq" style={{ marginTop: 0 }}><p>{oq.body}</p></div></>}
         <h4>Parcours</h4>
         <ul className="pr-tl">
