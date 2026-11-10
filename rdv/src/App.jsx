@@ -69,7 +69,7 @@ export default function App() {
   const [step, setStep] = useState('intro')
   const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', email: '', situation: '', capital: '', have: '' })
   const [err, setErr] = useState('')
-  const [cfg, setCfg] = useState({ slot_min: 45, wa: '33756842921', release_hours: 4 })
+  const [cfg, setCfg] = useState({ slot_min: 45, wa: '33756849421', release_hours: 4 })
   const [slots, setSlots] = useState(null)
   const [day, setDay] = useState('')
   const [pick, setPick] = useState('')

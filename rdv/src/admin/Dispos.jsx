@@ -99,8 +99,10 @@ export default function Dispos({ toast }) {
     if (error) { setCfg((c) => ({ ...c, horizon_days: prev })); return toast(friendlyError(error), true) }
     toast(`Réservable jusqu'à ${n} jour${n > 1 ? 's' : ''} à l'avance`); load()
   }
+  const waDigits = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.startsWith('00') ? d.slice(2) : d.startsWith('0') ? '33' + d.slice(1) : d }
   const saveCfg = async () => {
-    const { error } = await supabase.from('cand_settings').update({ slot_min: +cfg.slot_min, step_min: +cfg.step_min, notice_min: Math.round(+(cfg.notice_h ?? cfg.notice_min / 60) * 60), horizon_days: +cfg.horizon_days, release_hours: +cfg.release_hours }).eq('id', 1)
+    if (!/^\d{10,15}$/.test(waDigits(cfg.wa_number))) return toast('Numéro WhatsApp invalide', true)
+    const { error } = await supabase.from('cand_settings').update({ slot_min: +cfg.slot_min, step_min: +cfg.step_min, notice_min: Math.round(+(cfg.notice_h ?? cfg.notice_min / 60) * 60), horizon_days: +cfg.horizon_days, release_hours: +cfg.release_hours, wa_number: waDigits(cfg.wa_number) }).eq('id', 1)
     if (error) return toast(friendlyError(error), true); toast('Réglages enregistrés'); load()
   }
   const toggleBlock = async () => {
@@ -172,6 +174,8 @@ export default function Dispos({ toast }) {
           <div><label className="lq">Un créneau toutes les (min)</label><input type="number" min="5" max="120" value={cfg.step_min} onChange={e => setCfg({ ...cfg, step_min: e.target.value })} /></div>
           <div><label className="lq">Délai minimum (heures)</label><input type="number" min="0" max="72" value={cfg.notice_h ?? Math.round(cfg.notice_min / 60)} onChange={e => setCfg({ ...cfg, notice_h: e.target.value })} /></div>
           <div><label className="lq">Réservable jusqu'à (jours à l'avance)</label><input type="number" min="1" max="60" value={cfg.horizon_days} onChange={e => setCfg({ ...cfg, horizon_days: e.target.value })} /></div>
+          <div style={{ gridColumn: '1 / -1' }}><label className="lq">Ton numéro WhatsApp (celui où les candidats t'écrivent)</label><input type="tel" inputMode="tel" value={cfg.wa_number || ''} onChange={e => setCfg({ ...cfg, wa_number: e.target.value })} placeholder="07 56 84 94 21" />
+            <a className="muted small" href={`https://wa.me/${waDigits(cfg.wa_number)}`} target="_blank" rel="noopener noreferrer">Tester : ouvrir WhatsApp sur ce numéro (+{waDigits(cfg.wa_number)})</a></div>
           <div><label className="lq">Libérer sans message après (h)</label><input type="number" min="1" max="48" value={cfg.release_hours} onChange={e => setCfg({ ...cfg, release_hours: e.target.value })} /></div>
         </div>
         <button className="btn big" onClick={saveCfg}>Enregistrer les réglages</button>
