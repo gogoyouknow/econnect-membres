@@ -133,3 +133,4 @@ body{touch-action:pan-y}
 .prep .gold{color:var(--gold)}
 .vid{border-radius:14px;overflow:hidden;background:#000;width:100%;min-height:120px}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;text-align:left;display:block}

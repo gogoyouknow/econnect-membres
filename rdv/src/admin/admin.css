@@ -344,3 +344,21 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
   .adm .pills,.adm .fm-tools .pills,.adm .fm-head .pills{flex-wrap:wrap;overflow-x:visible;touch-action:pan-y}
   .adm .pill{flex:0 1 auto}
 }
+
+/* Relances : suivi, séquence, messages modèles */
+.adm .seqbox,.adm .resrow{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.adm .seqrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;flex-wrap:wrap}
+.adm .seqrow div{display:flex;flex-direction:column;min-width:0;flex:1 1 140px}
+.adm .seqrow small{color:var(--mut);font-size:12px}
+.adm .seqrow.due b{color:#92400E}.adm .seqrow.sent{opacity:.6}
+.adm .chips2{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.adm .msgs{margin-top:18px}
+.adm .msgbox{display:flex;flex-direction:column;gap:8px;margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--line)}
+.adm .msgbox textarea,.adm .msgbox .ti{width:100%;font:inherit;font-size:16px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff;color:var(--ink);box-sizing:border-box}
+.adm .tgl{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink)}
+.adm .tgl input{width:22px;height:22px;flex:none;margin-top:1px}
+.adm .inl{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+.adm .inl input{width:84px;font:inherit;font-size:16px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;color:var(--ink)}
+.adm .seqedit{display:flex;flex-direction:column;gap:8px;background:#F5F6F8;border-radius:12px;padding:10px}
+.adm .seqhead{display:flex;gap:8px;align-items:center}.adm .seqhead .ti{flex:1}
+@media (max-width:899px){.adm .pills{flex-wrap:wrap}}

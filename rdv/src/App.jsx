@@ -77,9 +77,11 @@ function Temos({ onCta }) {
   </section>
 }
 
+const isoIn = (d) => { const x = new Date(Date.now() + d * 864e5); return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(x) }
+
 export default function App() {
   const [step, setStep] = useState('intro')
-  const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', wa_ok: true, wprefix: '+33', wtel: '', email: '', situation: '', capital: '', have: '' })
+  const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', wa_ok: true, wprefix: '+33', wtel: '', email: '', situation: '', capital: '', have: '', bdate: '' })
   const [err, setErr] = useState('')
   const [cfg, setCfg] = useState({ slot_min: 45, wa: '33756849421', release_hours: 4 })
   const [slots, setSlots] = useState(null)
@@ -101,7 +103,7 @@ export default function App() {
   const leadBody = (stp, g) => { const [pf, d] = effTel(g); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? pf + d : '', phone_raw: d ? pf + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC } }
   const saveLead = (stp, over = {}) => { if (!configured) return; rpc('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
   // On garde TOUT ce qui est tapé, même sans clic sur « Continuer » : sauvegarde auto 0,7 s après la dernière frappe, et à la fermeture / au changement d'onglet.
-  const LS = { who: 'who', situ: 'situ', block: 'situ', budget: 'budget', block2: 'budget', slot: 'slot' }
+  const LS = { who: 'who', situ: 'situ', block: 'situ', budget: 'budget', block2: 'budget', when: 'budget', later: 'budget', slot: 'slot' }
   const live = useRef({})
   live.current = { f, step }
   useEffect(() => {
@@ -115,7 +117,7 @@ export default function App() {
     window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', vis)
     return () => { window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', vis) }
   }, [])
-  const n = { who: 1, situ: 2, block: 2, budget: 3, block2: 3, slot: 4 }[step] || 0
+  const n = { who: 1, situ: 2, block: 2, budget: 3, block2: 3, when: 3, later: 3, slot: 4 }[step] || 0
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
   const loadSlots = () => rpc('cand_slots').then((s) => setSlots(s || [])).catch(() => setSlots([]))
@@ -142,7 +144,13 @@ export default function App() {
     },
     budget() {
       if (!f.have) return setErr('Choisis une réponse pour continuer.')
-      saveLead('budget'); go(f.have === 'yes' ? 'slot' : 'block2')
+      saveLead('budget'); go(f.have === 'yes' ? 'slot' : f.have === 'soon' ? 'when' : 'block2')
+    },
+    async when() {
+      if (!f.bdate) return setErr('Choisis la date à laquelle tu pourras investir.')
+      setBusy(true)
+      try { await rpc('cand_lead_date', { p: { sid, date: f.bdate } }) } catch { /* la date reste aussi dans le formulaire sauvegardé : on ne bloque jamais la personne */ }
+      setBusy(false); go('later')
     },
   }
   async function book() {
@@ -231,6 +239,18 @@ export default function App() {
       <p className="muted s13">Sois honnête, ça m'aide à te dire la vérité.</p>
       <div className="err">{err}</div><button className="btn" onClick={next.budget}>Choisir mon créneau →</button></div>
       <button className="link" onClick={() => go('situ')}>← Retour</button></section>}
+
+    {step === 'when' && <section className="screen"><h2>À partir de quand ?</h2><div className="card">
+      <p>Pas de souci. Donne-moi une <b>date précise</b> à laquelle tu pourras investir : je te recontacte directement sur WhatsApp à ce moment-là.</p>
+      <div className="chips">{[['Dans 2 semaines', 14], ['Dans 1 mois', 30], ['Dans 2 mois', 60], ['Dans 3 mois', 90]].map(([l, d]) => { const v = isoIn(d); return <button key={d} className={`chip ${f.bdate === v ? 'sel' : ''}`} onClick={() => set('bdate', v)}>{l}</button> })}</div>
+      <div className="field"><label htmlFor="bd">Ou choisis ta date</label><input id="bd" type="date" min={isoIn(1)} max={isoIn(400)} value={f.bdate} onChange={(e) => set('bdate', e.target.value)} /></div>
+      <div className="err">{err}</div><button className="btn" disabled={busy} onClick={next.when}>{busy ? 'Un instant…' : 'Me recontacter à cette date →'}</button></div>
+      <button className="link" onClick={() => go('budget')}>← Modifier ma réponse</button></section>}
+
+    {step === 'later' && <section className="screen"><div className="col"><span className="eyebrow">C'est noté</span><h2>Je te recontacte le {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(f.bdate + 'T12:00:00'))}</h2></div><div className="card">
+      <p>Je t'écrirai sur WhatsApp au <b>{f.wa_ok === false ? f.wprefix + ' ' + f.wtel : f.prefix + ' ' + f.tel}</b>. Garde-le à portée de main.</p>
+      <p className="muted">Si ça va plus vite que prévu, tu peux réserver ton appel dès que ton budget est disponible.</p></div>
+      <button className="link" onClick={() => go('budget')}>← Modifier ma réponse</button></section>}
 
     {step === 'block2' && <section className="screen"><h2>Reviens quand ce sera le bon moment</h2><div className="card">
       <p>Sans budget disponible, un appel ne te servirait à rien : je ne pourrais pas t'accompagner correctement.</p>
