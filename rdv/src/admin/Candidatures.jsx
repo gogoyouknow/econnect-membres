@@ -33,6 +33,7 @@ export default function Candidatures({ toast, tab: main }) {
   const load = () => supabase.from('candidatures').select('*').order('starts_at', { ascending: true }).limit(500).then(({ data }) => setRows(data || []))
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   const loadQs = () => supabase.from('cand_questions').select('candidature_id,name,body,updated_at').not('candidature_id', 'is', null).then(({ data }) => { const m = {}; (data || []).forEach((q) => { if (q.body && q.body.trim()) m[q.candidature_id] = q }); setQs(m) })
+  useEffect(() => { if (edit === null) return; const b = document.body, h = document.documentElement; const o = [b.style.overflow, h.style.overflow]; b.style.overflow = h.style.overflow = 'hidden'; return () => { b.style.overflow = o[0]; h.style.overflow = o[1] } }, [edit !== null])
   const loadEv = () => supabase.from('cand_page_events').select('candidature_id,kind,label,created_at').not('candidature_id', 'is', null).order('created_at', { ascending: true }).limit(2000).then(({ data }) => { const m = {}; (data || []).forEach((e) => { (m[e.candidature_id] = m[e.candidature_id] || []).push(e) }); setEv(m) })
   useEffect(() => { loadQs(); loadEv(); const i = setInterval(() => { loadQs(); loadEv() }, 60000); return () => clearInterval(i) }, [])
   useEffect(() => { supabase.from('cand_templates').select('body').eq('key', 'wa_confirm').maybeSingle().then(({ data }) => data?.body && setTpl(data.body)) }, [])

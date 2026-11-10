@@ -86,6 +86,7 @@ export default function Prospects({ toast, focus }) {
   const [oq, setOq] = useState(null)
   const [add, setAdd] = useState(false); const [imp, setImp] = useState(null); const [tagIn, setTagIn] = useState('')
   const file = useRef(null)
+  useEffect(() => { if (!(add || imp)) return; const b = document.body, h = document.documentElement; const o = [b.style.overflow, h.style.overflow]; b.style.overflow = h.style.overflow = 'hidden'; return () => { b.style.overflow = o[0]; h.style.overflow = o[1] } }, [!!(add || imp)])
 
   const load = async () => {
     let all = [], from = 0
