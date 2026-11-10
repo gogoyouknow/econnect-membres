@@ -1,3 +1,4 @@
+import { openChat } from './openchat'
 import { mailProblem, mailShape } from './mailcheck'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { rpc, configured } from './api'
@@ -190,7 +191,7 @@ export default function App() {
   const waMsg = bk ? `Salut ${cn}, c’est ${(bk.first_name || f.first_name).trim()}. Je viens de ${done?.moved ? 'déplacer' : 'réserver'} mon appel pour ${bk.when}.` : ''
   const waHref = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`
   const copy = () => { try { navigator.clipboard.writeText('+' + waNum) } catch {} }
-  const waClick = () => { try { rpc('cand_wa_click', { p: { email: f.email.trim().toLowerCase(), phone: effTel(f).join('') } }).catch(() => {}) } catch { /* */ } }
+  const waClick = (e) => { openChat(e, waNum, waMsg, waHref); try { rpc('cand_wa_click', { p: { email: f.email.trim().toLowerCase(), phone: effTel(f).join('') } }).catch(() => {}) } catch { /* */ } }
   const cur = days.find((d) => d[0] === day)
   const relH = bk?.release_hours || cfg.release_hours
   const confirmBtn = () => <div className="card confirm"><p><b>Tu n'as pas encore envoyé ton message ?</b></p><p className="muted s13">C'est la seule chose qui confirme ton créneau.</p>
