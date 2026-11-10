@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
+import { openWA } from './whatsapp'
 
 const TZ = 'Europe/Paris'
 const STAGE = { rdv: 'Appel prévu', qualifie: 'Qualifié', potentiel: 'Potentiel', incomplet: 'Incomplet', disqualifie: 'Pas prêt', fait: 'Appel fait', absent: 'Absent', annule: 'Annulé' }
@@ -74,7 +75,7 @@ const normPhone = (raw) => {
 }
 
 /** « Prospects » : la base de contacts (toutes les personnes qui ont laissé leurs infos, même en partie). */
-export default function Prospects({ toast }) {
+export default function Prospects({ toast, focus }) {
   const [rows, setRows] = useState(null)
   const [view, setView] = useState('all'); const [q, setQ] = useState(''); const [fSrc, setFSrc] = useState(''); const [fSit, setFSit] = useState('')
   const [sort, setSort] = useState({ k: 'updated_at', dir: -1 }); const [page, setPage] = useState(0)
@@ -93,6 +94,7 @@ export default function Prospects({ toast }) {
     setRows(all)
   }
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
+  useEffect(() => { if (focus?.id) { setView('all'); setOpenId(focus.id) } }, [focus])
   useEffect(() => { try { localStorage.setItem('calio_pr_cols', JSON.stringify(cols)) } catch { /* */ } }, [cols])
   useEffect(() => { setPage(0); setSel(new Set()) }, [view, q, fSrc, fSit])
 
@@ -251,7 +253,7 @@ export default function Prospects({ toast }) {
       <aside className="pr-dr" key={open.id}>
         <div className="pr-drh"><div><h3>{full(open)}</h3><Badge s={open.stage} /></div><button className="out" style={{ color: '#5B6270' }} onClick={() => setOpenId(null)} aria-label="Fermer">✕</button></div>
         <div className="acts">
-          {open.phone && <a className="btn sm" style={{ textDecoration: 'none' }} href={wa(open.phone)} target="_blank" rel="noreferrer">WhatsApp</a>}
+          {open.phone && <a className="btn sm" style={{ textDecoration: 'none' }} href={wa(open.phone)} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, open.phone, '')}>WhatsApp</a>}
           {open.phone && <a className="btn ghost sm" style={{ textDecoration: 'none' }} href={`tel:${open.phone}`}>Appeler</a>}
           {open.email && <a className="btn ghost sm" style={{ textDecoration: 'none' }} href={`mailto:${open.email}`}>Email</a>}
         </div>

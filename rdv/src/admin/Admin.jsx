@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import Candidatures from './Candidatures'
 import Leads from './Leads'
 import Prospects from './Prospects'
+import Formulaires from './Formulaires'
 const Logo = ({ s = 30 }) => <svg className="logo" viewBox="0 0 1024 1024" width={s} height={s} aria-hidden="true"><path d="M 686.6 354.8 A 235 235 0 1 0 686.6 669.2" fill="none" stroke="#fff" strokeWidth="125" strokeLinecap="round" /><circle cx="742" cy="512" r="62" fill="#6FE3A1" /></svg>
 import Dispos from './Dispos'
 
@@ -30,6 +31,7 @@ export default function Admin() {
   const [showPw, setShowPw] = useState(false)
   const [sent, setSent] = useState(false)
   const [nLeads, setNLeads] = useState(0)
+  const [focus, setFocus] = useState(null)
   const [locked, setLocked] = useState(() => !!getFace())
   const [face, setFace] = useState(() => !!getFace())
   const [keep, setKeep] = useState(true)
@@ -110,12 +112,13 @@ export default function Admin() {
   const today = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short' })
   return <div className="adm app">
     <header className="bar"><Logo s={30} /><h1>Mes appels</h1><span className="date">{today}</span>{faceOk && <button className="out" onClick={toggleFace} aria-label="Face ID" title={face ? 'Face ID activé' : 'Activer Face ID'} style={{ color: face ? '#6FE3A1' : undefined }}><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M9 10v1.5M15 10v1.5M12 10v3.5M9 16c1.7 1.3 4.3 1.3 6 0" /></svg></button>}<button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
-    <div className={`scroll ${tab !== 'appels' ? 'light' : ''} ${tab === 'prospects' ? 'wide' : ''}`}>
-      {tab === 'prospects' ? <Prospects toast={toast} /> : tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : tab === 'dispos' ? <Dispos toast={toast} /> : <Candidatures toast={toast} tab={tab} />}
+    <div className={`scroll ${tab !== 'appels' ? 'light' : ''} ${tab === 'prospects' || tab === 'formulaires' ? 'wide' : ''}`}>
+      {tab === 'prospects' ? <Prospects toast={toast} focus={focus} /> : tab === 'formulaires' ? <Formulaires toast={toast} onOpen={(id) => { setFocus({ id, t: Date.now() }); setTab('prospects') }} /> : tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : tab === 'dispos' ? <Dispos toast={toast} /> : <Candidatures toast={toast} tab={tab} />}
     </div>
     <nav className="tabs">
       <button className={tab === 'appels' ? 'on' : ''} onClick={() => setTab('appels')}><Ic d={<><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></>} />Appels</button>
       <button className={tab === 'prospects' ? 'on' : ''} onClick={() => setTab('prospects')}><Ic d={<><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M16 5.5a3.2 3.2 0 0 1 0 6M18 14.8c1.8.6 3 2.2 3 5.2" /></>} />Prospects</button>
+      <button className={tab === 'formulaires' ? 'on' : ''} onClick={() => setTab('formulaires')}><Ic d={<><rect x="5" y="3" width="14" height="18" rx="2.5" /><path d="M9 8h6M9 12h6M9 16h3" /></>} />Formulaires</button>
       <button className={tab === 'leads' ? 'on' : ''} onClick={() => setTab('leads')}><span className="ico"><Ic d={<><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M17 6v6M20 9h-6" /></>} />{nLeads > 0 && <i className="dot">{nLeads > 9 ? '9+' : nLeads}</i>}</span>Relances</button>
       <button className={tab === 'dispos' ? 'on' : ''} onClick={() => setTab('dispos')}><Ic d={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />Disponibilités</button>
     </nav>

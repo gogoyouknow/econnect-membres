@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { rpc, configured } from './api'
+import { TEMOS, Thumb } from './videos'
 
 const TZ = 'Europe/Paris'
 const CAPS = [['lt500', 'Moins de 500 €'], ['500-1000', 'Entre 500 € et 1 000 €'], ['1000-3000', 'Entre 1 000 € et 3 000 €'], ['gt3000', 'Plus de 3 000 €']]
@@ -28,23 +29,6 @@ const sid = (() => {
   try { let v = localStorage.getItem('cand_sid'); if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); localStorage.setItem('cand_sid', v) } return v } catch { return 'mem-' + Date.now() + Math.random().toString(16).slice(2) }
 })()
 
-// Témoignages vidéo (playlist YouTube « Témoignage d'élèves »). Vignettes officielles de la chaîne ; la vidéo ne se charge qu'au toucher.
-const TEMOS = [
-  ['OsUzPk84x5s', 'Abdoulaye · son 2ᵉ mois', '10:48'],
-  ['iu0DjBCAyxs', 'Meryeme · après 2 semaines', '5:17'],
-  ['_ms0EjrimCs', 'Salarié, à côté de son CDI', '3:44'],
-  ['17QrGHeEp-M', 'Selimkhan · 27 ans', '7:43'],
-  ['9Q69OkBQlyY', '23 ans · 45 jours après', '8:36'],
-  ['VWBhzjocYds', 'Issa · 40 jours après', '8:00'],
-  ['hcbIS0DFEE0', 'Son tout premier stock', '6:55'],
-  ['b0YZOAXwSiU', 'Son premier mois', '17:34'],
-  ['KmG2NbYS9KA', 'Accompagnement 1-1', '19:21'],
-]
-// Grande vignette = sddefault (640 px, bandes noires haut/bas rognées par .lb) ; petites = mqdefault (16:9 sans bandes). Repli sur mqdefault si l'image manque.
-const Thumb = ({ id, dur, big }) => <span className={`tvid ${big ? 'big' : ''}`}>
-  <img className={big ? 'lb' : ''} src={`https://img.youtube.com/vi/${id}/${big ? 'sddefault' : 'mqdefault'}.jpg`} alt="" loading={big ? 'eager' : 'lazy'} decoding="async"
-    onError={(e) => { const i = e.currentTarget; if (!i.dataset.fb) { i.dataset.fb = '1'; i.classList.remove('lb'); i.src = `https://img.youtube.com/vi/${id}/mqdefault.jpg` } }} />
-  <i className="tplay"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg></i><span className="tdur">{dur}</span></span>
 function Temos({ onCta }) {
   const [play, setPlay] = useState(null)
   const [all, setAll] = useState(false)

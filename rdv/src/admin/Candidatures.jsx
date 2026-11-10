@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
+import { DEFAULT_MSG, fillMsg, waWeb, openWA } from './whatsapp'
 
 const ST = { reserve: ['À confirmer', 'wait'], confirme: ['Confirmé', 'ok'], fait: ['Fait', 'done'], absent: ['Absent', 'done'], annule: ['Annulé', 'done'] }
 const CAPL = { '500-1000': '500–1 000 €', '1000-3000': '1 000–3 000 €', gt3000: '+ 3 000 €' }
@@ -26,8 +27,11 @@ const countdown = (iso) => {
 /** Mes appels : accueil (prochain appel + liste) et disponibilités. `tab` = 'appels' | 'dispos'. */
 export default function Candidatures({ toast, tab: main }) {
   const [rows, setRows] = useState([]); const [tab, setTab] = useState('avenir'); const [open, setOpen] = useState(null)
+  const [tpl, setTpl] = useState(DEFAULT_MSG); const [edit, setEdit] = useState(null)
   const load = () => supabase.from('candidatures').select('*').order('starts_at', { ascending: true }).limit(500).then(({ data }) => setRows(data || []))
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
+  useEffect(() => { supabase.from('cand_templates').select('body').eq('key', 'wa_confirm').maybeSingle().then(({ data }) => data?.body && setTpl(data.body)) }, [])
+  const saveTpl = async () => { const { error } = await supabase.from('cand_templates').upsert({ key: 'wa_confirm', body: edit, updated_at: new Date().toISOString() }); if (error) return toast(friendlyError(error), true); setTpl(edit); setEdit(null); toast('Message enregistré') }
   const upd = async (c, patch) => { const { error } = await supabase.from('candidatures').update(patch).eq('id', c.id); if (error) return toast(friendlyError(error), true); load() }
 
   const now = Date.now()
@@ -50,10 +54,11 @@ export default function Candidatures({ toast, tab: main }) {
           <div className="hrow">
             <div className="htime">{timeOf(next.starts_at)}</div>
             <div className="hwho"><b>{next.first_name}</b><small>{[next.situation, CAPL[next.capital] || next.capital].filter(Boolean).join(' · ')}</small></div>
-            <a className="wabtn" href={wa(next.phone)} target="_blank" rel="noreferrer">WhatsApp</a>
+            <a className="wabtn" href={waWeb(next.phone, fillMsg(tpl, next))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, next.phone, fillMsg(tpl, next))}>WhatsApp</a>
           </div>
         </> : <><div className="hk">Aucun appel à venir</div><div className="hempty">Dès qu'une personne réserve depuis ta bio, elle apparaît ici.</div></>}
       </div>
+      {next && <button className="linkbtn mlink" onClick={() => setEdit(tpl)}>Modifier le message WhatsApp prérempli</button>}
       <div className="stats"><span><b className="y">{nToConfirm}</b> à confirmer</span><span><b>{nWeek}</b> cette semaine</span><span><b className="g">{nDone}</b> faits</span></div>
     </div>
     <div className="sheet-body">
@@ -67,11 +72,12 @@ export default function Candidatures({ toast, tab: main }) {
             <span className={`badge ${ST[c.status][1]}`}>{ST[c.status][0]}</span>
           </div>
           {open === c.id && <div className="cdet">
-            <div className="drow"><label>WhatsApp</label><a href={wa(c.phone)} target="_blank" rel="noreferrer">{c.phone}</a></div>
+            <div className="drow"><label>WhatsApp</label><a href={waWeb(c.phone, fillMsg(tpl, c))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, c.phone, fillMsg(tpl, c))}>{c.phone}</a></div>
             <div className="drow"><label>Email</label><a href={`mailto:${c.email}`}>{c.email}</a></div>
             <div className="drow"><label>Budget</label><span>{CAPL[c.capital] || c.capital} · confirmé disponible</span></div>
             <div className="drow"><label>Réservé le</label><span>{new Date(c.created_at).toLocaleString('fr-FR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
             <div className="acts">
+              {live(c) && <a className="btn sm" style={{ textDecoration: 'none' }} href={waWeb(c.phone, fillMsg(tpl, c))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, c.phone, fillMsg(tpl, c))}>Envoyer le message WhatsApp</a>}
               {c.status === 'reserve' && <button className="btn sm" onClick={() => upd(c, { status: 'confirme' })}>✓ Message WhatsApp reçu</button>}
               {live(c) && <>
                 <button className="btn ghost sm" onClick={() => upd(c, { status: 'fait' })}>Appel fait</button>
@@ -85,5 +91,11 @@ export default function Candidatures({ toast, tab: main }) {
       </div>)}
       <p className="muted small">Sans message WhatsApp reçu dans le délai réglé, le créneau est libéré automatiquement.</p>
     </div>
+    {edit !== null && <div className="pr-modal" onClick={() => setEdit(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
+      <h3>Message WhatsApp prérempli</h3>
+      <p className="muted" style={{ fontSize: 13 }}>S'ouvre dans WhatsApp Business quand tu touches le bouton. Tu peux utiliser <b>{'{prenom}'}</b> <b>{'{jour}'}</b> <b>{'{heure}'}</b> et <b>{'{lien}'}</b> (la page Découvre).</p>
+      <textarea rows={9} value={edit} onChange={(e) => setEdit(e.target.value)} style={{ fontSize: 15 }} />
+      <div className="lq">Aperçu</div><div className="wprev">{fillMsg(edit, next || { first_name: 'Karim', starts_at: new Date(Date.now() + 864e5).toISOString() })}</div>
+      <div className="acts"><button className="btn" onClick={saveTpl}>Enregistrer</button><button className="btn ghost" onClick={() => setEdit(null)}>Annuler</button><button className="linkbtn" style={{ padding: 0 }} onClick={() => setEdit(DEFAULT_MSG)}>Message d'origine</button></div></div></div>}
   </>
 }

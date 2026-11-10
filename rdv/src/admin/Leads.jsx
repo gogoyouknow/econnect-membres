@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
+import { openWA } from './whatsapp'
 
 const TZ = 'Europe/Paris'
 const CAPL = { lt500: '- 500 €', '500-1000': '500–1 000 €', '1000-3000': '1 000–3 000 €', gt3000: '+ 3 000 €' }
@@ -52,7 +53,7 @@ export default function Leads({ toast, onChange }) {
         <div className="drow"><label>Budget</label><span>{CAPL[l.capital] || '—'}{l.budget_confirmed === 'yes' ? ' · disponible maintenant' : l.budget_confirmed === 'soon' ? ' · pas avant quelques semaines' : l.budget_confirmed === 'no' ? ' · non disponible' : ''}</span></div>
         <div className="drow"><label>1ère visite</label><span>{new Date(l.created_at).toLocaleString('fr-FR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
         <div className="acts">
-          {l.phone && <a className="btn sm" style={{ textDecoration: 'none' }} href={wa(l.phone, msg(l))} target="_blank" rel="noreferrer" onClick={() => l.follow === 'new' && upd(l, { follow: 'done' })}>Relancer sur WhatsApp</a>}
+          {l.phone && <a className="btn sm" style={{ textDecoration: 'none' }} href={wa(l.phone, msg(l))} target="_blank" rel="noreferrer" onClick={(e) => { openWA(e, l.phone, msg(l)); if (l.follow === 'new') upd(l, { follow: 'done' }) }}>Relancer sur WhatsApp</a>}
           {l.follow === 'new' && <><button className="btn ghost sm" onClick={() => upd(l, { follow: 'done' })}>Marquer relancé</button><button className="btn ghost sm" onClick={() => upd(l, { follow: 'skip' })}>Écarter</button></>}
           {l.follow !== 'new' && <button className="btn ghost sm" onClick={() => upd(l, { follow: 'new' })}>Remettre à relancer</button>}
         </div>
