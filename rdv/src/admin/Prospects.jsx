@@ -1,4 +1,5 @@
 import LoadErr from './LoadErr'
+import Portal from './Portal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import { openWA, fillMsg, waWeb, NURTURE_MSG, NURTURE_URL } from './whatsapp'
@@ -283,7 +284,7 @@ export default function Prospects({ toast, focus }) {
       </>}
     </section>
 
-    {open && <><div className="pr-back" onClick={() => setOpenId(null)} />
+    {open && <Portal><div className="pr-back" onClick={() => setOpenId(null)} />
       <aside className="pr-dr" key={open.id}>
         <div className="pr-drh"><div><h3>{full(open)}</h3><Badge s={open.stage} /></div><button className="out" style={{ color: '#5B6270' }} onClick={() => setOpenId(null)} aria-label="Fermer">✕</button></div>
         <div className="acts">
@@ -328,21 +329,21 @@ export default function Prospects({ toast, focus }) {
         {Object.entries(open.utm || {}).map(([k, v]) => <div className="drow" key={k}><label>{k}</label><span>{v}</span></div>)}
         {open.referrer && <div className="drow"><label>Venait de</label><span>{open.referrer}</span></div>}
         <div className="acts" style={{ marginTop: 18 }}><button className="btn danger sm" onClick={() => del(open)}>Supprimer ce prospect</button></div>
-      </aside></>}
+      </aside></Portal>}
 
-    {add && <div className="pr-modal" onClick={() => setAdd(false)}><form className="pr-mb" onClick={(e) => e.stopPropagation()} onSubmit={doAdd}>
+    {add && <Portal><div className="pr-modal" onClick={() => setAdd(false)}><form className="pr-mb" onClick={(e) => e.stopPropagation()} onSubmit={doAdd}>
       <h3>Nouveau prospect</h3>
       <div className="grid2"><input name="first" placeholder="Prénom" /><input name="last" placeholder="Nom" /></div>
       <input name="phone" placeholder="Téléphone (06… ou +33…)" style={{ marginTop: 10 }} />
       <input name="email" type="email" placeholder="Email" style={{ marginTop: 10 }} />
       <input name="source" placeholder="Source (TikTok, Instagram, bouche-à-oreille…)" style={{ marginTop: 10 }} />
-      <div className="acts"><button className="btn">Ajouter</button><button type="button" className="btn ghost" onClick={() => setAdd(false)}>Annuler</button></div></form></div>}
+      <div className="acts"><button className="btn">Ajouter</button><button type="button" className="btn ghost" onClick={() => setAdd(false)}>Annuler</button></div></form></div></Portal>}
 
-    {imp && <div className="pr-modal" onClick={() => !imp.busy && setImp(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
+    {imp && <Portal><div className="pr-modal" onClick={() => !imp.busy && setImp(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
       <h3>Importer des contacts</h3>
       <p><b>{imp.out.length}</b> nouveau{imp.out.length > 1 ? 'x' : ''} prospect{imp.out.length > 1 ? 's' : ''} à importer{imp.dup ? ` · ${imp.dup} déjà dans la base (ignorés)` : ''}.</p>
       <label className="showpw" style={{ color: '#12151C' }}><input type="checkbox" checked={imp.relance} onChange={(e) => setImp({ ...imp, relance: e.target.checked })} /> Les mettre dans « À relancer »</label>
       <p className="muted" style={{ fontSize: 13 }}>Décoché : ils rejoignent la base sans gonfler ta liste de relances.</p>
-      <div className="acts"><button className="btn" disabled={imp.busy || !imp.out.length} onClick={doImport}>{imp.busy ? 'Import…' : 'Importer'}</button><button className="btn ghost" disabled={imp.busy} onClick={() => setImp(null)}>Annuler</button></div></div></div>}
+      <div className="acts"><button className="btn" disabled={imp.busy || !imp.out.length} onClick={doImport}>{imp.busy ? 'Import…' : 'Importer'}</button><button className="btn ghost" disabled={imp.busy} onClick={() => setImp(null)}>Annuler</button></div></div></div></Portal>}
   </div>
 }

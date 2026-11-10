@@ -1,6 +1,8 @@
 import LoadErr from './LoadErr'
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
+import Portal from './Portal'
+import { OutcomeChips } from './Closing'
 import { DEFAULT_MSG, RESCHEDULE_MSG, fillMsg, waWeb, openWA, NURTURE_URL } from './whatsapp'
 import { copyText } from './copy'
 import PrepTrack from './PrepTrack'
@@ -102,7 +104,7 @@ export default function Candidatures({ toast, tab: main }) {
           <div className="crow" onClick={() => setOpen(open === c.id ? null : c.id)}>
             <div className="ctime">{timeOf(c.starts_at)}</div>
             <div className="cmain"><b>{c.first_name}</b><small>{[c.situation, CAPL[c.capital] || c.capital].filter(Boolean).join(' · ')}</small></div>
-            <span className={`badge ${(ST[c.status] || [c.status, 'done'])[1]}`}>{(ST[c.status] || [c.status, 'done'])[0]}</span>
+            <span className={`badge ${c.status === 'fait' && c.outcome === 'signe' ? 'ok' : c.status === 'fait' && c.outcome === 'reflechit' ? 'wait' : (ST[c.status] || [c.status, 'done'])[1]}`}>{c.status === 'fait' && c.outcome ? (c.outcome === 'signe' ? 'Signé' : c.outcome === 'reflechit' ? 'Il réfléchit' : 'Pas signé') : (ST[c.status] || [c.status, 'done'])[0]}</span>
           </div>
           {open === c.id && <div className="cdet">
             <div className="drow"><label>WhatsApp</label><a href={waWeb(c.phone, fillMsg(tpl, c))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, c.phone, fillMsg(tpl, c))}>{c.phone}</a> <button className="cpy" onClick={() => copyText(c.phone, toast, 'Numéro copié')}>Copier</button></div>
@@ -113,6 +115,7 @@ export default function Candidatures({ toast, tab: main }) {
             {c.closer && c.closer !== 'clement' && <div className="drow"><label>Avec</label><span><b>{{ amandine: 'Amandine' }[c.closer] || c.closer}</b> · c'est son WhatsApp qui confirme</span></div>}
             {c.status === 'reserve' && <div className="drow"><label>Confirmation</label><span style={{ color: c.wa_clicked_at ? '#166534' : '#92400E', fontWeight: 600 }}>{c.wa_clicked_at ? 'A ouvert WhatsApp pour t\'écrire' : 'N\'a pas encore cliqué sur WhatsApp'}</span></div>}
             <div className="drow"><label>Réservé le</label><span>{new Date(c.created_at).toLocaleString('fr-FR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
+            {c.status === 'fait' && <div className="drow col"><label>Résultat de l'appel</label><OutcomeChips c={c} onPick={(x, v) => upd(x, { outcome: v, outcome_at: v ? new Date().toISOString() : null })} /></div>}
             <div className="acts">
               {live(c) && <a className="btn sm" style={{ textDecoration: 'none' }} href={waWeb(c.phone, fillMsg(tpl, c))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, c.phone, fillMsg(tpl, c))}>Envoyer le message WhatsApp</a>}
               {c.status === 'reserve' && <button className="btn sm" onClick={() => upd(c, { status: 'confirme' })}>✓ Message WhatsApp reçu</button>}
@@ -132,7 +135,7 @@ export default function Candidatures({ toast, tab: main }) {
       </div>)}
       <p className="muted small">Sans message WhatsApp reçu dans le délai réglé, le créneau est libéré automatiquement.</p>
     </div>
-    {rep && <div className="pr-modal" onClick={() => setRep(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
+    {rep && <Portal><div className="pr-modal" onClick={() => setRep(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
       {rep.done ? <>
         <h3>✓ Appel replanifié</h3>
         <p>{rep.c.first_name} : {dayLabel(rep.done)} à {timeOf(rep.done)}.</p>
@@ -154,12 +157,12 @@ export default function Candidatures({ toast, tab: main }) {
         <label className="lq">Ou un autre horaire (heure de Paris)<input type="datetime-local" value={rep.custom} onChange={(e) => setRep({ ...rep, custom: e.target.value, pick: '' })} /></label>
         <div className="acts"><button className="btn" disabled={rep.busy || !(rep.pick || rep.custom)} onClick={doRep}>{rep.busy ? 'Déplacement…' : "Déplacer l'appel"}</button><button className="btn ghost" onClick={() => setRep(null)}>Annuler</button></div>
       </>}
-    </div></div>}
-    {edit !== null && <div className="pr-modal" onClick={() => setEdit(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
+    </div></div></Portal>}
+    {edit !== null && <Portal><div className="pr-modal" onClick={() => setEdit(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
       <h3>Message WhatsApp prérempli</h3>
       <p className="muted" style={{ fontSize: 13 }}>S'ouvre dans WhatsApp Business quand tu touches le bouton. Tu peux utiliser <b>{'{prenom}'}</b> <b>{'{jour}'}</b> <b>{'{heure}'}</b> et <b>{'{lien}'}</b> (la page Découvre).</p>
       <textarea rows={9} value={edit} onChange={(e) => setEdit(e.target.value)} style={{ fontSize: 16 }} />
       <div className="lq">Aperçu</div><div className="wprev">{fillMsg(edit, next || { first_name: 'Karim', starts_at: new Date(Date.now() + 864e5).toISOString() })}</div>
-      <div className="acts"><button className="btn" onClick={saveTpl}>Enregistrer</button><button className="btn ghost" onClick={() => setEdit(null)}>Annuler</button><button className="linkbtn" style={{ padding: 0 }} onClick={() => setEdit(DEFAULT_MSG)}>Message d'origine</button></div></div></div>}
+      <div className="acts"><button className="btn" onClick={saveTpl}>Enregistrer</button><button className="btn ghost" onClick={() => setEdit(null)}>Annuler</button><button className="linkbtn" style={{ padding: 0 }} onClick={() => setEdit(DEFAULT_MSG)}>Message d'origine</button></div></div></div></Portal>}
   </>
 }
