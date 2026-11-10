@@ -3,6 +3,7 @@ import { usePS } from './persist'
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import Portal from './Portal'
+import { ToSend, ConfSeqEditor } from './ConfSeq'
 import { OutcomeChips } from './Closing'
 import { DEFAULT_MSG, RESCHEDULE_MSG, fillMsg, waWeb, openWA, NURTURE_URL } from './whatsapp'
 import { copyText } from './copy'
@@ -99,6 +100,7 @@ export default function Candidatures({ toast, tab: main }) {
     <div className="sheet-body">
       <LoadErr msg={lerr} onRetry={load} />
       <div className="pills">{[['avenir', 'À venir'], ['passes', 'Passés'], ['annules', 'Annulés']].map(([k, l]) => <button key={k} className={`pill ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}</div>
+      {tab === 'avenir' && <ToSend rows={rows} toast={toast} reload={load} />}
       {!groups.length && !lerr && <div className="sys">Aucun appel ici pour l'instant</div>}
       {groups.map(g => <div key={g.k} className="dgroup"><div className="dlabel">{g.label}</div>
         {g.items.map(c => <div key={c.id} className={`call ${open === c.id ? 'open' : ''}`}>
@@ -135,6 +137,7 @@ export default function Candidatures({ toast, tab: main }) {
         </div>)}
       </div>)}
       <p className="muted small">Sans message WhatsApp reçu dans le délai réglé, le créneau est libéré automatiquement.</p>
+      {tab === 'avenir' && <ConfSeqEditor toast={toast} />}
     </div>
     {rep && <Portal><div className="pr-modal" onClick={() => setRep(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
       {rep.done ? <>

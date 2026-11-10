@@ -433,3 +433,15 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .cl-per .chip,.adm .outc .chip{flex:0 0 auto;width:auto;min-height:38px;padding:8px 14px}
 .adm .cl-per{gap:6px}
 @media (max-width:899px){.adm .cl-per .chip{padding:8px 12px}}
+/* Séquence de confirmation */
+.adm .cs-send{background:#fff;border:1px solid #BBF7D0;border-radius:16px;padding:12px 14px;margin:0 0 14px}
+.adm .cs-row{display:flex;flex-direction:column;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.adm .cs-row small{display:block;color:var(--mut);font-size:12px}
+.adm .cs-step.off{opacity:.62}
+.adm .cs-top{display:flex;gap:10px;align-items:center}.adm .cs-top .ti{flex:1;min-width:0}
+.adm .cs-when{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.adm .cs-when select{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;color:var(--ink);max-width:100%}
+.adm .cs-when .inl input{width:76px}
+.adm .cs-send .lq{font-weight:700;color:var(--ink);font-size:15px;margin-bottom:2px}
+.adm .cs-row .acts{display:flex;gap:8px}.adm .cs-row .acts .btn{flex:1;text-align:center;justify-content:center}
+.adm .btn.wa{background:#25D366;color:#0b0b0c;border-color:#25D366}
