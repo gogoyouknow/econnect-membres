@@ -33,6 +33,7 @@ export default function Admin() {
   const [sess, setSess] = useState(undefined)
   const [ok, setOk] = useState(null)
   const [role, setRole] = useState('staff')
+  const [isAdmin, setIsAdmin] = useState(false) // « Événements » et « Répartition » : réservés à l'admin
   const [join, setJoin] = useState(() => { try { return new URLSearchParams(location.search).get('join') === '1' } catch { return false } })
   const [jstep, setJstep] = useState('form'); const [jmail, setJmail] = useState(() => { try { return new URLSearchParams(location.search).get('email') || '' } catch { return '' } })
   const [msg, setMsg] = useState(null)
@@ -61,6 +62,7 @@ export default function Admin() {
   useEffect(() => {
     if (!sess) { setOk(null); return }
     setOk(null)
+    supabase.rpc('calio_is_admin').then(({ data }) => setIsAdmin(data === true)).catch(() => setIsAdmin(false))
     supabase.rpc('calio_role').then(({ data, error }) => {
       if (!error) { setRole(data === 'closer' ? 'closer' : 'staff'); return setOk(!!data) }
       return supabase.rpc('is_staff').then((r) => { setRole('staff'); setOk(r.error ? 'err' : !!r.data) })
@@ -79,6 +81,7 @@ export default function Admin() {
   }, [ok, role])
   useEffect(() => { if (role === 'closer' && !['appels', 'closing'].includes(tab)) setTab('appels') }, [role, tab])
   // « Événements » n'existe que sur ordinateur : sur téléphone on revient à l'accueil.
+  useEffect(() => { if (tab === 'evenements' && ok === true && !isAdmin) setTab('appels') }, [tab, isAdmin, ok])
   useEffect(() => { if (tab !== 'evenements') return; const mq = window.matchMedia('(min-width:900px)'); const chk = () => { if (!mq.matches) setTab('appels') }; chk(); mq.addEventListener?.('change', chk); return () => mq.removeEventListener?.('change', chk) }, [tab])
   const login = async (e) => {
     e.preventDefault(); setBusy(true)
@@ -180,7 +183,7 @@ export default function Admin() {
     {stale && <button className="upd" onClick={() => location.reload()}>Une nouvelle version de Calio est disponible · Mettre à jour</button>}
     <header className="bar"><Logo s={30} /><h1>{{ appels: 'Mes appels', prospects: 'Prospects', formulaires: 'Formulaires', leads: 'Relances', closing: 'Closing', evenements: 'Événements', dispos: 'Disponibilités' }[tab] || 'Mes appels'}</h1>{role !== 'closer' && <Search onPick={(id) => { setFocus({ id, t: Date.now() }); setTab('prospects') }} />}<span className="date">{today}</span>{pst !== 'unsupported' && <button className="out" onClick={togglePush} aria-label="Notifications" title={pst === 'on' ? 'Notifications activées' : 'Activer les notifications'} style={{ color: pst === 'on' ? '#6FE3A1' : undefined }}><svg width="21" height="21" viewBox="0 0 24 24" fill={pst === 'on' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg></button>}{faceOk && <button className="out" onClick={toggleFace} aria-label="Face ID" title={face ? 'Face ID activé' : 'Activer Face ID'} style={{ color: face ? '#6FE3A1' : undefined }}><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M9 10v1.5M15 10v1.5M12 10v3.5M9 16c1.7 1.3 4.3 1.3 6 0" /></svg></button>}<button className="out" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter">⎋</button></header>
     <div className={`scroll ${tab !== 'appels' ? 'light' : ''} ${tab === 'prospects' || tab === 'formulaires' || tab === 'closing' || tab === 'evenements' ? 'wide' : ''}`}>
-      <Boundary name={tab}>{tab === 'prospects' ? <Prospects toast={toast} focus={focus} /> : tab === 'formulaires' ? <Formulaires toast={toast} onOpen={(id) => { setFocus({ id, t: Date.now() }); setTab('prospects') }} /> : tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : tab === 'closing' ? <Closing toast={toast} /> : tab === 'evenements' ? <Evenements toast={toast} /> : tab === 'dispos' ? <Dispos toast={toast} /> : <Candidatures toast={toast} tab={tab} closer={role === 'closer'} />}</Boundary>
+      <Boundary name={tab}>{tab === 'prospects' ? <Prospects toast={toast} focus={focus} /> : tab === 'formulaires' ? <Formulaires toast={toast} onOpen={(id) => { setFocus({ id, t: Date.now() }); setTab('prospects') }} /> : tab === 'leads' ? <Leads toast={toast} onChange={setNLeads} /> : tab === 'closing' ? <Closing toast={toast} /> : tab === 'evenements' && isAdmin ? <Evenements toast={toast} /> : tab === 'dispos' ? <Dispos toast={toast} admin={isAdmin} /> : <Candidatures toast={toast} tab={tab} closer={role === 'closer'} />}</Boundary>
     </div>
     <nav className="tabs">
       <button className={tab === 'appels' ? 'on' : ''} onClick={() => setTab('appels')}><Ic d={<><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></>} />Appels</button>
@@ -188,7 +191,7 @@ export default function Admin() {
       {role !== 'closer' && <button className={tab === 'formulaires' ? 'on' : ''} onClick={() => setTab('formulaires')}><Ic d={<><rect x="5" y="3" width="14" height="18" rx="2.5" /><path d="M9 8h6M9 12h6M9 16h3" /></>} />Formulaires</button>}
       {role !== 'closer' && <button className={tab === 'leads' ? 'on' : ''} onClick={() => setTab('leads')}><span className="ico"><Ic d={<><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M17 6v6M20 9h-6" /></>} />{nLeads > 0 && <i className="dot">{nLeads > 9 ? '9+' : nLeads}</i>}</span>Relances</button>}
       <button className={tab === 'closing' ? 'on' : ''} onClick={() => setTab('closing')}><Ic d={<><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>} />Closing</button>
-      {role !== 'closer' && <button className={`desk-only ${tab === 'evenements' ? 'on' : ''}`} onClick={() => setTab('evenements')}><Ic d={<><path d="M4 7h16M4 12h10M4 17h7" /><circle cx="18" cy="16" r="3" /></>} />Événements</button>}
+      {role !== 'closer' && isAdmin && <button className={`desk-only ${tab === 'evenements' ? 'on' : ''}`} onClick={() => setTab('evenements')}><Ic d={<><path d="M4 7h16M4 12h10M4 17h7" /><circle cx="18" cy="16" r="3" /></>} />Événements</button>}
       {role !== 'closer' && <button className={tab === 'dispos' ? 'on' : ''} onClick={() => setTab('dispos')}><Ic d={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} /><span className="lg">Disponibilités</span><span className="sm">Horaires</span></button>}
     </nav>
     {msg && <div className={`toast ${msg.bad ? 'bad' : ''}`}>{msg.t}</div>}
