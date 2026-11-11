@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePS } from './persist'
 import { supabase, friendlyError } from './supabase'
 
 const SUGG = ['Qui a réservé un appel aujourd’hui ?', 'Combien de candidatures cette semaine ?', 'Qui dois-je relancer ?', 'Où en est Nawal ?']
@@ -29,9 +30,9 @@ function Proposal({ p, state, onCreate, onCancel, onChange }) {
 }
 
 export default function Assistant({ onOpen }) {
-  const [open, setOpen] = useState(false)
-  const [msgs, setMsgs] = useState([])
-  const [input, setInput] = useState('')
+  const [open, setOpen] = usePS('as_open', false)
+  const [msgs, setMsgs] = usePS('as_msgs', [])
+  const [input, setInput] = usePS('as_input', '')
   const [busy, setBusy] = useState(false)
   const [ready, setReady] = useState(null) // la clé Claude est-elle posée ?
   const [key, setKey] = useState(''); const [kerr, setKerr] = useState('')
@@ -41,9 +42,9 @@ export default function Assistant({ onOpen }) {
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }) }, [msgs, busy, open])
   useEffect(() => { if (open) { const o = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = o } } }, [open])
 
-  const send = async (text) => {
+  const send = async (text, base) => {
     const t = String(text ?? input).trim(); if (!t || busy) return
-    setInput(''); const next = [...msgs, { role: 'user', text: t }]; setMsgs(next); setBusy(true)
+    setInput(''); const next = [...(base || msgs), { role: 'user', text: t }]; setMsgs(next); setBusy(true)
     try {
       const { data, error } = await supabase.functions.invoke('calio-assistant', { body: { messages: next.map((m) => ({ role: m.role, text: m.text })) } })
       if (error || !data) throw new Error('réseau')
@@ -56,6 +57,13 @@ export default function Assistant({ onOpen }) {
       setMsgs([...next, { role: 'assistant', text: 'Je n’arrive pas à répondre pour le moment. Réessaie dans un instant.', err: true }])
     } finally { setBusy(false) }
   }
+  // Si l'app a été fermée par l'iPhone pendant que l'assistant réfléchissait, on relance la dernière question au retour.
+  const resumed = useRef(false)
+  useEffect(() => {
+    if (resumed.current) return; resumed.current = true
+    const last = msgs[msgs.length - 1]
+    if (open && last && last.role === 'user' && last.text) { const base = msgs.slice(0, -1); setMsgs(base); setTimeout(() => send(last.text, base), 50) }
+  }, []) // eslint-disable-line
   const saveKey = async () => {
     setKerr(''); const { error } = await supabase.rpc('calio_ai_set_key', { k: key })
     if (error) return setKerr(friendlyError(error)); setKey(''); setReady(true)

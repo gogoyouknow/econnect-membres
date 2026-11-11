@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 // Calio garde en mémoire où tu en étais (onglet, fiche ouverte, filtres, position de défilement) :
 // si iPhone ferme l'app en arrière-plan ou si elle se met à jour, tu reviens exactement au même endroit.
-const TTL = 12 * 3600 * 1000
+const TTL = 3 * 24 * 3600 * 1000
 const K = 'calio_ui:'
 export const psGet = (key, def) => { try { const o = JSON.parse(localStorage.getItem(K + key)); if (o && Date.now() - o.t < TTL) return o.v } catch { /* */ } return def }
 export const psSet = (key, v) => { try { v === null || v === undefined || v === '' ? localStorage.removeItem(K + key) : localStorage.setItem(K + key, JSON.stringify({ v, t: Date.now() })) } catch { /* */ } }

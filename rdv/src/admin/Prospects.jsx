@@ -98,8 +98,8 @@ const normPhone = (raw) => {
 /** « Prospects » : la base de contacts (toutes les personnes qui ont laissé leurs infos, même en partie). */
 export default function Prospects({ toast, focus }) {
   const [rows, setRows] = useState(null)
-  const [view, setView] = usePS('pr_view', 'all'); const [q, setQ] = useState(''); const [fSrc, setFSrc] = usePS('pr_src', ''); const [fSit, setFSit] = usePS('pr_sit', '')
-  const [sort, setSort] = useState({ k: 'updated_at', dir: -1 }); const [page, setPage] = useState(0)
+  const [view, setView] = usePS('pr_view', 'all'); const [q, setQ] = usePS('pr_q', ''); const [fSrc, setFSrc] = usePS('pr_src', ''); const [fSit, setFSit] = usePS('pr_sit', '')
+  const [sort, setSort] = usePS('pr_sort', { k: 'updated_at', dir: -1 }); const [page, setPage] = usePS('pr_page', 0)
   const [cols, setCols] = useState(lsGet); const [colMenu, setColMenu] = useState(false)
   const [sel, setSel] = useState(() => new Set()); const [openId, setOpenId] = usePS('pr_open', null)
   const [oq, setOq] = useState(null)
