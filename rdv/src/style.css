@@ -136,3 +136,8 @@ body{touch-action:pan-y}
 input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;text-align:left;display:block}
 .mailfix{display:block;margin-top:6px;padding:8px 10px;border-radius:10px;border:1px solid #F5C451;background:#FFF8E1;color:#1B2230;font:inherit;font-size:13px;text-align:left;width:100%;cursor:pointer}
 .mailfix u{font-weight:700}
+
+.okmark{color:var(--ok);font-size:12px;font-weight:600}
+.reveal{display:block;animation:rv .25s ease}
+@keyframes rv{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.testbar{background:#e9c53e;color:#16120a;font:600 12px Montserrat,sans-serif;text-align:center;padding:7px 10px;position:sticky;top:0;z-index:50}

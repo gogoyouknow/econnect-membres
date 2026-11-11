@@ -22,6 +22,11 @@ const CAP_LBL = { '500-1000': 'entre 500 € et 1 000 €', '1000-3000': 'entre 
 const SITUS = ['Salarié', 'Étudiant', 'Entrepreneur', 'Sans activité']
 const EXPS = ['Jamais vendu en ligne', 'Quelques ventes', 'Boutique active']
 const MIN_TXT = 40
+const INVS = ['Non, jamais', 'Oui, une fois', 'Oui, plusieurs fois']
+// Lien de test (?test=1) : nouveau parcours, mais RIEN n'est enregistré (ni fiche, ni rendez-vous, ni email).
+const TEST = (() => { try { const q = new URLSearchParams(location.search).get('test'); if (q === '1') sessionStorage.setItem('cand_test', '1'); if (q === '0') sessionStorage.removeItem('cand_test'); return sessionStorage.getItem('cand_test') === '1' } catch { return false } })()
+const NEW = TEST // le nouveau parcours : testé d'abord, puis activé pour tout le monde
+const rpcW = (n, a) => (TEST ? Promise.resolve(null) : rpc(n, a))
 const PREFIX = ['+33', '+32', '+41', '+352', '+212', '+213', '+216', '+351', '+40', '+1']
 // Numéro saisi « comme on veut » : +33 6…, 0033 6…, 33 6… ou 06… → on retrouve l'indicatif et les chiffres du numéro, sans doublon d'indicatif.
 const splitTel = (prefix, tel) => {
@@ -108,7 +113,7 @@ function mailFix(email) {
 
 export default function App() {
   const [step, setStep] = useState('intro')
-  const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', wa_ok: true, wprefix: '+33', wtel: '', email: '', situation: '', experience: '', blocage: '', capital: '', have: '', bdate: '' })
+  const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', wa_ok: true, wprefix: '+33', wtel: '', email: '', situation: '', experience: '', invest: '', blocage: '', capital: '', have: '', bdate: '' })
   const [err, setErr] = useState('')
   const [cfg, setCfg] = useState({ slot_min: 45, wa: '33756849421', release_hours: 4 })
   const [slots, setSlots] = useState(null)
@@ -119,6 +124,14 @@ export default function App() {
   const [mine, setMine] = useState(null); const [resched, setResched] = useState(false)
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
   const [tBlur, setTBlur] = useState(false); const [pvReady, setPvReady] = useState(false)
+  const [mailOk, setMailOk] = useState(false) // nouveau parcours : le numéro WhatsApp n'apparaît qu'une fois l'email validé
+  useEffect(() => {
+    if (!NEW) return
+    const em = f.email.trim(); if (!mailShape(em)) { setMailOk(false); return }
+    if (mailOk || mailFix(em)) return
+    const t = setTimeout(() => { mailProblem(em).then((pb) => { if (!pb) setMailOk(true) }) }, 700)
+    return () => clearTimeout(t)
+  }, [f.email, mailOk])
   useEffect(() => { loadPV().then(() => setPvReady(true)) }, [])
   const go = (s) => { setErr(''); setStep(s); window.scrollTo(0, 0); try { history.pushState({ s }, '') } catch { /* */ } }
   // Le bouton « retour » du téléphone revient à l'étape précédente au lieu de quitter la page (et de renvoyer la personne sur TikTok).
@@ -128,24 +141,24 @@ export default function App() {
   }, [])
   // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
   const [evSrc, setEvSrc] = useState('')
-  const leadBody = (stp, g) => { const [pf, d] = effTel(g); const af = AF_BLOCK.test(intlOf(g.prefix, g.tel)) ? intlOf(g.prefix, g.tel) : (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)) ? intlOf(g.wprefix, g.wtel) : ''); return { sid, step: stp, first_name: g.first_name.trim(), phone: af || (d.length >= 8 ? pf + d : ''), phone_raw: af || (d ? pf + d : ''), email: g.email.trim(), situation: g.situation, experience: g.experience, blocage: g.blocage, capital: g.capital, budget_confirmed: g.have, ...SRC, ...(EVENT ? { source: evSrc || SRC.source, utm: { ...(SRC.utm || {}), event: EVENT } } : {}) } }
-  const saveLead = (stp, over = {}) => { if (!configured) return; rpc('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
+  const leadBody = (stp, g) => { const [pf, d] = effTel(g); const af = AF_BLOCK.test(intlOf(g.prefix, g.tel)) ? intlOf(g.prefix, g.tel) : (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)) ? intlOf(g.wprefix, g.wtel) : ''); return { sid, step: stp, first_name: g.first_name.trim(), phone: af || (d.length >= 8 ? pf + d : ''), phone_raw: af || (d ? pf + d : ''), email: g.email.trim(), situation: g.situation, experience: g.experience, invest: g.invest || '', blocage: g.blocage, capital: g.capital, budget_confirmed: g.have, ...SRC, ...(EVENT ? { source: evSrc || SRC.source, utm: { ...(SRC.utm || {}), event: EVENT } } : {}) } }
+  const saveLead = (stp, over = {}) => { if (!configured) return; rpcW('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
   // On garde TOUT ce qui est tapé, même sans clic sur « Continuer » : sauvegarde auto 0,7 s après la dernière frappe, et à la fermeture / au changement d'onglet.
-  const LS = { who: 'who', geo: 'who', situ: 'situ', exp: 'situ', txt: 'situ', cap: 'budget', block: 'budget', budget: 'budget', block2: 'budget', when: 'budget', later: 'budget', slot: 'slot' }
+  const LS = { who: 'who', geo: 'who', situ: 'situ', exp: 'situ', txt: 'situ', inv: 'situ', cap: 'budget', block: 'budget', budget: 'budget', block2: 'budget', when: 'budget', later: 'budget', slot: 'slot' }
   const live = useRef({})
   live.current = { f, step }
   useEffect(() => {
     if (!configured || !LS[step] || !(f.first_name.trim() || f.tel.trim() || f.email.trim())) return
-    const t = setTimeout(() => rpc('cand_lead', { p: leadBody(LS[step], f) }).catch(() => {}), 700)
+    const t = setTimeout(() => rpcW('cand_lead', { p: leadBody(LS[step], f) }).catch(() => {}), 700)
     return () => clearTimeout(t)
   }, [f, step])
   useEffect(() => {
-    const flush = () => { const { f: g, step: s } = live.current; if (configured && LS[s] && (g.first_name.trim() || g.tel.trim() || g.email.trim())) rpc('cand_lead', { p: leadBody(LS[s], g) }).catch(() => {}) }
+    const flush = () => { const { f: g, step: s } = live.current; if (configured && LS[s] && (g.first_name.trim() || g.tel.trim() || g.email.trim())) rpcW('cand_lead', { p: leadBody(LS[s], g) }).catch(() => {}) }
     const vis = () => { if (document.visibilityState === 'hidden') flush() }
     window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', vis)
     return () => { window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', vis) }
   }, [])
-  const n = { who: 1, situ: 2, exp: 3, txt: 4, cap: 5, block: 5, budget: 6, block2: 6, when: 6, later: 6, slot: 7 }[step] || 0
+  const n = { who: 1, situ: 2, exp: 3, txt: 4, inv: 4, cap: 5, block: 5, budget: 6, block2: 6, when: 6, later: 6, slot: 7 }[step] || 0
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
   useEffect(() => { if (configured && EVENT) rpc('cand_event_info', { p_slug: EVENT }).then((e) => e?.source && setEvSrc(e.source)).catch(() => {}) }, [])
@@ -167,7 +180,7 @@ export default function App() {
       // Déjà un rendez-vous à venir ? On ne le laisse pas en reprendre un deuxième : on propose de le modifier.
       setBusy(true)
       { const pb = await mailProblem(f.email); if (pb) { setBusy(false); setMailBad(true); return setErr(pb) } }
-      try { const m = await rpc('cand_mine', { p: { email: f.email.trim().toLowerCase(), phone: effTel({ ...f, prefix: pfx, tel: digits }).join('') } }); if (m && m.found) { setBusy(false); setMine(m); return go('mine') } } catch { /* en cas de souci réseau on continue : le serveur refusera le doublon */ }
+      try { const m = TEST ? null : await rpc('cand_mine', { p: { email: f.email.trim().toLowerCase(), phone: effTel({ ...f, prefix: pfx, tel: digits }).join('') } }); if (m && m.found) { setBusy(false); setMine(m); return go('mine') } } catch { /* en cas de souci réseau on continue : le serveur refusera le doublon */ }
       setBusy(false); go('situ')
     },
     txt() {
@@ -181,19 +194,20 @@ export default function App() {
     async when() {
       if (!f.bdate) return setErr('Choisis la date à laquelle tu pourras investir.')
       setBusy(true)
-      try { await rpc('cand_lead_date', { p: { sid, date: f.bdate } }) } catch { /* la date reste aussi dans le formulaire sauvegardé : on ne bloque jamais la personne */ }
+      try { await rpcW('cand_lead_date', { p: { sid, date: f.bdate } }) } catch { /* la date reste aussi dans le formulaire sauvegardé : on ne bloque jamais la personne */ }
       setBusy(false); go('later')
     },
   }
+  const fakeBook = () => { const d = new Date(pick); const w = new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' }).format(d); return { ok: true, when: w + ' à ' + fmtT(pick).replace(':', 'h'), closer_name: 'Clément', wa: cfg.wa, first_name: f.first_name, release_hours: cfg.release_hours, status: 'reserve' } }
   async function book() {
     setBusy(true); setErr('')
     try {
       const tel_ = (() => { const [pf, d] = effTel(f); return pf + d })()
       if (resched) {
-        const r = await rpc('cand_resched', { p: { email: f.email.trim().toLowerCase(), phone: tel_, starts_at: pick } })
+        const r = await rpcW('cand_resched', { p: { email: f.email.trim().toLowerCase(), phone: tel_, starts_at: pick } })
         setDone({ ...r, moved: true }); setResched(false); go('done'); setBusy(false); return
       }
-      const r = await rpc('cand_book', { p: { closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
+      const r = TEST ? fakeBook() : await rpc('cand_book', { p: { closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
       setDone(r); go('done')
     } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
     setBusy(false)
@@ -205,7 +219,7 @@ export default function App() {
   const waMsg = bk ? `Salut ${cn}, c’est ${(bk.first_name || f.first_name).trim()}. Je viens de ${done?.moved ? 'déplacer' : 'réserver'} mon appel pour ${bk.when}.` : ''
   const waHref = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`
   const copy = () => { try { navigator.clipboard.writeText('+' + waNum) } catch {} }
-  const waClick = (e) => { openChat(e, waNum, waMsg, waHref); try { rpc('cand_wa_click', { p: { email: f.email.trim().toLowerCase(), phone: effTel(f).join('') } }).catch(() => {}) } catch { /* */ } }
+  const waClick = (e) => { openChat(e, waNum, waMsg, waHref); try { rpcW('cand_wa_click', { p: { email: f.email.trim().toLowerCase(), phone: effTel(f).join('') } }).catch(() => {}) } catch { /* */ } }
   const cur = days.find((d) => d[0] === day)
   const relH = bk?.release_hours || cfg.release_hours
   const confirmBtn = () => <div className="card confirm"><p><b>Tu n'as pas encore envoyé ton message ?</b></p><p className="muted s13">C'est la seule chose qui confirme ton créneau.</p>
@@ -220,6 +234,7 @@ export default function App() {
     <p className="muted s13"><b className="gold">#1</b> Écoute la vidéo entièrement (1 minute)</p><Vidalytics /></div>
 
   return <div className="shell">
+    {TEST && <div className="testbar">Mode test : rien n'est enregistré, aucun email, aucun vrai rendez-vous.</div>}
     <header><Logo /></header>
     {n > 0 && <div className="progress">{[1, 2, 3, 4, 5, 6, 7].map((i) => <i key={i} className={i <= n ? 'on' : ''} />)}</div>}
 
@@ -239,8 +254,12 @@ export default function App() {
       <p className="note filter">Je réponds aux personnes prêtes à passer à l'action et à investir dans leur projet. Si ce n'est pas encore ton cas, ne réserve pas : on perdrait du temps tous les deux.</p>
     </section>}
 
-    {step === 'who' && <section className="screen"><h2>Où je te réponds ?</h2><div className="card">
+    {step === 'who' && <section className="screen">{NEW ? <div className="col"><h2>Où je t'envoie ma réponse ?</h2><p className="muted s13" style={{ margin: 0 }}>Je te réponds personnellement.</p></div> : <h2>Où je te réponds ?</h2>}<div className="card">
       <div className="field"><label htmlFor="p">Prénom</label><input id="p" value={f.first_name} onChange={(e) => set('first_name', e.target.value)} autoComplete="given-name" placeholder="Ton prénom" /></div>
+      {NEW ? <>
+      <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => { set('email', e.target.value); setMailBad(false); setErr('') }} onBlur={() => { saveLead('who'); if (f.email.trim().includes('@')) mailProblem(f.email).then((pb) => { if (pb) setErr(pb); else if (NEW) setMailOk(true) }) }} aria-invalid={mailBad || undefined} placeholder="ton@email.com" />
+        {mailFix(f.email) && <button type="button" className="mailfix" onClick={() => set('email', mailFix(f.email))}>Tu voulais dire <b>{mailFix(f.email)}</b> ? <u>Corriger</u></button>}{NEW && mailOk && <span className="okmark">✓ Email valide</span>}</div>
+      {mailOk && <div className="reveal">
       <div className="field"><label htmlFor="t">Ton numéro WhatsApp</label><div className="phone">
         <select value={f.prefix} onChange={(e) => set('prefix', e.target.value)} aria-label="Indicatif">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
         <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => set('tel', e.target.value)} onBlur={() => { setTBlur(true); const [pf, d] = splitTel(f.prefix, f.tel); if (f.tel.trim() && (pf !== f.prefix || d !== f.tel.replace(/\s/g, ''))) setF((x) => ({ ...x, prefix: pf, tel: d })); saveLead('who', { prefix: pf, tel: d }) }} placeholder="6 12 34 56 78" /></div>
@@ -250,17 +269,32 @@ export default function App() {
           <select value={f.wprefix} onChange={(e) => set('wprefix', e.target.value)} aria-label="Indicatif WhatsApp">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
           <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => set('wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
         {f.wa_ok === false && <span className="muted s12">Indique le numéro sur lequel tu as WhatsApp : c'est là que tu me confirmes ton appel.</span>}</div>
-      <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => { set('email', e.target.value); setMailBad(false); setErr('') }} onBlur={() => { saveLead('who'); if (f.email.trim().includes('@')) mailProblem(f.email).then((pb) => pb && setErr(pb)) }} aria-invalid={mailBad || undefined} placeholder="ton@email.com" />
-        {mailFix(f.email) && <button type="button" className="mailfix" onClick={() => set('email', mailFix(f.email))}>Tu voulais dire <b>{mailFix(f.email)}</b> ? <u>Corriger</u></button>}</div>
-      <div className="err">{err}</div><button className="btn" disabled={busy} onClick={next.who}>{busy ? 'Un instant…' : 'Continuer →'}</button></div></section>}
+      </div>}</> : <>
+      <div className="field"><label htmlFor="t">Ton numéro WhatsApp</label><div className="phone">
+        <select value={f.prefix} onChange={(e) => set('prefix', e.target.value)} aria-label="Indicatif">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
+        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => set('tel', e.target.value)} onBlur={() => { setTBlur(true); const [pf, d] = splitTel(f.prefix, f.tel); if (f.tel.trim() && (pf !== f.prefix || d !== f.tel.replace(/\s/g, ''))) setF((x) => ({ ...x, prefix: pf, tel: d })); saveLead('who', { prefix: pf, tel: d }) }} placeholder="6 12 34 56 78" /></div>
+        {tBlur && f.tel.trim() && pvReady && !telOk(f.prefix, f.tel) && <span className="err s12" role="alert">Ce numéro n'a pas l'air valide. Vérifie l'indicatif et les chiffres.</span>}
+        <label className="chk"><input type="checkbox" checked={f.wa_ok !== false} onChange={(e) => set('wa_ok', e.target.checked)} /> Ce numéro est bien sur WhatsApp</label>
+        {f.wa_ok === false && <div className="phone" style={{ marginTop: 8 }}>
+          <select value={f.wprefix} onChange={(e) => set('wprefix', e.target.value)} aria-label="Indicatif WhatsApp">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
+          <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => set('wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
+        {f.wa_ok === false && <span className="muted s12">Indique le numéro sur lequel tu as WhatsApp : c'est là que tu me confirmes ton appel.</span>}</div>
+      <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => { set('email', e.target.value); setMailBad(false); setErr('') }} onBlur={() => { saveLead('who'); if (f.email.trim().includes('@')) mailProblem(f.email).then((pb) => { if (pb) setErr(pb); else if (NEW) setMailOk(true) }) }} aria-invalid={mailBad || undefined} placeholder="ton@email.com" />
+        {mailFix(f.email) && <button type="button" className="mailfix" onClick={() => set('email', mailFix(f.email))}>Tu voulais dire <b>{mailFix(f.email)}</b> ? <u>Corriger</u></button>}{NEW && mailOk && <span className="okmark">✓ Email valide</span>}</div>
+      </>}
+      <div className="err">{err}</div><button className="btn" disabled={busy || (NEW && !mailOk)} onClick={next.who}>{busy ? 'Un instant…' : 'Continuer →'}</button></div></section>}
 
     {step === 'situ' && <section className="screen"><div className="col"><span className="eyebrow">Question 1 sur 5</span><h2>Quelle est ta situation actuelle ?</h2></div><div className="card">
       <div className="chips col">{SITUS.map((v) => <button key={v} className={`chip ${f.situation === v ? 'sel' : ''}`} onClick={() => { set('situation', v); saveLead('situ', { situation: v }); go('exp') }}>{v}</button>)}</div></div>
       <button className="link" onClick={() => go('who')}>← Retour</button></section>}
 
     {step === 'exp' && <section className="screen"><div className="col"><span className="eyebrow">Question 2 sur 5</span><h2>Ton expérience en e-commerce ?</h2></div><div className="card">
-      <div className="chips col">{EXPS.map((v) => <button key={v} className={`chip ${f.experience === v ? 'sel' : ''}`} onClick={() => { set('experience', v); saveLead('situ', { experience: v }); go('txt') }}>{v}</button>)}</div></div>
+      <div className="chips col">{EXPS.map((v) => <button key={v} className={`chip ${f.experience === v ? 'sel' : ''}`} onClick={() => { set('experience', v); saveLead('situ', { experience: v }); go(NEW ? 'inv' : 'txt') }}>{v}</button>)}</div></div>
       <button className="link" onClick={() => go('situ')}>← Retour</button></section>}
+
+    {step === 'inv' && <section className="screen"><div className="col"><span className="eyebrow">Question 3 sur 5</span><h2>As-tu déjà investi dans une formation ou un coaching ?</h2></div><div className="card">
+      <div className="chips col">{INVS.map((v) => <button key={v} className={`chip ${f.invest === v ? 'sel' : ''}`} onClick={() => { set('invest', v); saveLead('situ', { invest: v }); go('cap') }}>{v}</button>)}</div></div>
+      <button className="link" onClick={() => go('exp')}>← Retour</button></section>}
 
     {step === 'txt' && <section className="screen"><div className="col"><span className="eyebrow">Merci {f.first_name.trim()}</span><h2>Qu'est-ce qui t'a bloqué jusqu'ici ?</h2></div><div className="card notes">
       <div className="field"><label htmlFor="bl">Dis-le avec tes mots</label>
@@ -271,7 +305,7 @@ export default function App() {
 
     {step === 'cap' && <section className="screen"><div className="col"><span className="eyebrow">Question 4 sur 5</span><h2>Combien peux-tu investir maintenant dans ton projet ?</h2></div><div className="card">
       <div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('budget', { capital: v }); go(v === 'lt500' ? 'block' : 'budget') }}>{l}</button>)}</div></div>
-      <button className="link" onClick={() => go('txt')}>← Retour</button></section>}
+      <button className="link" onClick={() => go(NEW ? 'inv' : 'txt')}>← Retour</button></section>}
 
     {step === 'geo' && <section className="screen"><div className="col"><span className="eyebrow">Merci pour ton message</span><h2>Je ne peux pas encore t'accompagner depuis ton pays</h2></div><div className="card">
       <p>Mon accompagnement se règle par carte bancaire, et je ne peux pas l'ouvrir pour l'instant depuis ton pays. Ce n'est pas un jugement sur toi ni sur ton projet.</p>
