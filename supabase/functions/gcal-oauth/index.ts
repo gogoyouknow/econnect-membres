@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     })
     const j = await r.json()
     if (!r.ok || !j.refresh_token) return back('echec')
-    await rpc('gcal_save_refresh_for_fn', { p_refresh: j.refresh_token })
+    await rpc('gcal_save_refresh_for_fn', { p_refresh: j.refresh_token, p_write: String(j.scope || '').includes('calendar.events') })
     return back('ok')
   } catch (_e) { return back('echec') }
 })

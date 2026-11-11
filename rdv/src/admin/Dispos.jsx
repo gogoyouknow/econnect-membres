@@ -138,7 +138,7 @@ export default function Dispos({ toast, admin }) {
   }
   const connectGoogle = async () => {
     const { data, error } = await supabase.rpc('gcal_oauth_start'); if (error) return toast(friendlyError(error), true)
-    const q = new URLSearchParams({ client_id: data.client_id, redirect_uri: 'https://jfournnrqewntnfyptic.supabase.co/functions/v1/gcal-oauth', response_type: 'code', scope: 'https://www.googleapis.com/auth/calendar.freebusy', access_type: 'offline', prompt: 'consent', state: data.state })
+    const q = new URLSearchParams({ client_id: data.client_id, redirect_uri: 'https://jfournnrqewntnfyptic.supabase.co/functions/v1/gcal-oauth', response_type: 'code', scope: 'https://www.googleapis.com/auth/calendar.freebusy https://www.googleapis.com/auth/calendar.events', access_type: 'offline', prompt: 'consent', state: data.state })
     window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + q.toString()
   }
   const nav = (n) => setYm(({ y, m }) => { const t = new Date(Date.UTC(y, m + n, 1)); return { y: t.getUTCFullYear(), m: t.getUTCMonth() } })
@@ -220,7 +220,10 @@ export default function Dispos({ toast, admin }) {
       <div className="gcard" style={{ marginTop: 10 }}>
         <div className="dchead"><b>Calendrier connecté</b>{gcal?.set ? <span className="gok">● Connecté</span> : <span className="gno">Non connecté</span>}</div>
         {gcal?.set && <p className="muted small" style={{ margin: '6px 0 0' }}>{gcal.mode === 'google' ? 'Connexion Google directe. ' : 'Adresse iCal. '}{gcal.busy} créneau(x) occupé(s) à venir{gcal.synced_at ? ` · dernière synchro ${new Date(gcal.synced_at).toLocaleTimeString('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })}` : ''}. Mise à jour toutes les 10 min.</p>}
-        <p className="muted small" style={{ margin: '6px 0 10px' }}>Quand tu es occupé dans Google Agenda, les créneaux correspondants disparaissent automatiquement de ta page de réservation. Seules les plages occupées sont lues, jamais le titre ni le contenu de tes événements.</p>
+        <p className="muted small" style={{ margin: '6px 0 10px' }}>Quand tu es occupé dans Google Agenda, les créneaux correspondants disparaissent automatiquement de ta page de réservation. Seules les plages occupées sont lues, jamais le titre ni le contenu de tes événements. Dans l’autre sens, chaque appel pris dans Calio apparaît dans ton agenda.</p>
+        {gcal?.mode === 'google' && (gcal.write
+          ? <p className="small" style={{ margin: '0 0 10px' }}>✅ <b>Tes appels Calio sont ajoutés automatiquement</b> dans ton Google Agenda ({gcal.in_agenda} à venir) : ajout à la réservation, déplacement si le prospect change d’heure, suppression si annulé.</p>
+          : <div style={{ margin: '0 0 10px' }}><p className="small" style={{ margin: '0 0 8px' }}>⚠️ <b>Ajout automatique des appels dans ton agenda : pas encore autorisé.</b> Il faut te reconnecter une fois et cocher « Voir et modifier les événements ».</p>{gcal.oauth_ready && <button className="btn big" style={{ marginTop: 0 }} onClick={connectGoogle}>Autoriser l’ajout dans Google Agenda</button>}</div>)}
         {gcal?.set ? <div className="dcbtns"><button className="btn ghost sm" onClick={syncNow}>Synchroniser maintenant</button><button className="btn ghost sm" onClick={unplug}>Déconnecter</button></div>
           : gcal?.oauth_ready ? <button className="btn big" style={{ marginTop: 0 }} onClick={connectGoogle}>Se connecter avec Google</button>
           : <p className="muted small" style={{ margin: 0 }}>Une configuration unique est nécessaire (voir ci-dessous).</p>}

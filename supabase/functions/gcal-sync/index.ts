@@ -19,13 +19,38 @@ Deno.serve(async (req) => {
       const tk = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: oc.client_id, client_secret: oc.client_secret, refresh_token: oc.refresh, grant_type: 'refresh_token' }) })
       const tj = await tk.json()
       if (!tk.ok || !tj.access_token) throw new Error('Google : ' + (tj.error_description || tj.error || tk.status))
+      // Écriture : appels Calio → Google Agenda (créés, déplacés, supprimés)
+      let pushed = 0, pushErr = ''
+      if (oc.write) {
+        const G = 'https://www.googleapis.com/calendar/v3/calendars/primary/events', gh = { Authorization: `Bearer ${tj.access_token}`, 'Content-Type': 'application/json' }
+        const queue = (await rpc('gcal_push_queue_for_fn')) as { id: number | null, act: string, event: string | null, start: string, end: string, summary: string, desc: string, sig: string }[]
+        for (const it of queue) {
+          const ev = { summary: it.summary, description: it.desc, start: { dateTime: it.start, timeZone: 'Europe/Paris' }, end: { dateTime: it.end, timeZone: 'Europe/Paris' }, reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 15 }] }, transparency: 'opaque' }
+          let r: Response
+          if (it.act === 'delete') {
+            r = await fetch(`${G}/${it.event}`, { method: 'DELETE', headers: gh })
+            if (r.ok || r.status === 404 || r.status === 410) { await rpc('gcal_push_done_for_fn', { p_id: it.id, p_event: it.id ? null : it.event, p_sig: '' }); pushed++; continue }
+          } else {
+            if (it.act === 'update') {
+              r = await fetch(`${G}/${it.event}`, { method: 'PATCH', headers: gh, body: JSON.stringify(ev) })
+              if (r.ok) { await rpc('gcal_push_done_for_fn', { p_id: it.id, p_event: it.event, p_sig: it.sig }); pushed++; continue }
+              if (r.status !== 404 && r.status !== 410) { pushErr = `patch ${r.status}`; if (r.status === 403 || r.status === 401) { await rpc('gcal_set_write_for_fn', { p: false }); break } continue }
+              // supprimé à la main dans Google : on le recrée
+            }
+            r = await fetch(G, { method: 'POST', headers: gh, body: JSON.stringify({ ...ev, id: `calio${it.id}${Date.now().toString(32)}` }) })
+            if (r.ok) { const j = await r.json(); await rpc('gcal_push_done_for_fn', { p_id: it.id, p_event: j.id, p_sig: it.sig }); pushed++; continue }
+          }
+          pushErr = `${it.act} ${r.status}`
+          if (r.status === 403 || r.status === 401) { await rpc('gcal_set_write_for_fn', { p: false }); break }   // droit d'écriture manquant : à ré-autoriser dans Calio
+        }
+      }
       const fb = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', { method: 'POST', headers: { Authorization: `Bearer ${tj.access_token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ timeMin: new Date(Date.now() - 86400000).toISOString(), timeMax: new Date(Date.now() + 14 * 86400000).toISOString(), timeZone: 'Europe/Paris', items: [{ id: 'primary' }] }) })
       const fj = await fb.json()
       if (!fb.ok) throw new Error('freeBusy : ' + (fj.error?.message || fb.status))
       const busyG = ((fj.calendars?.primary?.busy ?? []) as { start: string, end: string }[]).map(b => ({ s: b.start, e: b.end, t: 'Occupé' }))
       const nG = await rpc('gcal_replace_busy_for_fn', { p: busyG })
-      return Response.json({ ok: true, mode: 'google', events: busyG.length, stored: nG })
+      return Response.json({ ok: true, mode: 'google', events: busyG.length, stored: nG, pushed, pushErr })
     }
     const ics = await rpc('gcal_ics_for_fn')
     if (!ics) return Response.json({ ok: false, error: 'pas d\'adresse iCal' })
