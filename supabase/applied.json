@@ -57,5 +57,6 @@
   "0056_reply_to_et_zone.sql",
   "0057_relances_qualifies.sql",
   "0058_geo_trigger_definer.sql",
-  "0059_parcours_experience_blocage.sql"
+  "0059_parcours_experience_blocage.sql",
+  "0060_assistant.sql"
 ]
