@@ -27,6 +27,7 @@ const splitTel = (prefix, tel) => {
   if (d.startsWith('+')) {
     const pd = d.slice(1).replace(/\D/g, ''); const m = PREFIX.map((x) => x.slice(1)).sort((a, b) => b.length - a.length).find((x) => pd.startsWith(x))
     if (m) return ['+' + m, pd.slice(m.length).replace(/^0+/, '')]
+    if (AF_BLOCK.test('+' + pd)) return ['+' + pd.slice(0, 3), pd.slice(3)] // numéro d'un pays non proposé : on garde l'indicatif tel quel (et le 0 éventuel) pour pouvoir l'écarter
     return [prefix, pd.replace(/^0+/, '')]
   }
   d = d.replace(/\D/g, ''); const pp = prefix.slice(1)
@@ -39,6 +40,10 @@ let PV = null // validateur de numéros de mobile (chargé à la demande, ne ral
 const loadPV = () => PV ? Promise.resolve(PV) : import('libphonenumber-js/mobile').then((m) => (PV = m)).catch(() => null)
 // Numéro fixe français (01 à 05) : pas de WhatsApp possible.
 const isFixe = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); return pf === '+33' && /^[1-5]/.test(String(d)) }
+// Afrique subsaharienne (hors Maghreb, Égypte, Afrique du Sud, La Réunion / Mayotte) : pas d'appel possible, on le dit honnêtement.
+const AF_BLOCK = /^\+(?:22[1-9]|23[1-9]|24\d|25\d|26[013-9]|211)/
+const intlOf = (prefix, tel) => { const raw = String(tel || '').replace(/[^\d+]/g, ''); const d = raw.startsWith('00') ? '+' + raw.slice(2) : raw; const p = String(prefix || ''); return d.startsWith('+') ? d : p + (AF_BLOCK.test(p + '000') ? d : d.replace(/^0+/, '')) }
+const geoBlocked = (g) => AF_BLOCK.test(intlOf(g.prefix, g.tel)) || (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)))
 const telOk = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); if (d.length < 6) return false; if (isFixe(prefix, tel)) return String(d).length === 9; if (PV) { try { return PV.isValidPhoneNumber(pf + d) } catch { /* */ } } return d.length >= 8 && d.length <= 12 }
 const dayKey = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(iso))
 const fmtT = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
@@ -121,10 +126,10 @@ export default function App() {
   }, [])
   // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
   const [evSrc, setEvSrc] = useState('')
-  const leadBody = (stp, g) => { const [pf, d] = effTel(g); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? pf + d : '', phone_raw: d ? pf + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC, ...(EVENT ? { source: evSrc || SRC.source, utm: { ...(SRC.utm || {}), event: EVENT } } : {}) } }
+  const leadBody = (stp, g) => { const [pf, d] = effTel(g); const af = AF_BLOCK.test(intlOf(g.prefix, g.tel)) ? intlOf(g.prefix, g.tel) : (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)) ? intlOf(g.wprefix, g.wtel) : ''); return { sid, step: stp, first_name: g.first_name.trim(), phone: af || (d.length >= 8 ? pf + d : ''), phone_raw: af || (d ? pf + d : ''), email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC, ...(EVENT ? { source: evSrc || SRC.source, utm: { ...(SRC.utm || {}), event: EVENT } } : {}) } }
   const saveLead = (stp, over = {}) => { if (!configured) return; rpc('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
   // On garde TOUT ce qui est tapé, même sans clic sur « Continuer » : sauvegarde auto 0,7 s après la dernière frappe, et à la fermeture / au changement d'onglet.
-  const LS = { who: 'who', situ: 'situ', block: 'situ', budget: 'budget', block2: 'budget', when: 'budget', later: 'budget', slot: 'slot' }
+  const LS = { who: 'who', geo: 'who', situ: 'situ', block: 'situ', budget: 'budget', block2: 'budget', when: 'budget', later: 'budget', slot: 'slot' }
   const live = useRef({})
   live.current = { f, step }
   useEffect(() => {
@@ -151,6 +156,7 @@ export default function App() {
     async who() {
       const [pfx, digits] = splitTel(f.prefix, f.tel)
       if (!f.first_name.trim()) return setErr('Indique ton prénom.')
+      if (geoBlocked(f)) { saveLead('who'); return go('geo') } // on garde la fiche (numéro complet), mais pas de créneau ni de relance
       if (f.wa_ok !== false && isFixe(f.prefix, f.tel)) { set('wa_ok', false); return setErr("Ce numéro est un fixe : il n'a pas WhatsApp. Indique ci-dessous ton numéro de portable, c'est là qu'on se parlera.") }
       if (!telOk(f.prefix, f.tel)) { setTBlur(true); return setErr("Ce numéro n'a pas l'air valide : vérifie l'indicatif et les chiffres (exemple : 6 12 34 56 78).") }
       if (f.wa_ok === false && (!telOk(f.wprefix, f.wtel) || isFixe(f.wprefix, f.wtel))) { setTBlur(true); return setErr("Entre un numéro WhatsApp valide, c'est lui qui me permet de te joindre.") }
@@ -251,6 +257,11 @@ export default function App() {
       <div className="field"><span className="lbl">Combien peux-tu investir maintenant dans ton projet ?</span><div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('situ', { capital: v }) }}>{l}</button>)}</div></div>
       <div className="err">{err}</div><button className="btn" onClick={next.situ}>Continuer →</button></div>
       <button className="link" onClick={() => go('who')}>← Retour</button></section>}
+
+    {step === 'geo' && <section className="screen"><div className="col"><span className="eyebrow">Merci pour ton message</span><h2>Je ne peux pas encore t'accompagner depuis ton pays</h2></div><div className="card">
+      <p>Mon accompagnement se règle par carte bancaire, et je ne peux pas l'ouvrir pour l'instant depuis ton pays. Ce n'est pas un jugement sur toi ni sur ton projet.</p>
+      <p className="muted">En attendant, continue de suivre mes contenus.</p></div>
+      <button className="link" onClick={() => go('who')}>← Modifier mon numéro</button></section>}
 
     {step === 'block' && <section className="screen"><h2>Ce n'est pas le bon moment</h2><div className="card">
       <p>Avec moins de 500 € disponibles, je ne peux pas t'accompagner correctement et je ne veux pas te faire perdre ton temps.</p>
