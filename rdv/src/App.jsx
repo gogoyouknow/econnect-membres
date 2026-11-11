@@ -14,7 +14,7 @@ const gq = (k) => (QS.get(k) || '').trim().toLowerCase()
 const FORCED = (() => { const c = gq('closer_id'); if (c === '9512') return 'amandine'; if (/^[a-z0-9-]{2,30}$/.test(c)) return c; return (gq('assigned_to').includes('amandine') || gq('utm_campaign').includes('amandine')) ? 'amandine' : '' })()
 const CLOSER = FORCED || 'clement'
 // Événement personnalisé : rdv.theambitiousman.fr/e/mon-lien
-const EVENT = (() => { try { const m = location.pathname.toLowerCase().match(/^\/e\/([a-z0-9-]{2,40})\/?$/); return m ? m[1] : '' } catch { return '' } })()
+const EVENT = (() => { try { const m = location.pathname.toLowerCase().match(/^\/e\/([a-z0-9-]{2,60})\/?$/); return m ? m[1] : '' } catch { return '' } })()
 const CLOSER_NAME = { clement: 'Clément', amandine: 'Amandine' }[CLOSER]
 const WA_DEF = { clement: '33756849421', amandine: '33763850319' }[CLOSER]
 const CAPS = [['lt500', 'Moins de 500 €'], ['500-1000', 'Entre 500 € et 1 000 €'], ['1000-3000', 'Entre 1 000 € et 3 000 €'], ['gt3000', 'Plus de 3 000 €']]
