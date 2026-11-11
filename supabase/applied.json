@@ -60,5 +60,6 @@
   "0059_parcours_experience_blocage.sql",
   "0060_assistant.sql",
   "0061_zone_pays_bloques.sql",
-  "0062_invest.sql"
+  "0062_invest.sql",
+  "0063_sequences_email.sql"
 ]
