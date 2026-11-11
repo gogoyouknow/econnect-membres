@@ -10,7 +10,11 @@ const TZ = 'Europe/Paris'
 // Avec QUI l'appel : lien ?closer_id=clement (ou rien) → Clément ; ?closer_id=amandine / 9512 / assigned_to=amandine → Amandine. Même règle que l'ancienne page de confirmation.
 const QS = new URLSearchParams(typeof location !== 'undefined' ? location.search : '')
 const gq = (k) => (QS.get(k) || '').trim().toLowerCase()
-const CLOSER = (() => { const c = gq('closer_id'); return (c === '9512' || c === 'amandine' || gq('assigned_to').includes('amandine') || (!c && gq('utm_campaign').includes('amandine'))) ? 'amandine' : 'clement' })()
+// Lien personnel d'un closer (?closer_id=amandine) = imposé. Sinon c'est la répartition de l'événement (règles par profil, priorités) qui décide, au moment de la réservation.
+const FORCED = (() => { const c = gq('closer_id'); if (c === '9512') return 'amandine'; if (/^[a-z0-9-]{2,30}$/.test(c)) return c; return (gq('assigned_to').includes('amandine') || gq('utm_campaign').includes('amandine')) ? 'amandine' : '' })()
+const CLOSER = FORCED || 'clement'
+// Événement personnalisé : rdv.theambitiousman.fr/e/mon-lien
+const EVENT = (() => { try { const m = location.pathname.toLowerCase().match(/^\/e\/([a-z0-9-]{2,40})\/?$/); return m ? m[1] : '' } catch { return '' } })()
 const CLOSER_NAME = { clement: 'Clément', amandine: 'Amandine' }[CLOSER]
 const WA_DEF = { clement: '33756849421', amandine: '33763850319' }[CLOSER]
 const CAPS = [['lt500', 'Moins de 500 €'], ['500-1000', 'Entre 500 € et 1 000 €'], ['1000-3000', 'Entre 1 000 € et 3 000 €'], ['gt3000', 'Plus de 3 000 €']]
@@ -116,7 +120,8 @@ export default function App() {
     window.addEventListener('popstate', pop); return () => window.removeEventListener('popstate', pop)
   }, [])
   // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
-  const leadBody = (stp, g) => { const [pf, d] = effTel(g); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? pf + d : '', phone_raw: d ? pf + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC } }
+  const [evSrc, setEvSrc] = useState('')
+  const leadBody = (stp, g) => { const [pf, d] = effTel(g); return { sid, step: stp, first_name: g.first_name.trim(), phone: d.length >= 8 ? pf + d : '', phone_raw: d ? pf + d : '', email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC, ...(EVENT ? { source: evSrc || SRC.source, utm: { ...(SRC.utm || {}), event: EVENT } } : {}) } }
   const saveLead = (stp, over = {}) => { if (!configured) return; rpc('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
   // On garde TOUT ce qui est tapé, même sans clic sur « Continuer » : sauvegarde auto 0,7 s après la dernière frappe, et à la fermeture / au changement d'onglet.
   const LS = { who: 'who', situ: 'situ', block: 'situ', budget: 'budget', block2: 'budget', when: 'budget', later: 'budget', slot: 'slot' }
@@ -136,6 +141,7 @@ export default function App() {
   const n = { who: 1, situ: 2, block: 2, budget: 3, block2: 3, when: 3, later: 3, slot: 4 }[step] || 0
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
+  useEffect(() => { if (configured && EVENT) rpc('cand_event_info', { p_slug: EVENT }).then((e) => e?.source && setEvSrc(e.source)).catch(() => {}) }, [])
   const loadSlots = () => rpc('cand_slots').then((s) => setSlots(s || [])).catch(() => setSlots([]))
   useEffect(() => { if (step === 'slot') { loadSlots(); if (!resched) saveLead('slot') } }, [step])
   const days = useMemo(() => { const m = new Map(); (slots || []).forEach((s) => { const k = dayKey(s); if (!m.has(k)) m.set(k, []); m.get(k).push(s) }); return [...m.entries()] }, [slots])
@@ -179,7 +185,7 @@ export default function App() {
         const r = await rpc('cand_resched', { p: { email: f.email.trim().toLowerCase(), phone: tel_, starts_at: pick } })
         setDone({ ...r, moved: true }); setResched(false); go('done'); setBusy(false); return
       }
-      const r = await rpc('cand_book', { p: { closer: CLOSER, first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
+      const r = await rpc('cand_book', { p: { closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
       setDone(r); go('done')
     } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
     setBusy(false)

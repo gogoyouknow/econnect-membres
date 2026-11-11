@@ -117,7 +117,7 @@ export default function Candidatures({ toast, tab: main , closer }) {
             <div className="cq"><label>Page de préparation</label><PrepTrack ev={ev[c.id]} /></div>
             {qs[c.id] && <div className="cq"><label>💬 Ses questions pour l'appel</label><p>{qs[c.id].body}</p><button className="cpy" onClick={() => copyText(qs[c.id].body, toast, 'Questions copiées')}>Copier les questions</button></div>}
             <div className="drow"><label>Budget</label><span>{CAPL[c.capital] || c.capital} · confirmé disponible</span></div>
-            {c.closer && c.closer !== 'clement' && <div className="drow"><label>Avec</label><span><b>{closerName(c.closer)}</b> · c'est son WhatsApp qui confirme</span></div>}
+            {c.closer && (c.closer !== 'clement' || c.route_note) && <div className="drow"><label>Avec</label><span><b>{closerName(c.closer)}</b>{c.closer !== 'clement' ? ' · c’est son WhatsApp qui confirme' : ''}{c.route_note ? ` · ${c.route_note}` : ''}</span></div>}
             {c.status === 'reserve' && <div className="drow"><label>Confirmation</label><span style={{ color: c.wa_clicked_at ? '#166534' : '#92400E', fontWeight: 600 }}>{c.wa_clicked_at ? 'A ouvert WhatsApp pour t\'écrire' : 'N\'a pas encore cliqué sur WhatsApp'}</span></div>}
             <div className="drow"><label>Réservé le</label><span>{new Date(c.created_at).toLocaleString('fr-FR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
             {c.status === 'fait' && <div className="drow col"><label>Résultat de l'appel</label><OutcomeChips c={c} onPick={(x, v) => upd(x, { outcome: v, outcome_at: v ? new Date().toISOString() : null })} /></div>}
