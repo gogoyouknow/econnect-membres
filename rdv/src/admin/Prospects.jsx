@@ -209,8 +209,9 @@ export default function Prospects({ toast, focus }) {
     toast('Fiches fusionnées'); load()
   }
   const del = async (r) => {
-    if (r.calls > 0) return toast('Il a un appel : supprime-le d’abord dans « Appels »', true)
-    if (!window.confirm(`Supprimer définitivement ${full(r)} ? Impossible d’annuler.`)) return
+    // Seul un appel encore à venir (réservé / confirmé) bloque ; un appel annulé, fait ou absent ne bloque plus.
+    if (r.call_status === 'reserve' || r.call_status === 'confirme') return toast('Il a un appel à venir : annule-le d’abord dans « Appels »', true)
+    if (!window.confirm(`Supprimer définitivement ${full(r)} ? Impossible d’annuler.${r.calls > 0 ? ' Ses rendez-vous passés ou annulés restent dans « Appels ».' : ''}`)) return
     const { error } = await supabase.from('cand_leads').delete().eq('id', r.id); if (error) return toast(friendlyError(error), true)
     setOpenId(null); toast('Supprimé'); load()
   }
