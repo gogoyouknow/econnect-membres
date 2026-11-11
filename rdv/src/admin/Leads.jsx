@@ -26,6 +26,9 @@ const diffDays = (a, b) => Math.round((new Date(a + 'T12:00:00Z') - new Date(b +
 const fill = (tpl, l) => String(tpl || '').replace(/\{prenom\}/g, l.first_name || '').replace(/\{lien\}/g, LINK).replace(/\{date\}/g, l.budget_date ? dayFr(l.budget_date) : '').replace(/Salut ,/, 'Salut,')
 // pas qualifié = a dit moins de 500 € ou pas de budget disponible maintenant
 const unqualified = (l) => l.capital === 'lt500' || ['soon', 'no'].includes(l.budget_confirmed)
+// qualifié = a indiqué 500 € ou plus (et n'a pas dit « pas maintenant ») : seuls ceux-là sont relancés
+const qualified = (l) => ['500-1000', '1000-3000', 'gt3000'].includes(l.capital) && !['soon', 'no'].includes(l.budget_confirmed)
+const why = (l) => l.capital === 'lt500' ? 'Disqualifié : moins de 500 €' : ['soon', 'no'].includes(l.budget_confirmed) ? 'Disqualifié : budget pas disponible' : ''
 const dtm = (iso) => new Date(iso).toLocaleString('fr-FR', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 const dayOf = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(iso))
 const autoOk = (l) => !/^(imp|man|cand)-/.test(l.sid || '') && Date.now() - new Date(l.updated_at).getTime() < 30 * 864e5
@@ -35,7 +38,7 @@ const KIND = { auto: 'Premier email', rseq: 'Email de suivi', seq: 'Email « plu
 export default function Leads({ toast, onChange }) {
   const [rows, setRows] = useState(null); const [tab, setTab] = usePS('le_tab', 'todo'); const [open, setOpen] = usePS('le_open', null); const [lerr, setLerr] = useState('')
   const [seq, setSeq] = useState([]); const [rseq, setRseq] = useState([]); const [tpl, setTpl] = useState({}); const [cfg, setCfg] = useState(null)
-  const load = () => supabase.from('cand_leads').select('*').order('updated_at', { ascending: false }).limit(500).then(({ data, error }) => { if (error) return setLerr(friendlyError(error)); setLerr(''); setRows(data || []); onChange && onChange((data || []).filter(l => !l.booked && l.follow === 'new' && !unqualified(l)).length) }).catch((e) => setLerr(friendlyError(e)))
+  const load = () => supabase.from('cand_leads').select('*').order('updated_at', { ascending: false }).limit(500).then(({ data, error }) => { if (error) return setLerr(friendlyError(error)); setLerr(''); setRows(data || []); onChange && onChange((data || []).filter(l => !l.booked && l.follow === 'new' && qualified(l) && (l.phone || l.email)).length) }).catch((e) => setLerr(friendlyError(e)))
   const loadMsgs = () => {
     supabase.from('cand_seq').select('*').order('pos').then(({ data }) => setSeq(data || []))
     supabase.from('cand_rseq').select('*').order('pos').then(({ data }) => setRseq(data || []))
@@ -50,9 +53,9 @@ export default function Leads({ toast, onChange }) {
   const usable = (l) => Boolean(l.phone || l.email)
   const later = open_.filter(l => l.budget_date && l.follow !== 'skip')
   const rest = open_.filter(l => !(l.budget_date && l.follow !== 'skip'))
-  const todo = rest.filter(l => l.follow === 'new' && usable(l) && !unqualified(l))
+  const todo = rest.filter(l => l.follow === 'new' && usable(l) && qualified(l))
   const cold = rest.filter(l => l.follow === 'new' && usable(l) && unqualified(l))
-  const part = rest.filter(l => l.follow === 'new' && !usable(l))
+  const part = rest.filter(l => l.follow === 'new' && (!usable(l) || (!qualified(l) && !unqualified(l))))
   const sent = rest.filter(l => l.follow === 'done')
   const skipped = open_.filter(l => l.follow === 'skip')
   // étapes de la séquence « plus tard » à envoyer aujourd'hui (ou en retard)
@@ -60,7 +63,7 @@ export default function Leads({ toast, onChange }) {
   const laterSorted = [...later].sort((a, b) => (dueSteps(b).length > 0) - (dueSteps(a).length > 0) || a.budget_date.localeCompare(b.budget_date))
   const nDue = later.filter(l => dueSteps(l).length).length
   const list = { todo, sent, later: laterSorted, part, cold, skip: skipped }[tab]
-  const tabs = [['todo', `À relancer · ${todo.length}`], ['sent', `Relancés · ${sent.length}`], ['later', `Plus tard · ${later.length}${nDue ? ' · ' + nDue + ' à envoyer' : ''}`], ['part', `Incomplets · ${part.length}`], ['cold', `Pas prêts · ${cold.length}`], ['skip', `Écartés · ${skipped.length}`]]
+  const tabs = [['todo', `À relancer · ${todo.length}`], ['sent', `Déjà relancés · ${sent.length}`], ['later', `Plus tard · ${later.length}${nDue ? ' · ' + nDue + ' à envoyer' : ''}`], ['part', `Incomplets · ${part.length}`], ['cold', `Disqualifiés · ${cold.length}`], ['skip', `Écartés · ${skipped.length}`]]
   const msg = (l) => fill(tpl.wa_relance || DEF_WA, l)
 
   // Relance : on ouvre WhatsApp ET on note qui / quand / par quel canal.
@@ -70,9 +73,9 @@ export default function Leads({ toast, onChange }) {
   const badge = (l) => {
     if (l.follow === 'skip') return <span className="badge done">Écarté</span>
     if (l.follow_result) return <span className={`badge ${RESULT[l.follow_result][1]}`}>{RESULT[l.follow_result][0]}</span>
-    if (l.follow === 'done') return <span className="badge ok">{l.follow_channel === 'email-auto' ? 'Relancé par email' : 'Relancé'}{l.follow_count > 1 ? ` · ${l.follow_count}×` : ''}</span>
+    if (l.follow === 'done') return <span className="badge ok">{l.follow_channel === 'email-auto' ? 'Déjà relancé par email' : 'Déjà relancé'}{l.follow_count > 1 ? ` · ${l.follow_count}×` : ''}</span>
     if (l.budget_date) return <span className="badge wait">{dueSteps(l).length ? 'À envoyer' : 'Le ' + dayFr(l.budget_date)}</span>
-    return <span className="badge wait">{!usable(l) ? 'Incomplet' : unqualified(l) ? 'Pas prêt' : l.email ? (autoOk(l) ? 'Email auto en route' : 'À relancer') : 'Sans email'}</span>
+    return <span className="badge wait">{!usable(l) ? 'Incomplet' : unqualified(l) ? 'Disqualifié' : !qualified(l) ? 'Budget non renseigné' : l.email ? (autoOk(l) ? 'Email auto en route' : 'À relancer') : 'Sans email'}</span>
   }
 
   // Prochain email automatique prévu pour une personne (ou pourquoi il n'y en a plus).
@@ -80,7 +83,8 @@ export default function Leads({ toast, onChange }) {
     if (l.follow === 'skip') return 'Aucun : écarté'
     if (!l.email) return 'Aucun : pas d’email (impossible de relancer automatiquement)'
     if (l.budget_date) { const st = seq.filter(x => !(l.seq_sent || []).includes(x.pos)).map(x => ({ x, d: addDays(l.budget_date, x.offset_days) })).filter(o => o.d >= addDays(today, -5)).sort((a, b) => a.d.localeCompare(b.d))[0]; return st ? `${st.x.label} · ${st.d <= today ? 'aujourd’hui' : 'le ' + dayFr(st.d)}` : 'Séquence terminée' }
-    if (unqualified(l)) return 'Aucun : budget pas disponible'
+    if (unqualified(l)) return 'Aucun : disqualifié (budget)'
+    if (!qualified(l)) return 'Aucun : n’a pas répondu à la question budget'
     if (['repondu', 'pas_interesse', 'reserve'].includes(l.follow_result)) return 'Aucun : ' + RESULT[l.follow_result][0].toLowerCase()
     if (!l.auto_sent_at) return autoOk(l) ? 'Premier email dans quelques minutes' : 'Aucun : fiche trop ancienne ou importée à la main'
     const st = rseq.filter(r => r.active && !(l.rseq_sent || []).includes(r.id)).sort((a, b) => a.pos - b.pos)[0]
@@ -108,7 +112,7 @@ export default function Leads({ toast, onChange }) {
     {list.map(l => <div key={l.id} className={`call ${open === l.id ? 'open' : ''}`}>
       <div className="crow" onClick={() => setOpen(open === l.id ? null : l.id)}>
         <div className="cmain"><b>{l.first_name || 'Sans prénom'}</b>
-          <small>{tab === 'later' && l.budget_date ? `Budget disponible le ${dayFr(l.budget_date)}` : l.followed_at ? `${CHAN[l.follow_channel] || 'Relancé'}${(l.mail_log || []).length > 1 ? ' ×' + l.mail_log.length : ''} ${ago(l.followed_at)}` : `${STEP[l.step]} · ${ago(l.updated_at)}`}</small></div>
+          <small>{tab === 'later' && l.budget_date ? `Budget disponible le ${dayFr(l.budget_date)}` : l.followed_at ? `${CHAN[l.follow_channel] || 'Relancé'}${(l.mail_log || []).length > 1 ? ' ×' + l.mail_log.length : ''} ${ago(l.followed_at)}` : `${why(l) || STEP[l.step]} · ${ago(l.updated_at)}`}</small></div>
         {badge(l)}
       </div>
       {open === l.id && <div className="cdet">

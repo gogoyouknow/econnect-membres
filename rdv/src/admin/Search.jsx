@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 
-const STAGE = { rdv: 'Appel prévu', qualifie: 'Qualifié', potentiel: 'Potentiel', incomplet: 'Incomplet', disqualifie: 'Pas prêt', fait: 'Appel fait', absent: 'Absent', annule: 'Annulé' }
+const STAGE = { rdv: 'Appel prévu', qualifie: 'Qualifié', potentiel: 'Potentiel', incomplet: 'Incomplet', disqualifie: 'Disqualifié', fait: 'Appel fait', absent: 'Absent', annule: 'Annulé' }
 const full = (r) => [r.first_name, r.last_name].filter(Boolean).join(' ') || 'Sans nom'
 
 /** Barre de recherche dans l'en-tête : trouve un prospect par nom, numéro ou email, et ouvre sa fiche. */

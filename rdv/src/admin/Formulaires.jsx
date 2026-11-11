@@ -77,7 +77,7 @@ export default function Formulaires({ toast, onOpen }) {
         return <article key={r.id} className={`fm-card ${open ? 'open' : ''}`}>
           <header onClick={() => setOpenId(open ? null : r.id)}>
             <div><b>{full(r)}</b><small>{dt(r.created_at)}{r.source ? ` · ${r.source}` : ''}</small></div>
-            {r.call_id ? <span className="badge ok">Appel réservé</span> : <span className="badge wait">Arrêté : {STEPN[last]}</span>}
+            {r.call_id ? <span className="badge ok">Appel réservé</span> : r.stage === 'disqualifie' ? <span className="badge dq">Disqualifié{r.capital === 'lt500' ? ' : moins de 500 €' : ''}</span> : <span className="badge wait">Arrêté : {STEPN[last]}</span>}
           </header>
           {open && <div className="fm-qa">
             {QS.map(([q, g], i) => { const v = g(r); return <div key={q} className="fm-row"><span>{q}</span>{v ? <b>{v}</b> : <em>— pas de réponse</em>}</div> })}

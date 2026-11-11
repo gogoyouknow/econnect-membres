@@ -8,18 +8,18 @@ import PrepTrack, { usePrep } from './PrepTrack'
 import { copyText } from './copy'
 
 const TZ = 'Europe/Paris'
-const STAGE = { rdv: 'Appel prévu', qualifie: 'Qualifié', potentiel: 'Potentiel', incomplet: 'Incomplet', disqualifie: 'Pas prêt', fait: 'Appel fait', absent: 'Absent', annule: 'Annulé' }
+const STAGE = { rdv: 'Appel prévu', qualifie: 'Qualifié', potentiel: 'Potentiel', incomplet: 'Incomplet', disqualifie: 'Disqualifié', fait: 'Appel fait', absent: 'Absent', annule: 'Annulé' }
 const CAPL = { lt500: '- 500 €', '500-1000': '500–1 000 €', '1000-3000': '1 000–3 000 €', gt3000: '+ 3 000 €' }
 const CAPO = { lt500: 0, '500-1000': 1, '1000-3000': 2, gt3000: 3 }
 const CST = { reserve: 'À confirmer', confirme: 'Confirmé', fait: 'Fait', absent: 'Absent', annule: 'Annulé' }
 const STEPL = { who: 'Coordonnées', situ: 'Situation', budget: 'Budget', slot: 'Créneaux vus' }
-const FOLL = { new: 'À relancer', done: 'Relancé', skip: 'Écarté' }
+const FOLL = { new: 'À relancer', done: 'Déjà relancé', skip: 'Écarté' }
 const PAGE = 50
 
-const VIEWS = [['all', 'Tous les prospects'], ['relance', 'À relancer'], ['rdv', 'Appel prévu'], ['fait', 'Appels faits'], ['noshow', 'Absents & annulés'], ['qualifie', 'Qualifiés'], ['incomplet', 'Incomplets'], ['froid', 'Pas prêts']]
+const VIEWS = [['all', 'Tous les prospects'], ['relance', 'À relancer'], ['rdv', 'Appel prévu'], ['fait', 'Appels faits'], ['noshow', 'Absents & annulés'], ['qualifie', 'Qualifiés'], ['incomplet', 'Incomplets'], ['froid', 'Disqualifiés']]
 const inView = (v, r) => ({
   all: () => true,
-  relance: () => !r.call_id && r.follow === 'new' && (r.phone || r.email) && ['potentiel', 'qualifie'].includes(r.stage),
+  relance: () => !r.call_id && r.follow === 'new' && (r.phone || r.email) && ['potentiel', 'qualifie'].includes(r.stage) && ['500-1000', '1000-3000', 'gt3000'].includes(r.capital),
   rdv: () => r.stage === 'rdv', fait: () => r.stage === 'fait', noshow: () => r.stage === 'absent' || r.stage === 'annule',
   qualifie: () => r.stage === 'qualifie', incomplet: () => r.stage === 'incomplet', froid: () => r.stage === 'disqualifie',
 }[v]())
