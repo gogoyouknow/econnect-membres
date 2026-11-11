@@ -50,5 +50,6 @@
   "0049_closers_invitations.sql",
   "0050_repartition_evenements.sql",
   "0051_liens_iclosed.sql",
-  "0052_retire_liens_importes.sql"
+  "0052_retire_liens_importes.sql",
+  "0053_evenements_admin.sql"
 ]
