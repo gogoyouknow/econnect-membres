@@ -140,10 +140,17 @@ export default function App() {
     return () => clearTimeout(t)
   }, [f.email, mailOk])
   useEffect(() => { loadPV().then(() => setPvReady(true)) }, [])
-  const go = (s) => { setErr(''); setStep(s); window.scrollTo(0, 0); try { history.pushState({ s }, '') } catch { /* */ } }
+  // Une fois la question du budget atteinte, on ne peut plus revenir en arrière (ni bouton « Retour », ni retour du téléphone) pour changer ses réponses.
+  const stepRef = useRef('intro'); const locked = useRef(false)
+  const EARLY = ['intro', 'who', 'situ', 'exp', 'txt', 'inv', 'cap', 'budget']
+  const go = (s) => { if (NEW && (s === 'budget' || s === 'block')) locked.current = true; if (locked.current && EARLY.includes(s) && s !== stepRef.current && s !== 'budget') return; stepRef.current = s; setErr(''); setStep(s); window.scrollTo(0, 0); try { history.pushState({ s }, '') } catch { /* */ } }
   // Le bouton « retour » du téléphone revient à l'étape précédente au lieu de quitter la page (et de renvoyer la personne sur TikTok).
   useEffect(() => {
-    const pop = (e) => { setErr(''); setStep((cur) => (cur === 'done' ? cur : (e.state && e.state.s) || 'intro')); window.scrollTo(0, 0) }
+    const pop = (e) => {
+      const t = (e.state && e.state.s) || 'intro'
+      if (stepRef.current === 'done' || (locked.current && EARLY.includes(t) && t !== stepRef.current)) { try { history.pushState({ s: stepRef.current }, '') } catch { /* */ } return }
+      stepRef.current = t; setErr(''); setStep(t); window.scrollTo(0, 0)
+    }
     window.addEventListener('popstate', pop); return () => window.removeEventListener('popstate', pop)
   }, [])
   // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
@@ -324,7 +331,7 @@ export default function App() {
     {step === 'block' && <section className="screen"><h2>Ce n'est pas le bon moment</h2><div className="card">
       <p>Avec moins de 500 € disponibles, je ne peux pas t'accompagner correctement et je ne veux pas te faire perdre ton temps.</p>
       <p className="muted">Reviens dès que tu as de quoi investir, ou suis mes contenus en attendant.</p></div>
-      <button className="link" onClick={() => go('cap')}>← Modifier ma réponse</button></section>}
+      </section>}
 
     {step === 'budget' && <section className="screen"><h2>Une dernière question, franche</h2><div className="card">
       <p>Tu as indiqué <b>{CAP_LBL[f.capital]}</b>. Beaucoup de personnes cochent un montant qu'elles n'ont pas encore, et on perd du temps tous les deux.</p>
@@ -332,24 +339,24 @@ export default function App() {
         {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }); if (NEW) go(v === 'yes' ? 'slot' : v === 'soon' ? 'when' : 'block2') }}>{l}</button>)}</div></div>
       <p className="muted s13">Sois honnête, ça m'aide à te dire la vérité.</p>
       <div className="err">{err}</div>{!NEW && <button className="btn" onClick={next.budget}>Choisir mon créneau →</button>}</div>
-      <button className="link" onClick={() => go('cap')}>← Retour</button></section>}
+      </section>}
 
     {step === 'when' && <section className="screen"><h2>À partir de quand ?</h2><div className="card">
       <p>Pas de souci. Donne-moi une <b>date précise</b> à laquelle tu pourras investir : je te recontacte directement sur WhatsApp à ce moment-là.</p>
       <div className="chips">{[['Dans 2 semaines', 14], ['Dans 1 mois', 30], ['Dans 2 mois', 60], ['Dans 3 mois', 90]].map(([l, d]) => { const v = isoIn(d); return <button key={d} className={`chip ${f.bdate === v ? 'sel' : ''}`} onClick={() => set('bdate', v)}>{l}</button> })}</div>
       <div className="field"><label htmlFor="bd">Ou choisis ta date</label><input id="bd" type="date" min={isoIn(1)} max={isoIn(400)} value={f.bdate} onChange={(e) => set('bdate', e.target.value)} /></div>
       <div className="err">{err}</div><button className="btn" disabled={busy} onClick={next.when}>{busy ? 'Un instant…' : 'Me recontacter à cette date →'}</button></div>
-      <button className="link" onClick={() => go('budget')}>← Modifier ma réponse</button></section>}
+      </section>}
 
     {step === 'later' && <section className="screen"><div className="col"><span className="eyebrow">C'est noté</span><h2>Je te recontacte le {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(f.bdate + 'T12:00:00'))}</h2></div><div className="card">
       <p>Je t'écrirai sur WhatsApp au <b>{f.wa_ok === false ? f.wprefix + ' ' + f.wtel : f.prefix + ' ' + f.tel}</b>. Garde-le à portée de main.</p>
       <p className="muted">Si ça va plus vite que prévu, tu peux réserver ton appel dès que ton budget est disponible.</p></div>
-      <button className="link" onClick={() => go('budget')}>← Modifier ma réponse</button></section>}
+      </section>}
 
     {step === 'block2' && <section className="screen"><h2>Reviens quand ce sera le bon moment</h2><div className="card">
       <p>Sans budget disponible, un appel ne te servirait à rien : je ne pourrais pas t'accompagner correctement.</p>
       <p className="muted">Dès que tu peux investir, reviens réserver. En attendant, continue de suivre mes contenus.</p></div>
-      <button className="link" onClick={() => go('budget')}>← Modifier ma réponse</button></section>}
+      </section>}
 
     {step === 'slot' && <section className="screen"><h2>{resched ? 'Choisis ton nouveau créneau' : 'Choisis ton créneau'}</h2><div className="card">
       {slots === null && <p className="muted">Je regarde mes disponibilités…</p>}
@@ -359,7 +366,7 @@ export default function App() {
       <p className="note">Heure de Paris · appel de {cfg.slot_min} minutes</p>
       <div className="err">{err}</div>
       <button className="btn" disabled={!pick || busy} onClick={book}>{busy ? (resched ? 'Un instant…' : 'Réservation…') : resched ? 'Déplacer mon rendez-vous' : 'Confirmer ce créneau'}</button></div>
-      <button className="link" onClick={() => { if (resched) { setResched(false); go('mine') } else go('budget') }}>← Retour</button></section>}
+      {resched && <button className="link" onClick={() => { setResched(false); go('mine') }}>← Retour</button>}</section>}
 
     {step === 'mine' && mine && <section className="screen">
       <div className="col"><span className="eyebrow">Tu as déjà réservé</span><h2>{mine.status === 'confirme' ? 'Ton rendez-vous est confirmé ✓' : "Tu as déjà un rendez-vous, il n'est pas encore confirmé"}</h2></div>
