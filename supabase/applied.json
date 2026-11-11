@@ -48,5 +48,6 @@
   "0047_closing.sql",
   "0048_sequence_confirmation.sql",
   "0049_closers_invitations.sql",
-  "0050_repartition_evenements.sql"
+  "0050_repartition_evenements.sql",
+  "0051_liens_iclosed.sql"
 ]
