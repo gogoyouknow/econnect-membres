@@ -5,9 +5,9 @@ export function openChat(e, num, text, web) {
   const d = String(num || '').replace(/\D/g, ''); if (!d) return
   const q = text ? '&text=' + encodeURIComponent(text) : ''; const ua = navigator.userAgent || ''
   if (/iPhone|iPad|iPod/.test(ua)) {
-    e.preventDefault(); const t = Date.now()
+    // Ouverture directe de l'app, sans passer par la page wa.me (pas de repli automatique : le lien « Écris-moi au … » reste dispo).
+    e.preventDefault()
     window.location.href = `whatsapp://send?phone=${d}${q}`
-    setTimeout(() => { if (!document.hidden && Date.now() - t < 3500) window.location.href = web }, 1500)
   } else if (/Android/.test(ua)) {
     e.preventDefault()
     window.location.href = `intent://send?phone=${d}${q}#Intent;scheme=whatsapp;S.browser_fallback_url=${encodeURIComponent(web)};end`

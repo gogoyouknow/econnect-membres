@@ -370,13 +370,22 @@ export default function App() {
       {prepVideo()}
       {mine.status !== 'confirme' && confirmBtn()}</section>}
 
-    {step === 'done' && done && <section className="screen">
+    {step === 'done' && done && (NEW && done.status !== 'confirme' && !done.moved ? <section className="screen last">
+      <div className="col"><span className="eyebrow">Étape 1 sur 2 faite ✓</span>
+        <h2>Dernière étape. Écris-moi sur WhatsApp</h2></div>
+      <div className="recap"><span className="muted s12">Créneau réservé</span><b>{done.when.replace(' à ', ' · ')}</b></div>
+      <Vidalytics />
+      <div className="consigne">👉 Pour confirmer ton appel du {done.when.replace(' à ', ' à ')}, envoie-moi un message sur WhatsApp avec le bouton vert.</div>
+      <a className="btn wa" href={waHref} target="_blank" rel="noopener noreferrer" onClick={waClick}>CONFIRMER SUR WHATSAPP</a>
+      <p className="note">Sans message, je libère ton créneau dans {relH} heures.</p>
+      <div className="copyrow">Le bouton ne s'ouvre pas ? Écris-moi au <code>+{waNum}</code> <button className="ghost" onClick={copy}>Copier</button></div></section> :
+    <section className="screen">
       <div className="col"><span className="eyebrow">{done.status === 'confirme' ? 'Rendez-vous déplacé' : 'Étape 1 sur 2 faite'}</span>
         <h2>{done.status === 'confirme' ? 'Ton rendez-vous est déplacé ✓' : "Ton appel n'est pas encore confirmé"}</h2></div>
       <div className="recap"><span className="muted s12">{done.moved ? 'Nouveau créneau' : 'Créneau réservé'}</span><b>{done.when.replace(' à ', ' · ')}</b></div>
       {done.status !== 'confirme' && confirmCard()}
       {prepVideo()}
-      {done.status !== 'confirme' && confirmBtn()}</section>}
+      {done.status !== 'confirme' && confirmBtn()}</section>)}
     {!configured && <p className="err">Configuration manquante (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).</p>}
   </div>
 }
