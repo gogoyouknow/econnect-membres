@@ -158,7 +158,7 @@ export default function App() {
     window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', vis)
     return () => { window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', vis) }
   }, [])
-  const n = { who: 1, situ: 2, exp: 3, txt: 4, inv: 4, cap: 5, block: 5, budget: 6, block2: 6, when: 6, later: 6, slot: 7 }[step] || 0
+  const n = { who: 1, situ: 2, exp: 3, txt: NEW ? 3 : 4, inv: 4, cap: 5, block: 5, budget: 6, block2: 6, when: 6, later: 6, slot: 7 }[step] || 0
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
   useEffect(() => { if (configured && EVENT) rpc('cand_event_info', { p_slug: EVENT }).then((e) => e?.source && setEvSrc(e.source)).catch(() => {}) }, [])
@@ -185,7 +185,7 @@ export default function App() {
     },
     txt() {
       if (f.blocage.trim().length < MIN_TXT) return setErr(`Écris-moi quelques mots de plus (${MIN_TXT} caractères minimum).`)
-      saveLead('situ'); go('cap')
+      saveLead('situ'); go(NEW ? 'inv' : 'cap')
     },
     budget() {
       if (!f.have) return setErr('Choisis une réponse pour continuer.')
@@ -285,7 +285,7 @@ export default function App() {
       <div className="err">{err}</div><button className="btn" disabled={busy || (NEW && !mailOk)} onClick={next.who}>{busy ? 'Un instant…' : 'Continuer →'}</button></div></section>}
 
     {step === 'situ' && <section className="screen"><div className="col"><span className="eyebrow">Question 1 sur 5</span><h2>Quelle est ta situation actuelle ?</h2></div><div className="card">
-      <div className="chips col">{SITUS.map((v) => <button key={v} className={`chip ${f.situation === v ? 'sel' : ''}`} onClick={() => { set('situation', v); saveLead('situ', { situation: v }); go('exp') }}>{v}</button>)}</div></div>
+      <div className="chips col">{SITUS.map((v) => <button key={v} className={`chip ${f.situation === v ? 'sel' : ''}`} onClick={() => { set('situation', v); saveLead('situ', { situation: v }); go(NEW ? 'txt' : 'exp') }}>{v}</button>)}</div></div>
       <button className="link" onClick={() => go('who')}>← Retour</button></section>}
 
     {step === 'exp' && <section className="screen"><div className="col"><span className="eyebrow">Question 2 sur 5</span><h2>Ton expérience en e-commerce ?</h2></div><div className="card">
@@ -294,14 +294,14 @@ export default function App() {
 
     {step === 'inv' && <section className="screen"><div className="col"><span className="eyebrow">Question 3 sur 5</span><h2>As-tu déjà investi dans une formation ou un coaching ?</h2></div><div className="card">
       <div className="chips col">{INVS.map((v) => <button key={v} className={`chip ${f.invest === v ? 'sel' : ''}`} onClick={() => { set('invest', v); saveLead('situ', { invest: v }); go('cap') }}>{v}</button>)}</div></div>
-      <button className="link" onClick={() => go('exp')}>← Retour</button></section>}
+      <button className="link" onClick={() => go(NEW ? 'txt' : 'exp')}>← Retour</button></section>}
 
-    {step === 'txt' && <section className="screen"><div className="col"><span className="eyebrow">Merci {f.first_name.trim()}</span><h2>Qu'est-ce qui t'a bloqué jusqu'ici ?</h2></div><div className="card notes">
+    {step === 'txt' && <section className="screen"><div className="col">{NEW ? <><span className="eyebrow">Question 2 sur 5</span><h2>Quel est ton problème principal ?</h2></> : <><span className="eyebrow">Merci {f.first_name.trim()}</span><h2>Qu'est-ce qui t'a bloqué jusqu'ici ?</h2></>}</div><div className="card notes">
       <div className="field"><label htmlFor="bl">Dis-le avec tes mots</label>
-        <textarea id="bl" rows={6} value={f.blocage} onChange={(e) => set('blocage', e.target.value)} placeholder="Ce qui te bloque, ce que tu as déjà essayé…" />
+        <textarea id="bl" rows={6} value={f.blocage} onChange={(e) => set('blocage', e.target.value)} placeholder={NEW ? "Ce qui te bloque aujourd'hui, ce que tu as déjà essayé…" : "Ce qui te bloque, ce que tu as déjà essayé…"} />
         <div className="s12 muted" style={{ display: 'flex', justifyContent: 'space-between' }}><span>Obligatoire, à écrire toi-même</span><span>{Math.min(f.blocage.trim().length, MIN_TXT)} / min. {MIN_TXT}</span></div></div>
       <div className="err">{err}</div><button className="btn" disabled={f.blocage.trim().length < MIN_TXT} onClick={next.txt}>Continuer →</button></div>
-      <button className="link" onClick={() => go('exp')}>← Retour</button></section>}
+      <button className="link" onClick={() => go(NEW ? 'situ' : 'exp')}>← Retour</button></section>}
 
     {step === 'cap' && <section className="screen"><div className="col"><span className="eyebrow">Question 4 sur 5</span><h2>Combien peux-tu investir maintenant dans ton projet ?</h2></div><div className="card">
       <div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('budget', { capital: v }); go(v === 'lt500' ? 'block' : 'budget') }}>{l}</button>)}</div></div>
