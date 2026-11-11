@@ -25,7 +25,7 @@ const MIN_TXT = 40
 const INVS = ['Non, jamais', 'Oui, une fois', 'Oui, plusieurs fois']
 // Lien de test (?test=1) : nouveau parcours, mais RIEN n'est enregistré (ni fiche, ni rendez-vous, ni email).
 const TEST = (() => { try { const q = new URLSearchParams(location.search).get('test'); if (q === '1') sessionStorage.setItem('cand_test', '1'); if (q === '0') sessionStorage.removeItem('cand_test'); return sessionStorage.getItem('cand_test') === '1' } catch { return false } })()
-const NEW = TEST // le nouveau parcours : testé d'abord, puis activé pour tout le monde
+const NEW = true // le nouveau parcours est validé : actif pour tout le monde (?test=1 reste un mode démo sans enregistrement)
 const rpcW = (n, a) => (TEST ? Promise.resolve(null) : rpc(n, a))
 const COUNTRIES = [['+33', '🇫🇷', 'France'], ['+32', '🇧🇪', 'Belgique'], ['+41', '🇨🇭', 'Suisse'], ['+352', '🇱🇺', 'Luxembourg'], ['+1', '🇨🇦', 'Canada / États-Unis'], ['+212', '🇲🇦', 'Maroc'], ['+213', '🇩🇿', 'Algérie'], ['+216', '🇹🇳', 'Tunisie'], ['+351', '🇵🇹', 'Portugal'], ['+40', '🇷🇴', 'Roumanie'],
   ['+229', '🇧🇯', 'Bénin'], ['+237', '🇨🇲', 'Cameroun'], ['+228', '🇹🇬', 'Togo'], ['+224', '🇬🇳', 'Guinée'], ['+241', '🇬🇦', 'Gabon'], ['+242', '🇨🇬', 'Congo'], ['+243', '🇨🇩', 'RD Congo'], ['+261', '🇲🇬', 'Madagascar'], ['+230', '🇲🇺', 'Maurice'], ['+262', '🇷🇪', 'La Réunion'], ['+590', '🇬🇵', 'Guadeloupe'], ['+596', '🇲🇶', 'Martinique'], ['+594', '🇬🇫', 'Guyane'], ['+509', '🇭🇹', 'Haïti'],
