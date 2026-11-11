@@ -574,3 +574,24 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .as-mic.on{background:#5ccf7a;color:#06220f;animation:aspulse 1.2s infinite}
 .adm .as-dots{display:flex;gap:5px;padding:14px}.adm .as-dots i{width:7px;height:7px;border-radius:50%;background:#9d9da6;animation:asdot 1s infinite}.adm .as-dots i:nth-child(2){animation-delay:.15s}.adm .as-dots i:nth-child(3){animation-delay:.3s}
 @keyframes asdot{0%,80%,100%{opacity:.25}40%{opacity:1}}@keyframes aspulse{50%{box-shadow:0 0 0 8px rgba(92,207,122,.2)}}
+/* Emails automatiques */
+.ma-badge{margin-left:8px;background:var(--y);color:var(--ink);border-radius:99px;padding:2px 9px;font-size:12px;font-weight:700}
+.ma-card,.ma-row{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;margin-top:8px;background:#fff}
+.ma-card.ok{border-color:#2f8f4e}
+.ma-row.off{opacity:.55}
+.ma-top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.ma-sub{display:flex;gap:8px;align-items:baseline;font-weight:600;overflow-wrap:anywhere}
+.ma-tag{flex:none;font-size:11px;font-weight:700;background:var(--ink);color:#fff;border-radius:5px;padding:1px 6px}
+.ma-tag.b{background:var(--y);color:var(--ink)}
+.ma-body{white-space:pre-wrap;font-size:14px;line-height:1.5;margin-top:6px;padding:10px;border-radius:10px;background:#f3f4f6}
+.ma-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.ma-stat{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}
+.ma-stat b{font-size:22px}.ma-stat em{font-size:12px;color:var(--mut);font-style:normal}
+.ma-seq h4{margin:14px 0 4px}
+.ma-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.ma-sheet{background:#fff;color:var(--ink);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px;display:flex;flex-direction:column;gap:8px}
+.ma-sheet textarea,.ma-sheet input{width:100%}
+.adm .ma{color:var(--ink)}
+.adm .ma .lq{color:var(--ink);font-weight:700;font-size:15px}
+.adm .ma .muted{color:var(--mut)}
+.ma-sheet textarea{min-height:260px;line-height:1.45}

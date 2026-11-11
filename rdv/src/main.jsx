@@ -20,6 +20,8 @@ if (isAdmin) {
   const f = document.createElement('link'); f.rel = 'stylesheet'; f.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap'; document.head.appendChild(f)
   document.title = 'Calio'
   boot(import('./admin/Admin'))
+} else if (path.startsWith('/stop/') || path.startsWith('/v/')) {
+  boot(import('./Mail'))
 } else if (path.startsWith('/decouvrir')) {
   boot(import('./Decouvrir'))
 } else {
