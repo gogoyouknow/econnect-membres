@@ -222,9 +222,9 @@ export default function App() {
     {n > 0 && <div className="progress">{[1, 2, 3, 4].map((i) => <i key={i} className={i <= n ? 'on' : ''} />)}</div>}
 
     {step === 'intro' && <section className="screen">
-      <div className="col"><span className="eyebrow">Appel diagnostic · {cfg.slot_min} minutes</span>
+      <div className="col">
         <h1>Tu veux te lancer, mais tu ne sais pas par où commencer ?</h1>
-        <p>Réserve un appel avec moi. On regarde ta situation et je te dis franchement si je peux t'aider.</p></div>
+        <p>Dépose ta candidature. Je lis chaque dossier moi-même et je te dis franchement si je peux t'accompagner.</p></div>
       <div className="quotes"><span className="lbl muted">Ce que j'entends le plus souvent</span>
         <q>« Je tourne en rond depuis des mois. »</q><q>« J'ai déjà payé des formations qui n'ont rien donné. »</q><q>« Je veux sortir du métro, boulot, dodo. »</q></div>
       <div className="card"><div className="steps">
@@ -232,7 +232,7 @@ export default function App() {
         <div><span>2</span><p><b>Je te dis ce que je ferais à ta place.</b></p></div>
         <div><span>3</span><p><b>Si je peux t'aider, on en parle.</b> Sinon, je te le dis.</p></div></div>
         <button className="btn" onClick={() => go('who')}>Je dépose ma candidature →</button>
-        <p className="note c">3 questions · moins d'une minute</p></div>
+        <p className="note c">Je lis chaque candidature moi-même</p></div>
       <Temos onCta={() => go('who')} />
       <p className="note filter">Je réponds aux personnes prêtes à passer à l'action et à investir dans leur projet. Si ce n'est pas encore ton cas, ne réserve pas : on perdrait du temps tous les deux.</p>
     </section>}
