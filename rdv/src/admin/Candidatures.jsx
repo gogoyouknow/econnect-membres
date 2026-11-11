@@ -172,3 +172,5 @@ export default function Candidatures({ toast, tab: main , closer }) {
       <div className="acts"><button className="btn" onClick={saveTpl}>Enregistrer</button><button className="btn ghost" onClick={() => setEdit(null)}>Annuler</button><button className="linkbtn" style={{ padding: 0 }} onClick={() => setEdit(DEFAULT_MSG)}>Message d'origine</button></div></div></div></Portal>}
   </>
 }
+
+export { parisISO, dayKey, timeOf, dayLabel, dayShort }

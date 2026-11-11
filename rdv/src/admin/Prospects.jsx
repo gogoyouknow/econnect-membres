@@ -6,6 +6,7 @@ import { supabase, friendlyError } from './supabase'
 import { openWA, fillMsg, waWeb, NURTURE_MSG, NURTURE_URL } from './whatsapp'
 import PrepTrack, { usePrep } from './PrepTrack'
 import { copyText } from './copy'
+import PlaceCall from './PlaceCall'
 
 const TZ = 'Europe/Paris'
 const STAGE = { rdv: 'Appel prévu', qualifie: 'Qualifié', potentiel: 'Potentiel', incomplet: 'Incomplet', disqualifie: 'Disqualifié', fait: 'Appel fait', absent: 'Absent', annule: 'Annulé' }
@@ -103,7 +104,7 @@ export default function Prospects({ toast, focus }) {
   const [cols, setCols] = useState(lsGet); const [colMenu, setColMenu] = useState(false)
   const [sel, setSel] = useState(() => new Set()); const [openId, setOpenId] = usePS('pr_open', null)
   const [oq, setOq] = useState(null)
-  const [add, setAdd] = useState(false); const [imp, setImp] = useState(null); const [tagIn, setTagIn] = useState('')
+  const [add, setAdd] = useState(false); const [placing, setPlacing] = useState(null); const [imp, setImp] = useState(null); const [tagIn, setTagIn] = useState('')
   const file = useRef(null)
   useEffect(() => { if (!(add || imp)) return; const b = document.body, h = document.documentElement; const o = [b.style.overflow, h.style.overflow]; b.style.overflow = h.style.overflow = 'hidden'; return () => { b.style.overflow = o[0]; h.style.overflow = o[1] } }, [!!(add || imp)])
 
@@ -200,8 +201,11 @@ export default function Prospects({ toast, focus }) {
     e.preventDefault(); const f = new FormData(e.target); const em = String(f.get('email')).trim().toLowerCase(), ph = normPhone(f.get('phone'))
     const rec = { sid: 'man-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), first_name: String(f.get('first')).trim() || null, last_name: String(f.get('last')).trim() || null, phone: ph || null, phone_raw: String(f.get('phone')).trim() || null, email: okMail(em) ? em : null, email_raw: em || null, source: String(f.get('source')).trim() || 'Ajout manuel', step: 'who' }
     if (!rec.first_name && !rec.phone_raw && !rec.email_raw) return toast('Mets au moins un prénom, un numéro ou un email', true)
+    const withCall = e.nativeEvent?.submitter?.value === 'call'
+    if (withCall && !rec.phone && !rec.email) return toast('Pour placer un appel, mets un numéro ou un email', true)
     const { error } = await supabase.from('cand_leads').insert(rec); if (error) return toast(friendlyError(error), true)
     setAdd(false); toast('Prospect ajouté'); load()
+    if (withCall) setPlacing({ first_name: rec.first_name, phone: rec.phone, email: rec.email, situation: null, capital: null, budget_confirmed: 'yes' })
   }
   const merge = async (r) => {
     if (!window.confirm(`${full(r)} a ${r.dupIds.length + 1} fiches avec le même numéro. On garde celle-ci et on supprime l’autre${r.dupIds.length > 1 ? 's' : ''} (${r.dupEmails.join(', ') || 'sans email'}). Ses rendez-vous ne sont pas touchés. Continuer ?`)) return
@@ -323,6 +327,9 @@ export default function Prospects({ toast, focus }) {
           <li><b>{STEPL[open.step]}</b> dernière étape atteinte · {dt(open.updated_at)}</li>
           {open.call_id && <li><b>{dcall(open.call_at)}</b> Appel · {CST[open.call_status] || open.call_status}{open.calls > 1 ? ` (${open.calls} appels)` : ''}</li>}
         </ul>
+        {['reserve', 'confirme'].includes(open.call_status) && new Date(open.call_at) > new Date()
+          ? <p className="muted" style={{ fontSize: 13, margin: '6px 0 0' }}>Appel déjà prévu : pour le déplacer ou l'annuler, va dans « Appels ».</p>
+          : <div className="acts" style={{ marginTop: 6 }}><button className="btn sm" disabled={!open.phone && !open.email} onClick={() => setPlacing(open)}>Placer un appel</button>{!open.phone && !open.email && <span className="muted" style={{ fontSize: 12 }}>Ajoute d'abord un numéro ou un email.</span>}</div>}
         <h4>Ses réponses</h4>
         <div className="drow"><label>Situation</label><span>{open.situation || '—'}</span></div>
         {open.experience && <div className="drow"><label>Expérience</label><span>{open.experience}</span></div>}
@@ -341,7 +348,9 @@ export default function Prospects({ toast, focus }) {
       <input name="phone" placeholder="Téléphone (06… ou +33…)" style={{ marginTop: 10 }} />
       <input name="email" type="email" placeholder="Email" style={{ marginTop: 10 }} />
       <input name="source" placeholder="Source (TikTok, Instagram, bouche-à-oreille…)" style={{ marginTop: 10 }} />
-      <div className="acts"><button className="btn">Ajouter</button><button type="button" className="btn ghost" onClick={() => setAdd(false)}>Annuler</button></div></form></div></Portal>}
+      <div className="acts"><button className="btn" value="add">Ajouter</button><button className="btn" value="call">Ajouter et placer un appel</button><button type="button" className="btn ghost" onClick={() => setAdd(false)}>Annuler</button></div></form></div></Portal>}
+
+    {placing && <PlaceCall p={placing} toast={toast} onClose={() => setPlacing(null)} onDone={load} />}
 
     {imp && <Portal><div className="pr-modal" onClick={() => !imp.busy && setImp(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
       <h3>Importer des contacts</h3>
