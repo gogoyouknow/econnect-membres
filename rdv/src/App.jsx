@@ -27,7 +27,12 @@ const INVS = ['Non, jamais', 'Oui, une fois', 'Oui, plusieurs fois']
 const TEST = (() => { try { const q = new URLSearchParams(location.search).get('test'); if (q === '1') sessionStorage.setItem('cand_test', '1'); if (q === '0') sessionStorage.removeItem('cand_test'); return sessionStorage.getItem('cand_test') === '1' } catch { return false } })()
 const NEW = TEST // le nouveau parcours : testé d'abord, puis activé pour tout le monde
 const rpcW = (n, a) => (TEST ? Promise.resolve(null) : rpc(n, a))
-const PREFIX = ['+33', '+32', '+41', '+352', '+212', '+213', '+216', '+351', '+40', '+1']
+const COUNTRIES = [['+33', '🇫🇷', 'France'], ['+32', '🇧🇪', 'Belgique'], ['+41', '🇨🇭', 'Suisse'], ['+352', '🇱🇺', 'Luxembourg'], ['+1', '🇨🇦', 'Canada / États-Unis'], ['+212', '🇲🇦', 'Maroc'], ['+213', '🇩🇿', 'Algérie'], ['+216', '🇹🇳', 'Tunisie'], ['+351', '🇵🇹', 'Portugal'], ['+40', '🇷🇴', 'Roumanie'],
+  ['+229', '🇧🇯', 'Bénin'], ['+237', '🇨🇲', 'Cameroun'], ['+228', '🇹🇬', 'Togo'], ['+224', '🇬🇳', 'Guinée'], ['+241', '🇬🇦', 'Gabon'], ['+242', '🇨🇬', 'Congo'], ['+243', '🇨🇩', 'RD Congo'], ['+261', '🇲🇬', 'Madagascar'], ['+230', '🇲🇺', 'Maurice'], ['+262', '🇷🇪', 'La Réunion'], ['+590', '🇬🇵', 'Guadeloupe'], ['+596', '🇲🇶', 'Martinique'], ['+594', '🇬🇫', 'Guyane'], ['+509', '🇭🇹', 'Haïti'],
+  ['+34', '🇪🇸', 'Espagne'], ['+39', '🇮🇹', 'Italie'], ['+49', '🇩🇪', 'Allemagne'], ['+44', '🇬🇧', 'Royaume-Uni'], ['+31', '🇳🇱', 'Pays-Bas'], ['+90', '🇹🇷', 'Turquie'], ['+20', '🇪🇬', 'Égypte']]
+const PREFIX = COUNTRIES.map((c) => c[0])
+const PFX_OPTS = COUNTRIES.map(([c, fl, n]) => <option key={c} value={c} title={n}>{fl} {c}</option>)
+const matchPrefix = (v) => { const raw = String(v || '').replace(/[^\d+]/g, ''); if (!(raw.startsWith('+') || raw.startsWith('00'))) return null; const pd = raw.replace(/^(\+|00)/, ''); const m = PREFIX.map((x) => x.slice(1)).sort((a, b) => b.length - a.length).find((x) => pd.startsWith(x)); return m ? ['+' + m, pd.slice(m.length).replace(/^0+/, '')] : null }
 // Numéro saisi « comme on veut » : +33 6…, 0033 6…, 33 6… ou 06… → on retrouve l'indicatif et les chiffres du numéro, sans doublon d'indicatif.
 const splitTel = (prefix, tel) => {
   let d = String(tel || '').replace(/[^\d+]/g, ''); if (d.startsWith('00')) d = '+' + d.slice(2)
@@ -47,8 +52,8 @@ let PV = null // validateur de numéros de mobile (chargé à la demande, ne ral
 const loadPV = () => PV ? Promise.resolve(PV) : import('libphonenumber-js/mobile').then((m) => (PV = m)).catch(() => null)
 // Numéro fixe français (01 à 05) : pas de WhatsApp possible.
 const isFixe = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); return pf === '+33' && /^[1-5]/.test(String(d)) }
-// Afrique subsaharienne (hors Maghreb, Égypte, Afrique du Sud, La Réunion / Mayotte) : pas d'appel possible, on le dit honnêtement.
-const AF_BLOCK = /^\+(?:22[1-9]|23[1-9]|24\d|25\d|26[013-9]|211)/
+// Côte d'Ivoire, Burkina Faso, Mali, Sénégal : paiement impossible depuis ces pays, on le dit honnêtement.
+const AF_BLOCK = /^\+(?:221|223|225|226)/
 const intlOf = (prefix, tel) => { const raw = String(tel || '').replace(/[^\d+]/g, ''); const d = raw.startsWith('00') ? '+' + raw.slice(2) : raw; const p = String(prefix || ''); return d.startsWith('+') ? d : p + (AF_BLOCK.test(p + '000') ? d : d.replace(/^0+/, '')) }
 const geoBlocked = (g) => AF_BLOCK.test(intlOf(g.prefix, g.tel)) || (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)))
 const telOk = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); if (d.length < 6) return false; if (isFixe(prefix, tel)) return String(d).length === 9; if (PV) { try { return PV.isValidPhoneNumber(pf + d) } catch { /* */ } } return d.length >= 8 && d.length <= 12 }
@@ -123,6 +128,8 @@ export default function App() {
   const [done, setDone] = useState(null)
   const [mine, setMine] = useState(null); const [resched, setResched] = useState(false)
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
+  // Dès qu'on tape « +229… » ou « 0033… », l'indicatif (et son drapeau) se règle tout seul.
+  const typeTel = (pk, tk, v) => { const m = matchPrefix(v); if (m) setF((x) => ({ ...x, [pk]: m[0], [tk]: m[1] })); else set(tk, v) }
   const [tBlur, setTBlur] = useState(false); const [pvReady, setPvReady] = useState(false)
   const [mailOk, setMailOk] = useState(false) // nouveau parcours : le numéro WhatsApp n'apparaît qu'une fois l'email validé
   useEffect(() => {
@@ -171,7 +178,7 @@ export default function App() {
     async who() {
       const [pfx, digits] = splitTel(f.prefix, f.tel)
       if (!f.first_name.trim()) return setErr('Indique ton prénom.')
-      if (geoBlocked(f)) { saveLead('who'); return go('geo') } // on garde la fiche (numéro complet), mais pas de créneau ni de relance
+      if (geoBlocked({ ...f, prefix: pfx, tel: digits })) { saveLead('who', { prefix: pfx, tel: digits }); return go('geo') } // on garde la fiche (numéro complet), mais pas de créneau ni de relance
       if (f.wa_ok !== false && isFixe(f.prefix, f.tel)) { set('wa_ok', false); return setErr("Ce numéro est un fixe : il n'a pas WhatsApp. Indique ci-dessous ton numéro de portable, c'est là qu'on se parlera.") }
       if (!telOk(f.prefix, f.tel)) { setTBlur(true); return setErr("Ce numéro n'a pas l'air valide : vérifie l'indicatif et les chiffres (exemple : 6 12 34 56 78).") }
       if (f.wa_ok === false && (!telOk(f.wprefix, f.wtel) || isFixe(f.wprefix, f.wtel))) { setTBlur(true); return setErr("Entre un numéro WhatsApp valide, c'est lui qui me permet de te joindre.") }
@@ -261,23 +268,23 @@ export default function App() {
         {mailFix(f.email) && <button type="button" className="mailfix" onClick={() => set('email', mailFix(f.email))}>Tu voulais dire <b>{mailFix(f.email)}</b> ? <u>Corriger</u></button>}{NEW && mailOk && <span className="okmark">✓ Email valide</span>}</div>
       {mailOk && <div className="reveal">
       <div className="field"><label htmlFor="t">Ton numéro WhatsApp</label><div className="phone">
-        <select value={f.prefix} onChange={(e) => set('prefix', e.target.value)} aria-label="Indicatif">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
-        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => set('tel', e.target.value)} onBlur={() => { setTBlur(true); const [pf, d] = splitTel(f.prefix, f.tel); if (f.tel.trim() && (pf !== f.prefix || d !== f.tel.replace(/\s/g, ''))) setF((x) => ({ ...x, prefix: pf, tel: d })); saveLead('who', { prefix: pf, tel: d }) }} placeholder="6 12 34 56 78" /></div>
-        {tBlur && f.tel.trim() && pvReady && !telOk(f.prefix, f.tel) && <span className="err s12" role="alert">Ce numéro n'a pas l'air valide. Vérifie l'indicatif et les chiffres.</span>}
+        <select value={f.prefix} onChange={(e) => set('prefix', e.target.value)} aria-label="Indicatif">{PFX_OPTS}</select>
+        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => typeTel('prefix', 'tel', e.target.value)} onBlur={() => { setTBlur(true); const [pf, d] = splitTel(f.prefix, f.tel); if (f.tel.trim() && (pf !== f.prefix || d !== f.tel.replace(/\s/g, ''))) setF((x) => ({ ...x, prefix: pf, tel: d })); saveLead('who', { prefix: pf, tel: d }) }} placeholder="6 12 34 56 78" /></div>
+        {tBlur && f.tel.trim() && pvReady && !geoBlocked(f) && !telOk(f.prefix, f.tel) && <span className="err s12" role="alert">Ce numéro n'a pas l'air valide. Vérifie l'indicatif et les chiffres.</span>}
         <label className="chk"><input type="checkbox" checked={f.wa_ok !== false} onChange={(e) => set('wa_ok', e.target.checked)} /> Ce numéro est bien sur WhatsApp</label>
         {f.wa_ok === false && <div className="phone" style={{ marginTop: 8 }}>
-          <select value={f.wprefix} onChange={(e) => set('wprefix', e.target.value)} aria-label="Indicatif WhatsApp">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
-          <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => set('wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
+          <select value={f.wprefix} onChange={(e) => set('wprefix', e.target.value)} aria-label="Indicatif WhatsApp">{PFX_OPTS}</select>
+          <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => typeTel('wprefix', 'wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
         {f.wa_ok === false && <span className="muted s12">Indique le numéro sur lequel tu as WhatsApp : c'est là que tu me confirmes ton appel.</span>}</div>
       </div>}</> : <>
       <div className="field"><label htmlFor="t">Ton numéro WhatsApp</label><div className="phone">
-        <select value={f.prefix} onChange={(e) => set('prefix', e.target.value)} aria-label="Indicatif">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
-        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => set('tel', e.target.value)} onBlur={() => { setTBlur(true); const [pf, d] = splitTel(f.prefix, f.tel); if (f.tel.trim() && (pf !== f.prefix || d !== f.tel.replace(/\s/g, ''))) setF((x) => ({ ...x, prefix: pf, tel: d })); saveLead('who', { prefix: pf, tel: d }) }} placeholder="6 12 34 56 78" /></div>
-        {tBlur && f.tel.trim() && pvReady && !telOk(f.prefix, f.tel) && <span className="err s12" role="alert">Ce numéro n'a pas l'air valide. Vérifie l'indicatif et les chiffres.</span>}
+        <select value={f.prefix} onChange={(e) => set('prefix', e.target.value)} aria-label="Indicatif">{PFX_OPTS}</select>
+        <input id="t" type="tel" inputMode="tel" autoComplete="tel-national" value={f.tel} onChange={(e) => typeTel('prefix', 'tel', e.target.value)} onBlur={() => { setTBlur(true); const [pf, d] = splitTel(f.prefix, f.tel); if (f.tel.trim() && (pf !== f.prefix || d !== f.tel.replace(/\s/g, ''))) setF((x) => ({ ...x, prefix: pf, tel: d })); saveLead('who', { prefix: pf, tel: d }) }} placeholder="6 12 34 56 78" /></div>
+        {tBlur && f.tel.trim() && pvReady && !geoBlocked(f) && !telOk(f.prefix, f.tel) && <span className="err s12" role="alert">Ce numéro n'a pas l'air valide. Vérifie l'indicatif et les chiffres.</span>}
         <label className="chk"><input type="checkbox" checked={f.wa_ok !== false} onChange={(e) => set('wa_ok', e.target.checked)} /> Ce numéro est bien sur WhatsApp</label>
         {f.wa_ok === false && <div className="phone" style={{ marginTop: 8 }}>
-          <select value={f.wprefix} onChange={(e) => set('wprefix', e.target.value)} aria-label="Indicatif WhatsApp">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
-          <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => set('wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
+          <select value={f.wprefix} onChange={(e) => set('wprefix', e.target.value)} aria-label="Indicatif WhatsApp">{PFX_OPTS}</select>
+          <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => typeTel('wprefix', 'wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
         {f.wa_ok === false && <span className="muted s12">Indique le numéro sur lequel tu as WhatsApp : c'est là que tu me confirmes ton appel.</span>}</div>
       <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => { set('email', e.target.value); setMailBad(false); setErr('') }} onBlur={() => { saveLead('who'); if (f.email.trim().includes('@')) mailProblem(f.email).then((pb) => { if (pb) setErr(pb); else if (NEW) setMailOk(true) }) }} aria-invalid={mailBad || undefined} placeholder="ton@email.com" />
         {mailFix(f.email) && <button type="button" className="mailfix" onClick={() => set('email', mailFix(f.email))}>Tu voulais dire <b>{mailFix(f.email)}</b> ? <u>Corriger</u></button>}{NEW && mailOk && <span className="okmark">✓ Email valide</span>}</div>
@@ -299,7 +306,9 @@ export default function App() {
     {step === 'txt' && <section className="screen"><div className="col">{NEW ? <><span className="eyebrow">Question 2 sur 5</span><h2>Quel est ton problème principal ?</h2></> : <><span className="eyebrow">Merci {f.first_name.trim()}</span><h2>Qu'est-ce qui t'a bloqué jusqu'ici ?</h2></>}</div><div className="card notes">
       <div className="field"><label htmlFor="bl">Dis-le avec tes mots</label>
         <textarea id="bl" rows={6} value={f.blocage} onChange={(e) => set('blocage', e.target.value)} placeholder={NEW ? "Ce qui te bloque aujourd'hui, ce que tu as déjà essayé…" : "Ce qui te bloque, ce que tu as déjà essayé…"} />
-        <div className="s12 muted" style={{ display: 'flex', justifyContent: 'space-between' }}><span>Obligatoire, à écrire toi-même</span><span>{Math.min(f.blocage.trim().length, MIN_TXT)} / min. {MIN_TXT}</span></div></div>
+        {NEW ? <><p className="muted s13" style={{ margin: '8px 0 0' }}>Ce que tu écris me permet de mieux te comprendre. Je retiens en priorité les personnes qui prennent le temps d'expliquer leur situation.</p>
+        <div className="s12 muted" style={{ textAlign: 'right' }}>{Math.min(f.blocage.trim().length, MIN_TXT)} / min. {MIN_TXT}</div></>
+        : <div className="s12 muted" style={{ display: 'flex', justifyContent: 'space-between' }}><span>Obligatoire, à écrire toi-même</span><span>{Math.min(f.blocage.trim().length, MIN_TXT)} / min. {MIN_TXT}</span></div>}</div>
       <div className="err">{err}</div><button className="btn" disabled={f.blocage.trim().length < MIN_TXT} onClick={next.txt}>Continuer →</button></div>
       <button className="link" onClick={() => go(NEW ? 'situ' : 'exp')}>← Retour</button></section>}
 
@@ -320,9 +329,9 @@ export default function App() {
     {step === 'budget' && <section className="screen"><h2>Une dernière question, franche</h2><div className="card">
       <p>Tu as indiqué <b>{CAP_LBL[f.capital]}</b>. Beaucoup de personnes cochent un montant qu'elles n'ont pas encore, et on perd du temps tous les deux.</p>
       <div className="field"><span className="lbl">Tu peux vraiment mobiliser ce budget maintenant ?</span><div className="chips col">
-        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }) }}>{l}</button>)}</div></div>
+        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }); if (NEW) go(v === 'yes' ? 'slot' : v === 'soon' ? 'when' : 'block2') }}>{l}</button>)}</div></div>
       <p className="muted s13">Sois honnête, ça m'aide à te dire la vérité.</p>
-      <div className="err">{err}</div><button className="btn" onClick={next.budget}>Choisir mon créneau →</button></div>
+      <div className="err">{err}</div>{!NEW && <button className="btn" onClick={next.budget}>Choisir mon créneau →</button>}</div>
       <button className="link" onClick={() => go('cap')}>← Retour</button></section>}
 
     {step === 'when' && <section className="screen"><h2>À partir de quand ?</h2><div className="card">
