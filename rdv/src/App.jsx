@@ -20,6 +20,8 @@ const WA_DEF = { clement: '33756849421', amandine: '33763850319' }[CLOSER]
 const CAPS = [['lt500', 'Moins de 500 €'], ['500-1000', 'Entre 500 € et 1 000 €'], ['1000-3000', 'Entre 1 000 € et 3 000 €'], ['gt3000', 'Plus de 3 000 €']]
 const CAP_LBL = { '500-1000': 'entre 500 € et 1 000 €', '1000-3000': 'entre 1 000 € et 3 000 €', gt3000: 'plus de 3 000 €' }
 const SITUS = ['Salarié', 'Étudiant', 'Entrepreneur', 'Sans activité']
+const EXPS = ['Jamais vendu en ligne', 'Quelques ventes', 'Boutique active']
+const MIN_TXT = 40
 const PREFIX = ['+33', '+32', '+41', '+352', '+212', '+213', '+216', '+351', '+40', '+1']
 // Numéro saisi « comme on veut » : +33 6…, 0033 6…, 33 6… ou 06… → on retrouve l'indicatif et les chiffres du numéro, sans doublon d'indicatif.
 const splitTel = (prefix, tel) => {
@@ -106,7 +108,7 @@ function mailFix(email) {
 
 export default function App() {
   const [step, setStep] = useState('intro')
-  const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', wa_ok: true, wprefix: '+33', wtel: '', email: '', situation: '', capital: '', have: '', bdate: '' })
+  const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', wa_ok: true, wprefix: '+33', wtel: '', email: '', situation: '', experience: '', blocage: '', capital: '', have: '', bdate: '' })
   const [err, setErr] = useState('')
   const [cfg, setCfg] = useState({ slot_min: 45, wa: '33756849421', release_hours: 4 })
   const [slots, setSlots] = useState(null)
@@ -126,10 +128,10 @@ export default function App() {
   }, [])
   // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
   const [evSrc, setEvSrc] = useState('')
-  const leadBody = (stp, g) => { const [pf, d] = effTel(g); const af = AF_BLOCK.test(intlOf(g.prefix, g.tel)) ? intlOf(g.prefix, g.tel) : (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)) ? intlOf(g.wprefix, g.wtel) : ''); return { sid, step: stp, first_name: g.first_name.trim(), phone: af || (d.length >= 8 ? pf + d : ''), phone_raw: af || (d ? pf + d : ''), email: g.email.trim(), situation: g.situation, capital: g.capital, budget_confirmed: g.have, ...SRC, ...(EVENT ? { source: evSrc || SRC.source, utm: { ...(SRC.utm || {}), event: EVENT } } : {}) } }
+  const leadBody = (stp, g) => { const [pf, d] = effTel(g); const af = AF_BLOCK.test(intlOf(g.prefix, g.tel)) ? intlOf(g.prefix, g.tel) : (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)) ? intlOf(g.wprefix, g.wtel) : ''); return { sid, step: stp, first_name: g.first_name.trim(), phone: af || (d.length >= 8 ? pf + d : ''), phone_raw: af || (d ? pf + d : ''), email: g.email.trim(), situation: g.situation, experience: g.experience, blocage: g.blocage, capital: g.capital, budget_confirmed: g.have, ...SRC, ...(EVENT ? { source: evSrc || SRC.source, utm: { ...(SRC.utm || {}), event: EVENT } } : {}) } }
   const saveLead = (stp, over = {}) => { if (!configured) return; rpc('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
   // On garde TOUT ce qui est tapé, même sans clic sur « Continuer » : sauvegarde auto 0,7 s après la dernière frappe, et à la fermeture / au changement d'onglet.
-  const LS = { who: 'who', geo: 'who', situ: 'situ', block: 'situ', budget: 'budget', block2: 'budget', when: 'budget', later: 'budget', slot: 'slot' }
+  const LS = { who: 'who', geo: 'who', situ: 'situ', exp: 'situ', txt: 'situ', cap: 'budget', block: 'budget', budget: 'budget', block2: 'budget', when: 'budget', later: 'budget', slot: 'slot' }
   const live = useRef({})
   live.current = { f, step }
   useEffect(() => {
@@ -143,7 +145,7 @@ export default function App() {
     window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', vis)
     return () => { window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', vis) }
   }, [])
-  const n = { who: 1, situ: 2, block: 2, budget: 3, block2: 3, when: 3, later: 3, slot: 4 }[step] || 0
+  const n = { who: 1, situ: 2, exp: 3, txt: 4, cap: 5, block: 5, budget: 6, block2: 6, when: 6, later: 6, slot: 7 }[step] || 0
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
   useEffect(() => { if (configured && EVENT) rpc('cand_event_info', { p_slug: EVENT }).then((e) => e?.source && setEvSrc(e.source)).catch(() => {}) }, [])
@@ -168,9 +170,9 @@ export default function App() {
       try { const m = await rpc('cand_mine', { p: { email: f.email.trim().toLowerCase(), phone: effTel({ ...f, prefix: pfx, tel: digits }).join('') } }); if (m && m.found) { setBusy(false); setMine(m); return go('mine') } } catch { /* en cas de souci réseau on continue : le serveur refusera le doublon */ }
       setBusy(false); go('situ')
     },
-    situ() {
-      if (!f.situation || !f.capital) return setErr('Réponds aux deux questions pour continuer.')
-      saveLead('situ'); go(f.capital === 'lt500' ? 'block' : 'budget')
+    txt() {
+      if (f.blocage.trim().length < MIN_TXT) return setErr(`Écris-moi quelques mots de plus (${MIN_TXT} caractères minimum).`)
+      saveLead('situ'); go('cap')
     },
     budget() {
       if (!f.have) return setErr('Choisis une réponse pour continuer.')
@@ -219,7 +221,7 @@ export default function App() {
 
   return <div className="shell">
     <header><Logo /></header>
-    {n > 0 && <div className="progress">{[1, 2, 3, 4].map((i) => <i key={i} className={i <= n ? 'on' : ''} />)}</div>}
+    {n > 0 && <div className="progress">{[1, 2, 3, 4, 5, 6, 7].map((i) => <i key={i} className={i <= n ? 'on' : ''} />)}</div>}
 
     {step === 'intro' && <section className="screen">
       <div className="col">
@@ -237,7 +239,7 @@ export default function App() {
       <p className="note filter">Je réponds aux personnes prêtes à passer à l'action et à investir dans leur projet. Si ce n'est pas encore ton cas, ne réserve pas : on perdrait du temps tous les deux.</p>
     </section>}
 
-    {step === 'who' && <section className="screen"><h2>Comment je t'appelle ?</h2><div className="card">
+    {step === 'who' && <section className="screen"><h2>Où je te réponds ?</h2><div className="card">
       <div className="field"><label htmlFor="p">Prénom</label><input id="p" value={f.first_name} onChange={(e) => set('first_name', e.target.value)} autoComplete="given-name" placeholder="Ton prénom" /></div>
       <div className="field"><label htmlFor="t">Ton numéro WhatsApp</label><div className="phone">
         <select value={f.prefix} onChange={(e) => set('prefix', e.target.value)} aria-label="Indicatif">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
@@ -247,16 +249,29 @@ export default function App() {
         {f.wa_ok === false && <div className="phone" style={{ marginTop: 8 }}>
           <select value={f.wprefix} onChange={(e) => set('wprefix', e.target.value)} aria-label="Indicatif WhatsApp">{PREFIX.map((p) => <option key={p}>{p}</option>)}</select>
           <input id="tw" type="tel" inputMode="tel" autoComplete="off" value={f.wtel} onChange={(e) => set('wtel', e.target.value)} placeholder="Ton numéro WhatsApp" aria-label="Numéro WhatsApp" /></div>}
-        <span className="muted s12">{f.wa_ok === false ? 'Indique le numéro sur lequel tu as WhatsApp : c\'est là que tu me confirmes ton appel.' : 'C\'est sur WhatsApp qu\'on se contacte, toi et moi : c\'est là que tu me confirmes ton rendez-vous et que je t\'écris ou t\'appelle. Vérifie-le bien.'}</span></div>
+        {f.wa_ok === false && <span className="muted s12">Indique le numéro sur lequel tu as WhatsApp : c'est là que tu me confirmes ton appel.</span>}</div>
       <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => { set('email', e.target.value); setMailBad(false); setErr('') }} onBlur={() => { saveLead('who'); if (f.email.trim().includes('@')) mailProblem(f.email).then((pb) => pb && setErr(pb)) }} aria-invalid={mailBad || undefined} placeholder="ton@email.com" />
         {mailFix(f.email) && <button type="button" className="mailfix" onClick={() => set('email', mailFix(f.email))}>Tu voulais dire <b>{mailFix(f.email)}</b> ? <u>Corriger</u></button>}</div>
       <div className="err">{err}</div><button className="btn" disabled={busy} onClick={next.who}>{busy ? 'Un instant…' : 'Continuer →'}</button></div></section>}
 
-    {step === 'situ' && <section className="screen"><h2>Ta situation</h2><div className="card">
-      <div className="field"><span className="lbl">Que fais-tu dans la vie ?</span><div className="chips">{SITUS.map((s) => <button key={s} className={`chip ${f.situation === s ? 'sel' : ''}`} onClick={() => { set('situation', s); saveLead('situ', { situation: s }) }}>{s}</button>)}</div></div>
-      <div className="field"><span className="lbl">Combien peux-tu investir maintenant dans ton projet ?</span><div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('situ', { capital: v }) }}>{l}</button>)}</div></div>
-      <div className="err">{err}</div><button className="btn" onClick={next.situ}>Continuer →</button></div>
+    {step === 'situ' && <section className="screen"><div className="col"><span className="eyebrow">Question 1 sur 5</span><h2>Quelle est ta situation actuelle ?</h2></div><div className="card">
+      <div className="chips col">{SITUS.map((v) => <button key={v} className={`chip ${f.situation === v ? 'sel' : ''}`} onClick={() => { set('situation', v); saveLead('situ', { situation: v }); go('exp') }}>{v}</button>)}</div></div>
       <button className="link" onClick={() => go('who')}>← Retour</button></section>}
+
+    {step === 'exp' && <section className="screen"><div className="col"><span className="eyebrow">Question 2 sur 5</span><h2>Ton expérience en e-commerce ?</h2></div><div className="card">
+      <div className="chips col">{EXPS.map((v) => <button key={v} className={`chip ${f.experience === v ? 'sel' : ''}`} onClick={() => { set('experience', v); saveLead('situ', { experience: v }); go('txt') }}>{v}</button>)}</div></div>
+      <button className="link" onClick={() => go('situ')}>← Retour</button></section>}
+
+    {step === 'txt' && <section className="screen"><div className="col"><span className="eyebrow">Merci {f.first_name.trim()}</span><h2>Qu'est-ce qui t'a bloqué jusqu'ici ?</h2></div><div className="card notes">
+      <div className="field"><label htmlFor="bl">Dis-le avec tes mots</label>
+        <textarea id="bl" rows={6} value={f.blocage} onChange={(e) => set('blocage', e.target.value)} placeholder="Ce qui te bloque, ce que tu as déjà essayé…" />
+        <div className="s12 muted" style={{ display: 'flex', justifyContent: 'space-between' }}><span>Obligatoire, à écrire toi-même</span><span>{Math.min(f.blocage.trim().length, MIN_TXT)} / min. {MIN_TXT}</span></div></div>
+      <div className="err">{err}</div><button className="btn" disabled={f.blocage.trim().length < MIN_TXT} onClick={next.txt}>Continuer →</button></div>
+      <button className="link" onClick={() => go('exp')}>← Retour</button></section>}
+
+    {step === 'cap' && <section className="screen"><div className="col"><span className="eyebrow">Question 4 sur 5</span><h2>Combien peux-tu investir maintenant dans ton projet ?</h2></div><div className="card">
+      <div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('budget', { capital: v }); go(v === 'lt500' ? 'block' : 'budget') }}>{l}</button>)}</div></div>
+      <button className="link" onClick={() => go('txt')}>← Retour</button></section>}
 
     {step === 'geo' && <section className="screen"><div className="col"><span className="eyebrow">Merci pour ton message</span><h2>Je ne peux pas encore t'accompagner depuis ton pays</h2></div><div className="card">
       <p>Mon accompagnement se règle par carte bancaire, et je ne peux pas l'ouvrir pour l'instant depuis ton pays. Ce n'est pas un jugement sur toi ni sur ton projet.</p>
@@ -266,7 +281,7 @@ export default function App() {
     {step === 'block' && <section className="screen"><h2>Ce n'est pas le bon moment</h2><div className="card">
       <p>Avec moins de 500 € disponibles, je ne peux pas t'accompagner correctement et je ne veux pas te faire perdre ton temps.</p>
       <p className="muted">Reviens dès que tu as de quoi investir, ou suis mes contenus en attendant.</p></div>
-      <button className="link" onClick={() => go('situ')}>← Modifier ma réponse</button></section>}
+      <button className="link" onClick={() => go('cap')}>← Modifier ma réponse</button></section>}
 
     {step === 'budget' && <section className="screen"><h2>Une dernière question, franche</h2><div className="card">
       <p>Tu as indiqué <b>{CAP_LBL[f.capital]}</b>. Beaucoup de personnes cochent un montant qu'elles n'ont pas encore, et on perd du temps tous les deux.</p>
@@ -274,7 +289,7 @@ export default function App() {
         {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }) }}>{l}</button>)}</div></div>
       <p className="muted s13">Sois honnête, ça m'aide à te dire la vérité.</p>
       <div className="err">{err}</div><button className="btn" onClick={next.budget}>Choisir mon créneau →</button></div>
-      <button className="link" onClick={() => go('situ')}>← Retour</button></section>}
+      <button className="link" onClick={() => go('cap')}>← Retour</button></section>}
 
     {step === 'when' && <section className="screen"><h2>À partir de quand ?</h2><div className="card">
       <p>Pas de souci. Donne-moi une <b>date précise</b> à laquelle tu pourras investir : je te recontacte directement sur WhatsApp à ce moment-là.</p>

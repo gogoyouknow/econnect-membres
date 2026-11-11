@@ -21,7 +21,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .logo .mark{width:36px;height:36px;border-radius:10px;background:#0a0a0a;border:1px solid #3a3a3e;display:grid;place-items:center;flex:none}
 .logo .mark svg{width:22px;height:22px}
 .ghost{background:none;border:1px solid var(--line);color:var(--muted);font:500 12px var(--body);padding:8px 12px;border-radius:999px;cursor:pointer}
-.progress{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.progress{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .progress i{height:4px;border-radius:4px;background:var(--line);transition:background .3s}
 .progress i.on{background:var(--gold)}
 .quotes{display:flex;flex-direction:column;gap:10px}

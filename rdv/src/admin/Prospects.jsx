@@ -325,6 +325,8 @@ export default function Prospects({ toast, focus }) {
         </ul>
         <h4>Ses réponses</h4>
         <div className="drow"><label>Situation</label><span>{open.situation || '—'}</span></div>
+        {open.experience && <div className="drow"><label>Expérience</label><span>{open.experience}</span></div>}
+        {open.blocage && <div className="drow" style={{ display: 'block' }}><label>Ce qui l'a bloqué</label><p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{open.blocage}</p></div>}
         <div className="drow"><label>Budget</label><span>{CAPL[open.capital] || '—'}{open.budget_confirmed === 'yes' ? ' · dispo maintenant' : open.budget_confirmed === 'soon' ? ' · pas avant quelques semaines' : open.budget_confirmed === 'no' ? ' · pas dispo' : ''}</span></div>
         <h4>Origine</h4>
         <div className="drow"><label>Source</label><span>{open.source || '—'}</span></div>
