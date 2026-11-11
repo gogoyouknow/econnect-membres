@@ -35,7 +35,7 @@ export default function Assistant({ onOpen }) {
   const [busy, setBusy] = useState(false)
   const [ready, setReady] = useState(null) // la clé Claude est-elle posée ?
   const [key, setKey] = useState(''); const [kerr, setKerr] = useState('')
-  const [rec, setRec] = useState(null)
+  const [rec, setRec] = useState(false)
   const end = useRef(null)
   useEffect(() => { if (open && ready === null) supabase.rpc('calio_ai_ready').then(({ data }) => setReady(data === true)).catch(() => setReady(false)) }, [open, ready])
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }) }, [msgs, busy, open])
@@ -71,15 +71,25 @@ export default function Assistant({ onOpen }) {
     if (error) return upd(i, { err: friendlyError(error) })
     upd(i, { pstate: 'done', err: null, proposal: { ...p, _id: data?.id } })
   }
-  const listen = () => {
-    if (rec) { rec.stop(); return }
-    if (!SR) return setMsgs((m) => [...m, { role: 'assistant', text: 'Le micro intégré n’est pas disponible ici. Utilise le micro de ton clavier pour dicter.', err: true }])
-    const r = new SR(); r.lang = 'fr-FR'; r.interimResults = true; r.continuous = false
-    let base = input ? input + ' ' : ''
-    r.onresult = (e) => { let t = ''; for (const x of e.results) t += x[0].transcript; setInput(base + t) }
-    r.onend = () => setRec(null); r.onerror = () => setRec(null)
-    try { r.start(); setRec(r) } catch { setRec(null) }
+  // Dictée : touche le micro pour démarrer, touche le carré pour arrêter. Elle continue d'écouter tant que tu n'as pas arrêté (même après un silence).
+  const wantRef = useRef(false); const recRef = useRef(null); const baseRef = useRef(''); const inRef = useRef('')
+  inRef.current = input
+  const stopListen = () => { wantRef.current = false; try { recRef.current?.stop() } catch { /* */ } recRef.current = null; setRec(false) }
+  const startOne = () => {
+    const r = new SR(); r.lang = 'fr-FR'; r.interimResults = true; r.continuous = true; recRef.current = r
+    r.onresult = (e) => { let t = ''; for (const x of e.results) t += x[0].transcript; setInput(baseRef.current + t) }
+    r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { stopListen(); setMsgs((m) => [...m, { role: 'assistant', text: 'Le micro est bloqué : autorise-le dans les réglages du navigateur pour dicter.', err: true }]) } }
+    r.onend = () => { if (wantRef.current) { baseRef.current = inRef.current ? inRef.current.trimEnd() + ' ' : ''; try { startOne() } catch { stopListen() } } else setRec(false) }
+    r.start()
   }
+  const listen = () => {
+    if (wantRef.current) return stopListen()
+    if (!SR) return setMsgs((m) => [...m, { role: 'assistant', text: 'Le micro intégré n’est pas disponible ici. Utilise le micro de ton clavier pour dicter.', err: true }])
+    wantRef.current = true; baseRef.current = input ? input.trimEnd() + ' ' : ''; setRec(true)
+    try { startOne() } catch { stopListen() }
+  }
+  useEffect(() => { if (!open) stopListen() }, [open])
+  useEffect(() => () => { wantRef.current = false; try { recRef.current?.stop() } catch { /* */ } }, [])
 
   return <>
     <button className="as-fab" onClick={() => setOpen(true)} aria-label="Ouvrir l’assistant" title="Assistant"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9l-4.7 1.8L12 15.5l-1.8-4.7L5.5 9l4.7-1.3z" /><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z" /></svg></button>
@@ -101,8 +111,10 @@ export default function Assistant({ onOpen }) {
         <div ref={end} />
       </div>
       {ready !== false && <form className="as-in" onSubmit={(e) => { e.preventDefault(); send() }}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={rec ? 'Je t’écoute…' : 'Écris ou dicte…'} enterKeyHint="send" />
-        <button type="button" className={`as-mic ${rec ? 'on' : ''}`} onClick={listen} aria-label="Dicter"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg></button>
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={rec ? 'Je t’écoute… touche le carré pour arrêter' : 'Écris ou dicte…'} enterKeyHint="send" />
+        <button type="button" className={`as-mic ${rec ? 'on' : ''}`} onClick={listen} aria-label={rec ? 'Arrêter la dictée' : 'Dicter'}>{rec
+          ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3" /></svg>
+          : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>}</button>
         <button type="submit" className="as-send" disabled={busy || !input.trim()} aria-label="Envoyer">↑</button></form>}
     </div>}
   </>
