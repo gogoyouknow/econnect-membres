@@ -6,6 +6,7 @@ import Leads from './Leads'
 import Prospects from './Prospects'
 import Formulaires from './Formulaires'
 import Search from './Search'
+import Assistant from './Assistant'
 const Logo = ({ s = 30 }) => <svg className="logo" viewBox="0 0 1024 1024" width={s} height={s} aria-hidden="true"><path d="M 686.6 354.8 A 235 235 0 1 0 686.6 669.2" fill="none" stroke="#fff" strokeWidth="125" strokeLinecap="round" /><circle cx="742" cy="512" r="62" fill="#6FE3A1" /></svg>
 import Dispos from './Dispos'
 import Closing from './Closing'
@@ -194,6 +195,7 @@ export default function Admin() {
       {role !== 'closer' && isAdmin && <button className={`desk-only ${tab === 'evenements' ? 'on' : ''}`} onClick={() => setTab('evenements')}><Ic d={<><path d="M4 7h16M4 12h10M4 17h7" /><circle cx="18" cy="16" r="3" /></>} />Événements</button>}
       {role !== 'closer' && <button className={tab === 'dispos' ? 'on' : ''} onClick={() => setTab('dispos')}><Ic d={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} /><span className="lg">Disponibilités</span><span className="sm">Horaires</span></button>}
     </nav>
+    {role !== 'closer' && isAdmin && <Assistant onOpen={(id) => { setFocus({ id, t: Date.now() }); setTab('prospects') }} />}
     {msg && <div className={`toast ${msg.bad ? 'bad' : ''}`}>{msg.t}</div>}
   </div>
 }
