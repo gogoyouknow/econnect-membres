@@ -80,7 +80,7 @@ function Temos({ onCta }) {
     {card(first, true)}
     <div className="tgrid">{list.map((t) => card(t))}</div>
     {!all && rest.length > 4 && <button className="link" onClick={() => setAll(true)}>Voir {rest.length - 4} autres témoignages</button>}
-    <button className="btn" onClick={onCta}>Je réserve mon appel →</button>
+    <button className="btn" onClick={onCta}>Je dépose ma candidature →</button>
     {play && <div className="tmodal" onClick={() => setPlay(null)} role="dialog" aria-modal="true" aria-label={play[1]}>
       <div className="tbox" onClick={(e) => e.stopPropagation()}>
         <button className="tclose" onClick={() => setPlay(null)} aria-label="Fermer">✕</button>
@@ -231,7 +231,7 @@ export default function App() {
         <div><span>1</span><p><b>On fait le point.</b> Où tu en es, ce qui te bloque, ce que tu veux.</p></div>
         <div><span>2</span><p><b>Je te dis ce que je ferais à ta place.</b></p></div>
         <div><span>3</span><p><b>Si je peux t'aider, on en parle.</b> Sinon, je te le dis.</p></div></div>
-        <button className="btn" onClick={() => go('who')}>Je réserve mon appel →</button>
+        <button className="btn" onClick={() => go('who')}>Je dépose ma candidature →</button>
         <p className="note c">3 questions · moins d'une minute</p></div>
       <Temos onCta={() => go('who')} />
       <p className="note filter">Je réponds aux personnes prêtes à passer à l'action et à investir dans leur projet. Si ce n'est pas encore ton cas, ne réserve pas : on perdrait du temps tous les deux.</p>
