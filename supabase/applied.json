@@ -53,5 +53,6 @@
   "0052_retire_liens_importes.sql",
   "0053_evenements_admin.sql",
   "0054_lien_bio.sql",
-  "0055_relances_auto.sql"
+  "0055_relances_auto.sql",
+  "0056_reply_to_et_zone.sql"
 ]
