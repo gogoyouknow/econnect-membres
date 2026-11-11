@@ -58,5 +58,6 @@
   "0057_relances_qualifies.sql",
   "0058_geo_trigger_definer.sql",
   "0059_parcours_experience_blocage.sql",
-  "0060_assistant.sql"
+  "0060_assistant.sql",
+  "0061_zone_pays_bloques.sql"
 ]
