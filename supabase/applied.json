@@ -62,5 +62,7 @@
   "0061_zone_pays_bloques.sql",
   "0062_invest.sql",
   "0063_sequences_email.sql",
-  "0064_gcal_ecriture.sql"
+  "0064_gcal_ecriture.sql",
+  "0065_message_je_confirme.sql",
+  "0066_delai_minimum.sql"
 ]
