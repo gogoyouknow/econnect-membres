@@ -48,7 +48,7 @@ export default function Dispos({ toast, admin }) {
     supabase.from('busy_times').select('starts_at,ends_at,title').gte('ends_at', new Date().toISOString()).then(({ data }) => setBusy((data || []).map(e => { const [dk, a] = parisKey(e.starts_at), [dk2, b] = parisKey(e.ends_at); return { dk, a: toMin(a), b: dk2 === dk ? toMin(b) : 1440 } })))
     const [h, s, b, o, sl, cd] = await Promise.all([
       supabase.from('cand_hours').select('*').order('start_time'), supabase.from('cand_settings').select('*').eq('id', 1).single(),
-      supabase.from('cand_blocked').select('day').order('day'), supabase.from('cand_overrides').select('*').order('start_time'), supabase.rpc('cand_slots'),
+      supabase.from('cand_blocked').select('day').order('day'), supabase.from('cand_overrides').select('*').order('start_time'), supabase.rpc('cand_slots', { p_delai: '0' }),
       supabase.from('candidatures').select('starts_at,status').in('status', ['reserve', 'confirme']).gte('starts_at', new Date(Date.now() - 864e5).toISOString())])
     const w = {}; DOW.forEach(([d]) => { w[d] = [] }); (h.data || []).forEach(r => w[r.weekday].push([hm(r.start_time), hm(r.end_time)]))
     const ov = {}; (o.data || []).forEach(r => { (ov[r.day] = ov[r.day] || []).push([hm(r.start_time), hm(r.end_time)]) })
@@ -105,7 +105,7 @@ export default function Dispos({ toast, admin }) {
   const waDigits = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.startsWith('00') ? d.slice(2) : d.startsWith('0') ? '33' + d.slice(1) : d }
   const saveCfg = async () => {
     if (!/^\d{10,15}$/.test(waDigits(cfg.wa_number))) return toast('Numéro WhatsApp invalide', true)
-    const { error } = await supabase.from('cand_settings').update({ slot_min: +cfg.slot_min, step_min: +cfg.step_min, notice_min: Math.round(+(cfg.notice_h ?? cfg.notice_min / 60) * 60), horizon_days: +cfg.horizon_days, release_hours: +cfg.release_hours, wa_number: waDigits(cfg.wa_number) }).eq('id', 1)
+    const { error } = await supabase.from('cand_settings').update({ slot_min: +cfg.slot_min, step_min: +cfg.step_min, notice_min: Math.round(+(cfg.notice_h ?? cfg.notice_min / 60) * 60), from_tomorrow: !!cfg.from_tomorrow, horizon_days: +cfg.horizon_days, release_hours: +cfg.release_hours, wa_number: waDigits(cfg.wa_number) }).eq('id', 1)
     if (error) return toast(friendlyError(error), true); toast('Réglages enregistrés'); load()
   }
   const toggleBlock = async () => {
@@ -175,7 +175,12 @@ export default function Dispos({ toast, admin }) {
         <div className="grid2">
           <div><label className="lq">Durée de l'appel (min)</label><input type="number" min="15" max="120" value={cfg.slot_min} onChange={e => setCfg({ ...cfg, slot_min: e.target.value })} /></div>
           <div><label className="lq">Un créneau toutes les (min)</label><input type="number" min="5" max="120" value={cfg.step_min} onChange={e => setCfg({ ...cfg, step_min: e.target.value })} /></div>
-          <div><label className="lq">Délai minimum (heures)</label><input type="number" min="0" max="72" value={cfg.notice_h ?? Math.round(cfg.notice_min / 60)} onChange={e => setCfg({ ...cfg, notice_h: e.target.value })} /></div>
+          <div style={{ gridColumn: '1 / -1' }}><label className="lq">Délai minimum avant un appel</label>
+            <select value={cfg.from_tomorrow ? 'demain' : String(cfg.notice_h ?? Math.round(cfg.notice_min / 60))} onChange={e => setCfg(e.target.value === 'demain' ? { ...cfg, from_tomorrow: true } : { ...cfg, from_tomorrow: false, notice_h: e.target.value })}>
+              {[...new Set(['2', '4', '7', '12', '24', '48', String(cfg.from_tomorrow ? 4 : (cfg.notice_h ?? Math.round(cfg.notice_min / 60)))])].sort((a, b) => a - b).map(h => <option key={h} value={h}>{h} h minimum</option>)}
+              <option value="demain">Dès demain (aucun appel le jour même)</option>
+            </select>
+            <p className="muted small" style={{ margin: '6px 0 0' }}>Pour un lien précis, ajoute à la fin de l'adresse <b>?delai=demain</b>, <b>?delai=24</b> (heures) ou <b>?delai=0</b> (tout de suite). Sans rien, c'est ce réglage qui s'applique.</p></div>
           <div><label className="lq">Réservable jusqu'à (jours à l'avance)</label><input type="number" min="1" max="60" value={cfg.horizon_days} onChange={e => setCfg({ ...cfg, horizon_days: e.target.value })} /></div>
           <div style={{ gridColumn: '1 / -1' }}><label className="lq">Ton numéro WhatsApp (celui où les candidats t'écrivent)</label><input type="tel" inputMode="tel" value={cfg.wa_number || ''} onChange={e => setCfg({ ...cfg, wa_number: e.target.value })} placeholder="07 56 84 94 21" />
             <a className="muted small" href={`https://wa.me/${waDigits(cfg.wa_number)}`} target="_blank" rel="noopener noreferrer">Tester : ouvrir WhatsApp sur ce numéro (+{waDigits(cfg.wa_number)})</a></div>

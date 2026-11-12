@@ -27,6 +27,8 @@ const INVS = ['Non, jamais', 'Oui, une fois', 'Oui, plusieurs fois']
 const TEST = (() => { try { const q = new URLSearchParams(location.search).get('test'); if (q === '1') sessionStorage.setItem('cand_test', '1'); if (q === '0') sessionStorage.removeItem('cand_test'); return sessionStorage.getItem('cand_test') === '1' } catch { return false } })()
 // Page « Attention » avant la confirmation : version B (3 gestes) pour tout le monde ; ?att=a affiche la variante « alerte » (comparaison).
 const ATT = (() => { try { const q = new URLSearchParams(location.search).get('att'); if (q === 'a' || q === 'b') sessionStorage.setItem('cand_att', q); return sessionStorage.getItem('cand_att') || 'b' } catch { return 'b' } })()
+// Délai minimum propre à ce lien : ?delai=demain, ?delai=24 (heures) ou ?delai=0. Sans paramètre : le réglage de Calio (Dispos → Réglages des appels).
+const DELAI = (() => { try { const q = (new URLSearchParams(location.search).get('delai') || '').toLowerCase(); if (q === 'demain' || /^\d{1,3}$/.test(q)) sessionStorage.setItem('cand_delai', q); return sessionStorage.getItem('cand_delai') || '' } catch { return '' } })()
 const NEW = true // le nouveau parcours est validé : actif pour tout le monde (?test=1 reste un mode démo sans enregistrement)
 const rpcW = (n, a) => (TEST ? Promise.resolve(null) : rpc(n, a))
 const COUNTRIES = [['+33', '🇫🇷', 'France'], ['+32', '🇧🇪', 'Belgique'], ['+41', '🇨🇭', 'Suisse'], ['+352', '🇱🇺', 'Luxembourg'], ['+1', '🇨🇦', 'Canada / États-Unis'], ['+212', '🇲🇦', 'Maroc'], ['+213', '🇩🇿', 'Algérie'], ['+216', '🇹🇳', 'Tunisie'], ['+351', '🇵🇹', 'Portugal'], ['+40', '🇷🇴', 'Roumanie'],
@@ -182,7 +184,7 @@ export default function App() {
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
   useEffect(() => { if (configured && EVENT) rpc('cand_event_info', { p_slug: EVENT }).then((e) => e?.source && setEvSrc(e.source)).catch(() => {}) }, [])
-  const loadSlots = () => rpc('cand_slots').then((s) => setSlots(s || [])).catch(() => setSlots([]))
+  const loadSlots = () => rpc('cand_slots', DELAI ? { p_delai: DELAI } : {}).then((s) => setSlots(s || [])).catch(() => setSlots([]))
   useEffect(() => { if (step === 'slot') { loadSlots(); if (!resched) saveLead('slot') } }, [step])
   const days = useMemo(() => { const m = new Map(); (slots || []).forEach((s) => { const k = dayKey(s); if (!m.has(k)) m.set(k, []); m.get(k).push(s) }); return [...m.entries()] }, [slots])
   useEffect(() => { if (days.length && !days.find((d) => d[0] === day)) setDay(days[0][0]) }, [days])
@@ -224,10 +226,10 @@ export default function App() {
     try {
       const tel_ = (() => { const [pf, d] = effTel(f); return pf + d })()
       if (resched) {
-        const r = await rpcW('cand_resched', { p: { email: f.email.trim().toLowerCase(), phone: tel_, starts_at: pick } })
+        const r = await rpcW('cand_resched', { p: { delai: DELAI, email: f.email.trim().toLowerCase(), phone: tel_, starts_at: pick } })
         setDone({ ...r, moved: true }); setResched(false); go('done'); setBusy(false); return
       }
-      const r = TEST ? fakeBook() : await rpc('cand_book', { p: { closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
+      const r = TEST ? fakeBook() : await rpc('cand_book', { p: { delai: DELAI, closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
       setDone(r); setWaOpened(false); setRelEnd(Date.now() + (r.release_hours || cfg.release_hours || 4) * 3600000); go(ATT && r.status !== 'confirme' ? 'attention' : 'done')
     } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
     setBusy(false)

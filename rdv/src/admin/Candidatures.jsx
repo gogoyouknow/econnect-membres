@@ -53,7 +53,7 @@ export default function Candidatures({ toast, tab: main , closer }) {
   const loadQs = () => supabase.from('cand_questions').select('candidature_id,name,body,updated_at').not('candidature_id', 'is', null).then(({ data }) => { const m = {}; (data || []).forEach((q) => { if (q.body && q.body.trim()) m[q.candidature_id] = q }); setQs(m) })
   useEffect(() => { if (edit === null && !rep) return; const b = document.body, h = document.documentElement; const o = [b.style.overflow, h.style.overflow]; b.style.overflow = h.style.overflow = 'hidden'; return () => { b.style.overflow = o[0]; h.style.overflow = o[1] } }, [edit !== null || !!rep])
   const openRep = (c) => setRep({ c, slots: null, day: '', pick: '', custom: '', busy: false, done: '' })
-  useEffect(() => { if (!rep || rep.slots) return; supabase.rpc('cand_slots').then(({ data, error }) => setRep((r) => r && ({ ...r, slots: data || [], serr: error ? friendlyError(error) : '', day: r.day || (data && data[0] ? dayKey(data[0]) : '') }))) }, [rep && rep.c.id])
+  useEffect(() => { if (!rep || rep.slots) return; supabase.rpc('cand_slots', { p_delai: '0' }).then(({ data, error }) => setRep((r) => r && ({ ...r, slots: data || [], serr: error ? friendlyError(error) : '', day: r.day || (data && data[0] ? dayKey(data[0]) : '') }))) }, [rep && rep.c.id])
   const doRep = async () => {
     const iso = rep.pick || (rep.custom ? parisISO(rep.custom) : ''); if (!iso) return
     if (new Date(iso).getTime() < Date.now() - 60000) return toast('Choisis un horaire à venir', true)

@@ -9,7 +9,7 @@ export default function PlaceCall({ p, onClose, onDone, toast }) {
   const [closers, setClosers] = useState([]); const [closer, setCloser] = useState('clement')
   const [min, setMin] = useState(45); const [busy, setBusy] = useState(false); const [done, setDone] = useState('')
   useEffect(() => {
-    supabase.rpc('cand_slots').then(({ data }) => { setSlots(data || []); if (data && data[0]) setDay(dayKey(data[0])) }).catch(() => setSlots([]))
+    supabase.rpc('cand_slots', { p_delai: '0' }).then(({ data }) => { setSlots(data || []); if (data && data[0]) setDay(dayKey(data[0])) }).catch(() => setSlots([]))
     supabase.from('cand_closers').select('key,name,active').order('key').then(({ data }) => { const L = (data || []).filter((c) => c.active !== false); setClosers(L); const w = String(p.closer || '').trim().toLowerCase(); const m = L.find((c) => c.key === w || String(c.name).toLowerCase() === w); if (m) setCloser(m.key) })
     supabase.from('cand_settings').select('slot_min').eq('id', 1).maybeSingle().then(({ data }) => data?.slot_min && setMin(data.slot_min))
   }, [])
