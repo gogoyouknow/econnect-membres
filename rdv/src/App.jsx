@@ -150,6 +150,7 @@ export default function App() {
   useEffect(() => { loadPV().then(() => setPvReady(true)) }, [])
   // Une fois la question du budget atteinte, on ne peut plus revenir en arrière (ni bouton « Retour », ni retour du téléphone) pour changer ses réponses.
   const stepRef = useRef('intro'); const locked = useRef(false)
+  const [blockWhy, setBlockWhy] = useState('autre')
   const EARLY = ['intro', 'who', 'situ', 'exp', 'txt', 'inv', 'cap', 'budget']
   const go = (s) => { if (NEW && (s === 'budget' || s === 'block')) locked.current = true; if (locked.current && EARLY.includes(s) && s !== stepRef.current && s !== 'budget') return; stepRef.current = s; setErr(''); setStep(s); window.scrollTo(0, 0); try { history.pushState({ s }, '') } catch { /* */ } }
   // Le bouton « retour » du téléphone revient à l'étape précédente au lieu de quitter la page (et de renvoyer la personne sur TikTok).
@@ -203,6 +204,7 @@ export default function App() {
       setBusy(true)
       { const pb = await mailProblem(f.email); if (pb) { setBusy(false); setMailBad(true); return setErr(pb) } }
       try { const m = TEST ? null : await rpc('cand_mine', { p: { email: f.email.trim().toLowerCase(), phone: effTel({ ...f, prefix: pfx, tel: digits }).join('') } }); if (m && m.found) { setBusy(false); setMine(m); return go('mine') } } catch { /* en cas de souci réseau on continue : le serveur refusera le doublon */ }
+      try { const b = TEST ? null : await rpc('cand_blocked', { p: { email: f.email.trim().toLowerCase(), phone: effTel({ ...f, prefix: pfx, tel: digits }).join(''), first_name: f.first_name.trim() } }); if (b?.blocked) { setBusy(false); setBlockWhy(b.reason || 'autre'); return go('blocked') } } catch { /* réseau : on continue, la réservation est aussi contrôlée côté serveur */ }
       setBusy(false); go('situ')
     },
     txt() {
@@ -230,6 +232,7 @@ export default function App() {
         setDone({ ...r, moved: true }); setResched(false); go('done'); setBusy(false); return
       }
       const r = TEST ? fakeBook() : await rpc('cand_book', { p: { delai: DELAI, closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
+      if (r?.blocked) { setBlockWhy(r.reason || 'autre'); setBusy(false); return go('blocked') }
       setDone(r); setWaOpened(false); setRelEnd(Date.now() + (r.release_hours || cfg.release_hours || 4) * 3600000); go(ATT && r.status !== 'confirme' ? 'attention' : 'done')
     } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
     setBusy(false)
@@ -336,6 +339,11 @@ export default function App() {
       <p>Mon accompagnement se règle par carte bancaire, et je ne peux pas l'ouvrir pour l'instant depuis ton pays. Ce n'est pas un jugement sur toi ni sur ton projet.</p>
       <p className="muted">En attendant, continue de suivre mes contenus.</p></div>
       <button className="link" onClick={() => go('who')}>← Modifier mon numéro</button></section>}
+
+    {step === 'blocked' && <section className="screen"><div className="col"><span className="eyebrow">Accès fermé</span><h2>Je ne peux pas te proposer d'appel</h2></div><div className="card">
+      <p>{blockWhy === 'no_show' ? "Tu avais réservé un appel avec moi et tu ne t'es pas présenté, sans me prévenir." : blockWhy === 'silence' ? "Tu avais réservé un appel avec moi, puis tu n'as plus donné aucune nouvelle malgré mes messages." : "Ton comportement envers moi et mon équipe ne correspond pas à ce que j'attends des personnes que j'accompagne."}</p>
+      <p><b>Ce blocage est volontaire.</b> Ce n'est pas une erreur technique : mon temps et celui de mon équipe comptent, et le respect de l'engagement est la base d'un accompagnement.</p>
+      <p className="muted">Si tu penses qu'il y a eu une erreur, tu peux m'écrire en message privé sur TikTok (@theambitious.man).</p></div></section>}
 
     {step === 'block' && <section className="screen"><h2>Ce n'est pas le bon moment</h2><div className="card">
       <p>Avec moins de 500 € disponibles, je ne peux pas t'accompagner correctement et je ne veux pas te faire perdre ton temps.</p>

@@ -1,6 +1,7 @@
 import LoadErr from './LoadErr'
 import { usePS } from './persist'
 import Portal from './Portal'
+import { BlockModal } from './Blocages'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import { openWA, fillMsg, waWeb, NURTURE_MSG, NURTURE_URL } from './whatsapp'
@@ -104,7 +105,7 @@ export default function Prospects({ toast, focus }) {
   const [cols, setCols] = useState(lsGet); const [colMenu, setColMenu] = useState(false)
   const [sel, setSel] = useState(() => new Set()); const [openId, setOpenId] = usePS('pr_open', null)
   const [oq, setOq] = useState(null)
-  const [add, setAdd] = useState(false); const [placing, setPlacing] = useState(null); const [imp, setImp] = useState(null); const [tagIn, setTagIn] = useState('')
+  const [add, setAdd] = useState(false); const [placing, setPlacing] = useState(null); const [blkP, setBlkP] = useState(null); const [imp, setImp] = useState(null); const [tagIn, setTagIn] = useState('')
   const file = useRef(null)
   useEffect(() => { if (!(add || imp)) return; const b = document.body, h = document.documentElement; const o = [b.style.overflow, h.style.overflow]; b.style.overflow = h.style.overflow = 'hidden'; return () => { b.style.overflow = o[0]; h.style.overflow = o[1] } }, [!!(add || imp)])
 
@@ -340,7 +341,7 @@ export default function Prospects({ toast, focus }) {
         <div className="drow"><label>Source</label><span>{open.source || '—'}</span></div>
         {Object.entries(open.utm || {}).map(([k, v]) => <div className="drow" key={k}><label>{k}</label><span>{v}</span></div>)}
         {open.referrer && <div className="drow"><label>Venait de</label><span>{open.referrer}</span></div>}
-        <div className="acts" style={{ marginTop: 18 }}><button className="btn danger sm" onClick={() => del(open)}>Supprimer ce prospect</button></div>
+        <div className="acts" style={{ marginTop: 18 }}><button className="btn ghost sm" onClick={() => setBlkP(open)}>🚫 Bloquer ce prospect</button><button className="btn danger sm" onClick={() => del(open)}>Supprimer ce prospect</button></div>
       </aside></Portal>}
 
     {add && <Portal><div className="pr-modal" onClick={() => setAdd(false)}><form className="pr-mb" onClick={(e) => e.stopPropagation()} onSubmit={doAdd}>
@@ -351,6 +352,7 @@ export default function Prospects({ toast, focus }) {
       <input name="source" placeholder="Source (TikTok, Instagram, bouche-à-oreille…)" style={{ marginTop: 10 }} />
       <div className="acts"><button className="btn" value="add">Ajouter</button><button className="btn" value="call">Ajouter et placer un appel</button><button type="button" className="btn ghost" onClick={() => setAdd(false)}>Annuler</button></div></form></div></Portal>}
 
+    {blkP && <BlockModal who={{ name: [blkP.first_name, blkP.last_name].filter(Boolean).join(' '), email: blkP.email, phone: blkP.phone || blkP.phone_raw, lead_id: blkP.id }} toast={toast} onClose={() => setBlkP(null)} onDone={load} />}
     {placing && <PlaceCall p={placing} toast={toast} onClose={() => setPlacing(null)} onDone={load} />}
 
     {imp && <Portal><div className="pr-modal" onClick={() => !imp.busy && setImp(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>

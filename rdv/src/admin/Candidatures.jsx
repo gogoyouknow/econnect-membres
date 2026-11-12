@@ -3,6 +3,7 @@ import { usePS } from './persist'
 import { useEffect, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import Portal from './Portal'
+import { BlockModal } from './Blocages'
 import { closerName, useCloserNames } from './closerNames'
 import { ToSend, ConfSeqEditor } from './ConfSeq'
 import { OutcomeChips } from './Closing'
@@ -48,6 +49,7 @@ export default function Candidatures({ toast, tab: main , closer }) {
   const [rows, setRows] = useState([]); const [tab, setTab] = usePS('ca_tab', 'avenir'); const [open, setOpen] = usePS('ca_open', null)
   const [tpl, setTpl] = useState(DEFAULT_MSG); const [edit, setEdit] = usePS('ca_edit', null); const [qs, setQs] = useState({}); const [ev, setEv] = useState({}); const [rep, setRep] = useState(null)
   const [lerr, setLerr] = useState('')
+  const [blk, setBlk] = useState(null)
   const load = () => supabase.from('candidatures').select('*').order('starts_at', { ascending: true }).limit(500).then(({ data, error }) => { if (error) return setLerr(friendlyError(error)); setLerr(''); setRows(data || []) }).catch((e) => setLerr(friendlyError(e)))
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   const loadQs = () => supabase.from('cand_questions').select('candidature_id,name,body,updated_at').not('candidature_id', 'is', null).then(({ data }) => { const m = {}; (data || []).forEach((q) => { if (q.body && q.body.trim()) m[q.candidature_id] = q }); setQs(m) })
@@ -133,6 +135,7 @@ export default function Candidatures({ toast, tab: main , closer }) {
                 <button className="btn ghost sm" onClick={() => confirm('Annuler et libérer ce créneau ?') && upd(c, { status: 'annule' })}>Annuler</button></>}
               {c.status === 'annule' && <button className="btn ghost sm" onClick={() => upd(c, { status: 'reserve' })}>Rétablir</button>}
               {['absent', 'annule'].includes(c.status) && <button className="btn ghost sm" onClick={() => openRep(c)}>Replanifier</button>}
+              {!closer && <button className="btn ghost sm" onClick={() => setBlk(c)}>🚫 Bloquer</button>}
             </div>
             <textarea rows={2} defaultValue={c.note} placeholder="Note (objection, suite à donner…)" onBlur={e => e.target.value !== c.note && upd(c, { note: e.target.value })} />
           </div>}
@@ -164,6 +167,7 @@ export default function Candidatures({ toast, tab: main , closer }) {
         <div className="acts"><button className="btn" disabled={rep.busy || !(rep.pick || rep.custom)} onClick={doRep}>{rep.busy ? 'Déplacement…' : "Déplacer l'appel"}</button><button className="btn ghost" onClick={() => setRep(null)}>Annuler</button></div>
       </>}
     </div></div></Portal>}
+    {blk && <BlockModal who={{ name: blk.first_name, email: blk.email, phone: blk.phone, cand_id: blk.id }} toast={toast} onClose={() => setBlk(null)} onDone={load} />}
     {edit !== null && <Portal><div className="pr-modal" onClick={() => setEdit(null)}><div className="pr-mb" onClick={(e) => e.stopPropagation()}>
       <h3>Message WhatsApp prérempli</h3>
       <p className="muted" style={{ fontSize: 13 }}>S'ouvre dans WhatsApp Business quand tu touches le bouton. Tu peux utiliser <b>{'{prenom}'}</b> <b>{'{jour}'}</b> <b>{'{heure}'}</b> et <b>{'{lien}'}</b> (la page Découvre).</p>
