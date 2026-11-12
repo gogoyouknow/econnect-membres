@@ -64,5 +64,6 @@
   "0063_sequences_email.sql",
   "0064_gcal_ecriture.sql",
   "0065_message_je_confirme.sql",
-  "0066_delai_minimum.sql"
+  "0066_delai_minimum.sql",
+  "0067_closer_compte_existant.sql"
 ]
