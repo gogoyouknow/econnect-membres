@@ -147,3 +147,18 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;text-align:
 .screen.last .recap b{font-size:16px}
 .phone{grid-template-columns:auto 1fr}
 .phone select{width:auto;min-width:0;padding:0 24px 0 10px;font-size:15px;font-weight:600;letter-spacing:-.01em;-webkit-appearance:none;appearance:none;background:var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%239d9da6' stroke-width='1.6'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 9px center}
+
+/* Page « Attention » (avant la confirmation) */
+.att .attbox{background:rgba(255,122,107,.12);border:2px solid var(--warn);border-radius:14px;padding:12px 14px;font-size:15px;font-weight:700;line-height:1.35;text-align:center}
+.att .attbox em{font-style:normal;color:var(--warn)}
+.att .bubble{align-self:flex-end;background:#075e54;border-radius:12px 12px 2px 12px;padding:10px 12px;font-size:14px;line-height:1.4;max-width:94%}
+.att .bubble small{display:block;text-align:right;font-size:11px;color:#9fd8c8;margin-top:3px}
+.att .tri{display:flex;flex-direction:column;gap:8px}
+.att .tri div{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:15px;line-height:1.3}
+.att .tri i{flex:none;width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--gold-ink);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:14px}
+.att .tri div.hot{border-color:#25d366}
+.att .tri div.hot i{background:#25d366;color:#04210f}
+.att .timer{display:block;text-align:center}
+.att .btn.wa{font-size:15px;padding-inline:8px}
+.att .timer b{color:var(--gold);font-variant-numeric:tabular-nums}
+.attban{background:var(--gold-soft);border:1px solid var(--gold);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4;text-align:center}

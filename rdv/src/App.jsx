@@ -25,6 +25,8 @@ const MIN_TXT = 40
 const INVS = ['Non, jamais', 'Oui, une fois', 'Oui, plusieurs fois']
 // Lien de test (?test=1) : nouveau parcours, mais RIEN n'est enregistré (ni fiche, ni rendez-vous, ni email).
 const TEST = (() => { try { const q = new URLSearchParams(location.search).get('test'); if (q === '1') sessionStorage.setItem('cand_test', '1'); if (q === '0') sessionStorage.removeItem('cand_test'); return sessionStorage.getItem('cand_test') === '1' } catch { return false } })()
+// Page « Attention » avant la confirmation : visible seulement avec ?att=a ou ?att=b (liens de test), pas encore pour les vrais prospects.
+const ATT = (() => { try { const q = new URLSearchParams(location.search).get('att'); if (q === 'a' || q === 'b') sessionStorage.setItem('cand_att', q); if (q === '0') sessionStorage.removeItem('cand_att'); return sessionStorage.getItem('cand_att') || '' } catch { return '' } })()
 const NEW = true // le nouveau parcours est validé : actif pour tout le monde (?test=1 reste un mode démo sans enregistrement)
 const rpcW = (n, a) => (TEST ? Promise.resolve(null) : rpc(n, a))
 const COUNTRIES = [['+33', '🇫🇷', 'France'], ['+32', '🇧🇪', 'Belgique'], ['+41', '🇨🇭', 'Suisse'], ['+352', '🇱🇺', 'Luxembourg'], ['+1', '🇨🇦', 'Canada / États-Unis'], ['+212', '🇲🇦', 'Maroc'], ['+213', '🇩🇿', 'Algérie'], ['+216', '🇹🇳', 'Tunisie'], ['+351', '🇵🇹', 'Portugal'], ['+40', '🇷🇴', 'Roumanie'],
@@ -126,6 +128,10 @@ export default function App() {
   const [pick, setPick] = useState('')
   const [busy, setBusy] = useState(false); const [mailBad, setMailBad] = useState(false)
   const [done, setDone] = useState(null)
+  const [waOpened, setWaOpened] = useState(false); const [relEnd, setRelEnd] = useState(0); const [tick, setTick] = useState(0)
+  useEffect(() => { if (step !== 'attention') return; const t = setInterval(() => setTick((x) => x + 1), 20000); return () => clearInterval(t) }, [step])
+  const [canGo, setCanGo] = useState(false)
+  useEffect(() => { if (step !== 'attention') return; setCanGo(false); const t = setTimeout(() => setCanGo(true), 25000); return () => clearTimeout(t) }, [step])
   const [mine, setMine] = useState(null); const [resched, setResched] = useState(false)
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
   // Dès qu'on tape « +229… » ou « 0033… », l'indicatif (et son drapeau) se règle tout seul.
@@ -148,7 +154,7 @@ export default function App() {
   useEffect(() => {
     const pop = (e) => {
       const t = (e.state && e.state.s) || 'intro'
-      if (stepRef.current === 'done' || (locked.current && EARLY.includes(t) && t !== stepRef.current)) { try { history.pushState({ s: stepRef.current }, '') } catch { /* */ } return }
+      if (stepRef.current === 'done' || stepRef.current === 'attention' || (locked.current && EARLY.includes(t) && t !== stepRef.current)) { try { history.pushState({ s: stepRef.current }, '') } catch { /* */ } return }
       stepRef.current = t; setErr(''); setStep(t); window.scrollTo(0, 0)
     }
     window.addEventListener('popstate', pop); return () => window.removeEventListener('popstate', pop)
@@ -222,7 +228,7 @@ export default function App() {
         setDone({ ...r, moved: true }); setResched(false); go('done'); setBusy(false); return
       }
       const r = TEST ? fakeBook() : await rpc('cand_book', { p: { closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
-      setDone(r); go('done')
+      setDone(r); setWaOpened(false); setRelEnd(Date.now() + (r.release_hours || cfg.release_hours || 4) * 3600000); go(ATT && r.status !== 'confirme' ? 'attention' : 'done')
     } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
     setBusy(false)
   }
@@ -230,10 +236,10 @@ export default function App() {
   const bk = done || mine
   const cn = bk?.closer_name || CLOSER_NAME
   const waNum = bk?.wa || (CLOSER === 'amandine' ? WA_DEF : cfg.wa)
-  const waMsg = bk ? `Salut ${cn}, c’est ${(bk.first_name || f.first_name).trim()}. Je viens de ${done?.moved ? 'déplacer' : 'réserver'} mon appel pour ${bk.when}.` : ''
+  const waMsg = bk ? `Salut ${cn}, c’est ${(bk.first_name || f.first_name).trim()}. ${ATT && !done?.moved ? `Je confirme mon appel du ${bk.when}.` : `Je viens de ${done?.moved ? 'déplacer' : 'réserver'} mon appel pour ${bk.when}.`}` : ''
   const waHref = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`
-  const copy = () => { try { navigator.clipboard.writeText('+' + waNum) } catch {} }
-  const waClick = (e) => { openChat(e, waNum, waMsg, waHref); try { rpcW('cand_wa_click', { p: { email: f.email.trim().toLowerCase(), phone: effTel(f).join('') } }).catch(() => {}) } catch { /* */ } }
+  const copy = () => { setCanGo(true); try { navigator.clipboard.writeText('+' + waNum) } catch {} }
+  const waClick = (e) => { setWaOpened(true); setCanGo(true); openChat(e, waNum, waMsg, waHref); try { rpcW('cand_wa_click', { p: { email: f.email.trim().toLowerCase(), phone: effTel(f).join('') } }).catch(() => {}) } catch { /* */ } }
   const cur = days.find((d) => d[0] === day)
   const relH = bk?.release_hours || cfg.release_hours
   const confirmBtn = () => <div className="card confirm"><p><b>Tu n'as pas encore envoyé ton message ?</b></p><p className="muted s13">C'est la seule chose qui confirme ton créneau.</p>
@@ -378,7 +384,24 @@ export default function App() {
       {prepVideo()}
       {mine.status !== 'confirme' && confirmBtn()}</section>}
 
+    {step === 'attention' && done && (() => {
+      const left = Math.max(0, relEnd - Date.now()); void tick; const hh = Math.floor(left / 3600000), mm = Math.floor((left % 3600000) / 60000)
+      const A = ATT === 'a'
+      return <section className="screen last att">
+        <div className="col"><span className="eyebrow">{A ? 'Étape 1 sur 2 faite ✓' : 'Plus qu\u2019un message'}</span>
+          <h2>{A ? 'Attention. Ton appel n\u2019est pas encore confirmé' : 'Ton appel sera confirmé quand tu m\u2019auras écrit'}</h2></div>
+        <div className="recap"><span className="muted s12">Créneau réservé</span><b>{done.when.replace(' à ', ' · ')}</b></div>
+        {A ? <div className="attbox">Pour confirmer ton appel, tu dois m’envoyer un message. <em>Sans message, ton appel est annulé.</em></div>
+          : <div className="tri"><div className="hot"><i>1</i><span>Appuie sur le bouton vert</span></div><div className="hot"><i>2</i><span><b>Appuie sur la flèche d’envoi ➤</b> dans WhatsApp</span></div><div><i>3</i><span>Je te réponds : ton appel est confirmé</span></div></div>}
+        {A && <div className="bubble">{waMsg}<small>Message prêt ✓</small></div>}
+        <a className="btn wa" href={waHref} target="_blank" rel="noopener noreferrer" onClick={waClick}>{A ? 'J\u2019ENVOIE MON MESSAGE SUR WHATSAPP' : 'OUVRIR WHATSAPP'}</a>
+        <p className="note timer">Ton créneau est libéré dans <b>{hh} h {String(mm).padStart(2, '0')}</b> si tu n’envoies rien.</p>
+        {canGo ? <button className="btn ghost" onClick={() => go('done')}>{waOpened ? 'Message envoyé → continuer' : 'Continuer'}</button> : <div className="copyrow">Le bouton ne s’ouvre pas ? Écris-moi au <code>+{waNum}</code> <button className="ghost" onClick={copy}>Copier</button></div>}
+      </section>
+    })()}
+
     {step === 'done' && done && (NEW && done.status !== 'confirme' && !done.moved ? <section className="screen last">
+      {ATT && waOpened && <div className="attban">✅ WhatsApp s’est ouvert. <b>Vérifie que ton message est bien parti</b> (une coche à côté du message).</div>}
       <div className="col"><span className="eyebrow">Étape 1 sur 2 faite ✓</span>
         <h2>Dernière étape. Écris-moi sur WhatsApp</h2></div>
       <div className="recap"><span className="muted s12">Créneau réservé</span><b>{done.when.replace(' à ', ' · ')}</b></div>
