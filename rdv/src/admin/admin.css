@@ -574,8 +574,8 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .as-btn{flex:1;border:0;border-radius:12px;padding:12px 8px;background:#5ccf7a;color:#06220f;font-weight:700;font-size:13px;font-family:inherit;cursor:pointer}.adm .as-wrap .as-btn.ghost{background:transparent;color:#f5f5f2;border:1px solid #2c2c30}.adm .as-btn:disabled{opacity:.4}
 .adm .as-chip{margin-left:8px;border:1px solid #5ccf7a;color:#5ccf7a;background:rgba(92,207,122,.08);border-radius:999px;padding:6px 10px;font-weight:600;font-size:12px;font-family:inherit;cursor:pointer}
 .adm .as-err{color:#FF8A7D;font-size:12.5px;margin:0}
-.adm .as-in{display:flex;gap:8px;align-items:center;padding:10px 12px max(12px,env(safe-area-inset-bottom));border-top:1px solid #2c2c30}
-.adm .as-in input{flex:1;min-width:0;background:#151517;border:1px solid #2c2c30;color:#f5f5f2;border-radius:22px;padding:12px 14px;font:inherit;font-size:16px;outline:none}
+.adm .as-in{display:flex;gap:8px;align-items:flex-end;padding:10px 12px max(12px,env(safe-area-inset-bottom));border-top:1px solid #2c2c30}
+.adm .as-in textarea{flex:1;min-width:0;background:#151517;border:1px solid #2c2c30;color:#f5f5f2;border-radius:20px;padding:11px 14px;font:inherit;font-size:16px;line-height:1.4;outline:none;resize:none;overflow-y:auto;max-height:190px;display:block}
 .adm .as-mic,.adm .as-send{width:42px;height:42px;border-radius:50%;border:1px solid #2c2c30;background:#1e1e21;color:#f5f5f2;display:grid;place-items:center;cursor:pointer;flex:none;font-weight:800}
 .adm .as-send{background:#5ccf7a;border:0;color:#06220f}.adm .as-send:disabled{opacity:.4}
 .adm .as-mic.on{background:#5ccf7a;color:#06220f;animation:aspulse 1.2s infinite}

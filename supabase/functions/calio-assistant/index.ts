@@ -33,7 +33,20 @@ const TOOLS = [
     input_schema: { type: 'object', properties: { jours: { type: 'integer', description: 'défaut 7' } } } },
   { name: 'proposer_contact', description: "Prépare la création d'un contact à partir d'infos données par l'utilisateur. N'écrit RIEN : affiche une fiche que l'utilisateur doit confirmer. Exige un prénom et au moins un numéro ou un email.",
     input_schema: { type: 'object', properties: { first_name: { type: 'string' }, last_name: { type: 'string' }, phone: { type: 'string' }, email: { type: 'string' }, situation: { type: 'string', enum: ['Salarié', 'Étudiant', 'Entrepreneur', 'Sans activité'] }, experience: { type: 'string', enum: ['Jamais vendu en ligne', 'Quelques ventes', 'Boutique active'] }, capital: { type: 'string', enum: ['lt500', '500-1000', '1000-3000', 'gt3000'] }, source: { type: 'string' }, note: { type: 'string' } }, required: ['first_name'] } },
+  { name: 'proposer_rdv', description: "Prépare la prise d'un rendez-vous (appel) pour un prospect, à la date et l'heure demandées, MÊME si ce créneau n'est pas dans les disponibilités : le rendez-vous est posé quand même et le créneau s'ouvre de fait. N'écrit RIEN : affiche une carte que Clément confirme d'un tap. Donne la date en AAAA-MM-JJ et l'heure en HH:MM (heure de Paris), calculées à partir de la date du jour.",
+    input_schema: { type: 'object', properties: { first_name: { type: 'string', description: 'prénom du prospect' }, texte: { type: 'string', description: 'nom, téléphone ou email pour retrouver une fiche existante' }, phone: { type: 'string' }, email: { type: 'string' }, date: { type: 'string', description: 'AAAA-MM-JJ' }, heure: { type: 'string', description: 'HH:MM, 24h, heure de Paris' }, closer: { type: 'string', description: 'qui prend l\'appel (clement par défaut)' }, minutes: { type: 'number' } }, required: ['date', 'heure'] } },
 ]
+
+// 'AAAA-MM-JJ' + 'HH:MM' (heure de Paris) -> instant ISO UTC, en tenant compte de l'heure d'été
+const parisToISO = (d: string, t: string): string | null => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d), h = /^(\d{1,2})[:h](\d{2})?$/.exec(t.trim())
+  if (!m || !h) return null
+  const utc = Date.UTC(+m[1], +m[2] - 1, +m[3], +h[1], +(h[2] ?? 0))
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Paris', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }).formatToParts(new Date(utc))
+  const g = (k: string) => +(parts.find((x) => x.type === k)?.value ?? 0)
+  const asParis = Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute'))
+  return new Date(utc - (asParis - utc)).toISOString()
+}
 
 async function runTool(name: string, a: Record<string, unknown>, proposals: Record<string, unknown>[]): Promise<unknown> {
   if (name === 'chercher_prospects') {
@@ -73,6 +86,31 @@ async function runTool(name: string, a: Record<string, unknown>, proposals: Reco
     proposals.push(p)
     return { ok: true, statut: 'fiche affichée à l’utilisateur, EN ATTENTE de sa confirmation (rien n’est encore créé)' }
   }
+  if (name === 'proposer_rdv') {
+    const iso = parisToISO(String(a.date ?? ''), String(a.heure ?? ''))
+    if (!iso) return { erreur: 'date ou heure invalide : demande-la à l’utilisateur (AAAA-MM-JJ et HH:MM)' }
+    if (new Date(iso).getTime() < Date.now() - 60000) return { erreur: 'ce moment est déjà passé : redemande la date' }
+    let first = String(a.first_name ?? '').trim(), phone = String(a.phone ?? '').trim(), email = String(a.email ?? '').trim()
+    let extra: Record<string, unknown> = {}, trouve: unknown = null
+    const t = clean(a.texte || a.first_name)
+    if (t) {
+      const rows = await sel(`prospects_v?select=first_name,last_name,phone,email,situation,capital,budget_confirmed,stage&or=(first_name.ilike.*${t}*,last_name.ilike.*${t}*,email.ilike.*${t}*,phone.ilike.*${t.replace(/\s/g, '')}*)&order=created_at.desc&limit=4`)
+      if (rows.length > 1 && !phone && !email) return { erreur: 'plusieurs prospects correspondent, demande lequel (nom complet, numéro ou email)', candidats: rows.map((r: Record<string, string>) => [r.first_name, r.last_name].filter(Boolean).join(' ')) }
+      if (rows.length === 1) { const r = rows[0]; trouve = [r.first_name, r.last_name].filter(Boolean).join(' '); first = first || r.first_name; phone = phone || r.phone || ''; email = email || r.email || ''; extra = { situation: r.situation ?? null, capital: r.capital ?? null, budget_confirmed: r.budget_confirmed ?? null } }
+    }
+    if (!first) return { erreur: 'prénom manquant : demande-le à l’utilisateur' }
+    if (!phone && !email) return { erreur: 'aucune fiche trouvée et pas de numéro ni d’email : demande-les à l’utilisateur' }
+    const cl = await sel('cand_closers?select=key,name,active')
+    const want = clean(a.closer || 'clement').toLowerCase()
+    const c = cl.find((x: Record<string, string>) => x.key === want || String(x.name).toLowerCase() === want) ?? cl.find((x: Record<string, string>) => x.key === 'clement')
+    if (!c) return { erreur: 'closer introuvable' }
+    const set = await sel('cand_settings?select=slot_min&id=eq.1')
+    const minutes = Math.min(Math.max(Number(a.minutes) || Number(set[0]?.slot_min) || 45, 10), 180)
+    const pris = await sel(`candidatures?select=first_name&starts_at=eq.${encodeURIComponent(iso)}&closer=eq.${c.key}&status=neq.annule&limit=1`)
+    if (pris.length) return { erreur: `ce créneau est déjà pris par ${pris[0].first_name} avec ${c.name} : propose une autre heure` }
+    proposals.push({ kind: 'rdv', first_name: first, phone, email, starts_at: iso, minutes, closer: c.key, closer_name: c.name, ...extra })
+    return { ok: true, fiche_existante: trouve, statut: 'carte affichée à l’utilisateur, EN ATTENTE de sa confirmation (rien n’est encore réservé)', quand: hm(iso), avec: c.name }
+  }
   return { erreur: 'outil inconnu' }
 }
 
@@ -82,6 +120,7 @@ Tu réponds en français, court et direct, comme un collègue : une ou deux phra
 Tu ne réponds QUE à partir des outils : ne devine jamais un chiffre ni un prospect. Si l'outil ne renvoie rien, dis-le simplement.
 Définitions : « qualifié » = a indiqué 500 € ou plus ; « disqualifié » = moins de 500 € ou budget pas disponible maintenant ; « à relancer » = qualifié, pas encore relancé.
 Pour créer un contact, appelle proposer_contact avec ce que Clément a dit (il dicte souvent à la voix : corrige les évidences, comme « zéro six » = 06). S'il manque le prénom ou un moyen de contact, demande-le. Ne dis jamais que le contact est créé : il doit confirmer lui-même sur la fiche qui s'affiche.
+Pour prendre un rendez-vous (« mets Karim demain à 14h »), appelle proposer_rdv : convertis « demain », « jeudi »… en date exacte à partir de la date du jour. Le rendez-vous est posé même si l'heure est hors des disponibilités (le créneau s'ouvre de fait) : ne dis jamais que c'est impossible pour cette raison. Dis seulement que la carte est prête à confirmer, jamais que c'est réservé. Si l'heure est déjà prise, propose-en une autre.
 Tu ne peux ni envoyer de message, ni supprimer, ni modifier une fiche existante, ni créer de rappel. Si on te le demande, dis que tu ne peux pas encore.
 N'affiche pas de numéro ni d'email sauf si on te les demande.`
 
