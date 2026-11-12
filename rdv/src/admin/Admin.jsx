@@ -100,6 +100,7 @@ export default function Admin() {
         if (pw !== String(f.get('password2') || '')) throw new Error('Les deux mots de passe ne sont pas identiques.')
         const { data, error } = await supabase.auth.signUp({ email, password: pw, options: { emailRedirectTo: 'https://rdv.theambitiousman.fr/admin' } })
         if (error) throw error
+        if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) { setJoin(false); setJstep('form'); toast('Ce compte existe déjà : connecte-toi avec ton mot de passe (ou « Mot de passe oublié »).', true); setBusy(false); return }
         setJmail(email)
         if (!data.session) { setJstep('code'); toast('Code envoyé par email. Regarde aussi tes spams.') }
       }
@@ -137,7 +138,7 @@ export default function Admin() {
     <Logo s={44} /><b className="brand">CALIO</b><h1>Mot de passe oublié</h1>
     {sent ? <p className="muted">C'est envoyé. Ouvre l'email, clique sur le lien et choisis un nouveau mot de passe (tu arrives sur L'Accélérateur). Reviens ensuite ici pour te connecter avec.</p>
       : <><p className="muted">Entre ton email : on t'envoie un lien pour en choisir un nouveau.</p>
-        <input name="email" type="email" placeholder="Email" autoComplete="username" defaultValue="contact@theambitiousman.fr" required />
+        <input name="email" type="email" placeholder="Email" autoComplete="username" required />
         <button className="btn big" disabled={busy}>{busy ? '…' : 'Envoyer le lien'}</button></>}
     <button type="button" className="btn ghost" onClick={() => { setForgot(false); setSent(false) }}>Retour</button>
     {msg && <small className="err">{msg.t}</small>}
