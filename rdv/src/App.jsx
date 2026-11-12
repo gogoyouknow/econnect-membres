@@ -29,6 +29,8 @@ const TEST = (() => { try { const q = new URLSearchParams(location.search).get('
 const ATT = (() => { try { const q = new URLSearchParams(location.search).get('att'); if (q === 'a' || q === 'b') sessionStorage.setItem('cand_att', q); return sessionStorage.getItem('cand_att') || 'b' } catch { return 'b' } })()
 // Délai minimum propre à ce lien : ?delai=demain, ?delai=24 (heures) ou ?delai=0. Sans paramètre : le réglage de Calio (Dispos → Réglages des appels).
 const DELAI = (() => { try { const q = (new URLSearchParams(location.search).get('delai') || '').toLowerCase(); if (q === 'demain' || /^\d{1,3}$/.test(q)) sessionStorage.setItem('cand_delai', q); return sessionStorage.getItem('cand_delai') || '' } catch { return '' } })()
+// Lien Facebook : on arrive directement sur le formulaire (la personne a déjà vu la VSL)
+const FB = EVENT === 'appel-decouverte-fb'
 const NEW = true // le nouveau parcours est validé : actif pour tout le monde (?test=1 reste un mode démo sans enregistrement)
 const rpcW = (n, a) => (TEST ? Promise.resolve(null) : rpc(n, a))
 const COUNTRIES = [['+33', '🇫🇷', 'France'], ['+32', '🇧🇪', 'Belgique'], ['+41', '🇨🇭', 'Suisse'], ['+352', '🇱🇺', 'Luxembourg'], ['+1', '🇨🇦', 'Canada / États-Unis'], ['+212', '🇲🇦', 'Maroc'], ['+213', '🇩🇿', 'Algérie'], ['+216', '🇹🇳', 'Tunisie'], ['+351', '🇵🇹', 'Portugal'], ['+40', '🇷🇴', 'Roumanie'],
@@ -123,7 +125,7 @@ function mailFix(email) {
 
 
 export default function App() {
-  const [step, setStep] = useState('intro')
+  const [step, setStep] = useState(FB ? 'who' : 'intro')
   const [f, setF] = useState({ first_name: '', prefix: '+33', tel: '', wa_ok: true, wprefix: '+33', wtel: '', email: '', situation: '', experience: '', invest: '', blocage: '', capital: '', have: '', bdate: '' })
   const [err, setErr] = useState('')
   const [cfg, setCfg] = useState({ slot_min: 45, wa: '33756849421', release_hours: 4 })
@@ -151,14 +153,14 @@ export default function App() {
   }, [f.email, mailOk])
   useEffect(() => { loadPV().then(() => setPvReady(true)) }, [])
   // Une fois la question du budget atteinte, on ne peut plus revenir en arrière (ni bouton « Retour », ni retour du téléphone) pour changer ses réponses.
-  const stepRef = useRef('intro'); const locked = useRef(false)
+  const stepRef = useRef(FB ? 'who' : 'intro'); const locked = useRef(false)
   const [blockWhy, setBlockWhy] = useState('autre')
   const EARLY = ['intro', 'who', 'situ', 'exp', 'txt', 'inv', 'cap', 'budget']
   const go = (s) => { if (NEW && (s === 'budget' || s === 'block')) locked.current = true; if (locked.current && EARLY.includes(s) && s !== stepRef.current && s !== 'budget') return; stepRef.current = s; setErr(''); setStep(s); window.scrollTo(0, 0); try { history.pushState({ s }, '') } catch { /* */ } }
   // Le bouton « retour » du téléphone revient à l'étape précédente au lieu de quitter la page (et de renvoyer la personne sur TikTok).
   useEffect(() => {
     const pop = (e) => {
-      const t = (e.state && e.state.s) || 'intro'
+      const t = (e.state && e.state.s) || (FB ? 'who' : 'intro')
       if (stepRef.current === 'done' || stepRef.current === 'attention' || (locked.current && EARLY.includes(t) && t !== stepRef.current)) { try { history.pushState({ s: stepRef.current }, '') } catch { /* */ } return }
       stepRef.current = t; setErr(''); setStep(t); window.scrollTo(0, 0)
     }
@@ -263,7 +265,7 @@ export default function App() {
   return <div className="shell">
     {TEST && <div className="testbar">Mode test : rien n'est enregistré, aucun email, aucun vrai rendez-vous.</div>}
     <header><Logo /></header>
-    {n > 0 && <div className="progress">{[1, 2, 3, 4, 5, 6, 7].map((i) => <i key={i} className={i <= n ? 'on' : ''} />)}</div>}
+    {n > 0 && !(FB && step === 'who') && <div className="progress">{[1, 2, 3, 4, 5, 6, 7].map((i) => <i key={i} className={i <= n ? 'on' : ''} />)}</div>}
 
     {step === 'intro' && <section className="screen">
       <div className="col">
@@ -281,7 +283,11 @@ export default function App() {
       <p className="note filter">Je réponds aux personnes prêtes à passer à l'action et à investir dans leur projet. Si ce n'est pas encore ton cas, ne réserve pas : on perdrait du temps tous les deux.</p>
     </section>}
 
-    {step === 'who' && <section className="screen">{NEW ? <div className="col"><h2>Où je t'envoie ma réponse ?</h2><p className="muted s13" style={{ margin: 0 }}>Je te réponds personnellement.</p></div> : <h2>Où je te réponds ?</h2>}<div className="card">
+    {step === 'who' && <section className="screen">{FB ? <div className="col"><h1 className="fbt">Appel découverte gratuit</h1>
+      <p className="muted s13" style={{ margin: 0 }}>Le but de cet échange : comprendre ta situation et tes blocages, et voir si je peux t'accompagner dans ton projet e-commerce.</p>
+      <p className="fbimp s13"><b>Important :</b> si ce projet implique plusieurs personnes (conjoint, associé…), il faut que tout le monde soit présent à l'appel.</p>
+      <div className="fbmeta"><span>⏱ {cfg.slot_min || 45} minutes</span><span>Gratuit</span></div></div>
+      : NEW ? <div className="col"><h2>Où je t'envoie ma réponse ?</h2><p className="muted s13" style={{ margin: 0 }}>Je te réponds personnellement.</p></div> : <h2>Où je te réponds ?</h2>}<div className="card">
       <div className="field"><label htmlFor="p">Prénom</label><input id="p" value={f.first_name} onChange={(e) => set('first_name', e.target.value)} autoComplete="given-name" placeholder="Ton prénom" /></div>
       {NEW ? <>
       <div className="field"><label htmlFor="e">Email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={(e) => { set('email', e.target.value); setMailBad(false); setErr('') }} onBlur={() => { saveLead('who'); if (f.email.trim().includes('@')) mailProblem(f.email).then((pb) => { if (pb) setErr(pb); else if (NEW) setMailOk(true) }) }} aria-invalid={mailBad || undefined} placeholder="ton@email.com" />
@@ -310,7 +316,7 @@ export default function App() {
         {mailFix(f.email) && <button type="button" className="mailfix" onClick={() => set('email', mailFix(f.email))}>Tu voulais dire <b>{mailFix(f.email)}</b> ? <u>Corriger</u></button>}{NEW && mailOk && <span className="okmark">✓ Email valide</span>}</div>
       </>}
       <div className="err">{err}</div><button className="btn" disabled={busy || (NEW && !mailOk)} onClick={next.who}>{busy ? 'Un instant…' : 'Continuer →'}</button>
-      <p className="muted s12" style={{ margin: 0, textAlign: 'center' }}>En continuant, tu acceptes de recevoir mes emails. Tu peux te désinscrire à tout moment.</p></div></section>}
+      {!FB && <p className="muted s12" style={{ margin: 0, textAlign: 'center' }}>En continuant, tu acceptes de recevoir mes emails. Tu peux te désinscrire à tout moment.</p>}</div></section>}
 
     {step === 'situ' && <section className="screen"><div className="col"><span className="eyebrow">Question 1 sur 5</span><h2>Quelle est ta situation actuelle ?</h2></div><div className="card">
       <div className="chips col">{SITUS.map((v) => <button key={v} className={`chip ${f.situation === v ? 'sel' : ''}`} onClick={() => { set('situation', v); saveLead('situ', { situation: v }); go(NEW ? 'txt' : 'exp') }}>{v}</button>)}</div></div>

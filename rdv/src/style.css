@@ -162,3 +162,8 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;text-align:
 .att .btn.wa{font-size:15px;padding-inline:8px}
 .att .timer b{color:var(--gold);font-variant-numeric:tabular-nums}
 .attban{background:var(--gold-soft);border:1px solid var(--gold);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4;text-align:center}
+/* Page d'arrivée du lien Facebook */
+.fbt{font-size:clamp(24px,7vw,30px)}
+.fbimp{margin:0;border-left:2px solid var(--gold);padding:2px 0 2px 10px;color:var(--fg)}
+.fbmeta{display:flex;gap:8px;flex-wrap:wrap}
+.fbmeta span{background:var(--surface-2);border:1px solid var(--line);border-radius:99px;font-size:12px;padding:4px 10px;color:var(--fg)}
