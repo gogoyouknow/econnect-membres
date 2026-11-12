@@ -36,6 +36,7 @@ const KIND = { auto: 'Premier email', rseq: 'Email de suivi', seq: 'Email « plu
 
 /** « Relances » : les personnes qui ont laissé leurs coordonnées sans réserver d'appel, leur suivi, les messages modèles et la séquence « plus tard ». */
 export default function Leads({ toast, onChange }) {
+  const [stat, setStat] = useState(null)
   const [rows, setRows] = useState(null); const [tab, setTab] = usePS('le_tab', 'todo'); const [open, setOpen] = usePS('le_open', null); const [lerr, setLerr] = useState('')
   const [seq, setSeq] = useState([]); const [rseq, setRseq] = useState([]); const [tpl, setTpl] = useState({}); const [cfg, setCfg] = useState(null)
   const load = () => supabase.from('cand_leads').select('*').order('updated_at', { ascending: false }).limit(500).then(({ data, error }) => { if (error) return setLerr(friendlyError(error)); setLerr(''); setRows(data || []); onChange && onChange((data || []).filter(l => !l.booked && l.follow === 'new' && qualified(l) && (l.phone || l.email)).length) }).catch((e) => setLerr(friendlyError(e)))
@@ -95,16 +96,29 @@ export default function Leads({ toast, onChange }) {
   const nToday = logs.filter(e => dayOf(e.at) === today).length
   const n7 = logs.filter(e => Date.now() - new Date(e.at).getTime() < 7 * 864e5).length
   const nBooked = (rows || []).filter(l => l.booked && (l.mail_log || []).length > 0).length
+  const tabOf = (l) => l.follow === 'skip' ? 'skip' : l.budget_date ? 'later' : l.follow === 'done' ? 'sent' : qualified(l) && usable(l) ? 'todo' : unqualified(l) && usable(l) ? 'cold' : 'part'
+  const mailRows = (rows || []).flatMap(l => (l.mail_log || []).map(e => ({ l, e }))).sort((a, b) => b.e.at.localeCompare(a.e.at))
+  const statRows = stat === 'today' ? mailRows.filter(r => dayOf(r.e.at) === today).map(r => ({ l: r.l, text: `${r.e.label || KIND[r.e.k] || 'Email'}${r.e.subject ? ` · « ${r.e.subject} »` : ''}`, when: dtm(r.e.at) }))
+    : stat === 'week' ? mailRows.filter(r => Date.now() - new Date(r.e.at).getTime() < 7 * 864e5).map(r => ({ l: r.l, text: `${r.e.label || KIND[r.e.k] || 'Email'}${r.e.subject ? ` · « ${r.e.subject} »` : ''}`, when: dtm(r.e.at) }))
+    : stat === 'booked' ? (rows || []).filter(l => l.booked && (l.mail_log || []).length > 0).map(l => { const e = l.mail_log[l.mail_log.length - 1]; return { l, text: `${l.mail_log.length} email${l.mail_log.length > 1 ? 's' : ''} reçu${l.mail_log.length > 1 ? 's' : ''} · dernier : ${e.label || KIND[e.k] || 'Email'}`, when: dtm(e.at) } }) : []
 
   return <div className="sheet-body">
     <h2 className="sh">Relances</h2>
     <p className="muted">Les personnes qui ont laissé leurs coordonnées sans réserver d'appel. Rien n'est perdu.</p>
     <div className="pills" style={{ marginTop: 14 }}>{tabs.map(([k, l]) => <button key={k} className={`pill ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}</div>
     {rows && <div className="rl-stats">
-      <div><b>{nToday}</b><span>emails envoyés aujourd’hui</span></div>
-      <div><b>{n7}</b><span>sur 7 jours</span></div>
-      <div><b>{nBooked}</b><span>ont réservé après un email</span></div>
+      <button type="button" className={stat === 'today' ? 'sel' : ''} onClick={() => setStat(stat === 'today' ? null : 'today')}><b>{nToday}</b><span>emails envoyés aujourd’hui</span></button>
+      <button type="button" className={stat === 'week' ? 'sel' : ''} onClick={() => setStat(stat === 'week' ? null : 'week')}><b>{n7}</b><span>sur 7 jours</span></button>
+      <button type="button" className={stat === 'booked' ? 'sel' : ''} onClick={() => setStat(stat === 'booked' ? null : 'booked')}><b>{nBooked}</b><span>ont réservé après un email</span></button>
       <div className={!cfg ? '' : cfg.auto_relance ? 'on' : 'off'}><b>{!cfg ? '…' : cfg.auto_relance ? 'Activées' : 'Coupées'}</b><span>relances automatiques par email</span></div>
+    </div>}
+    {rows && stat && <div className="rl-pop">
+      <div className="rl-pt"><b>{stat === 'today' ? 'Emails envoyés aujourd’hui' : stat === 'week' ? 'Emails envoyés ces 7 derniers jours' : 'Ont réservé après un email'}</b><button type="button" className="linkbtn" onClick={() => setStat(null)}>Fermer</button></div>
+      {!statRows.length && <div className="sys">Personne pour l’instant</div>}
+      {statRows.map((r, i) => <div key={i} className="rl-pr" onClick={() => r.l.booked ? toast('Cette personne a réservé : sa fiche est dans Prospects.') : (setTab(tabOf(r.l)), setOpen(r.l.id), setStat(null))}>
+        <div className="cmain"><b>{r.l.first_name || 'Sans prénom'}</b><small>{r.text}</small></div>
+        <span className="muted s12">{r.when}</span>
+      </div>)}
     </div>}
     {rows === null && !lerr && <p className="muted">Chargement…</p>}
     <LoadErr msg={lerr} onRetry={load} />

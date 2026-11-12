@@ -533,6 +533,13 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 /* Relances : suivi des emails automatiques */
 .adm .rl-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 4px}
 .adm .rl-stats>div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.adm .rl-stats>button{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.adm .rl-stats>button.sel{border-color:#C9A227;box-shadow:0 0 0 2px #F5E6A8}
+.adm .rl-pop{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:8px 0}
+.adm .rl-pt{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+.adm .rl-pr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);cursor:pointer}
+.adm .rl-pr .cmain{min-width:0;display:flex;flex-direction:column;gap:2px}
+.adm .rl-pr small{color:#6B7280;overflow-wrap:anywhere}
 .adm .rl-stats b{font-family:'Space Grotesk',sans-serif;font-size:20px;color:var(--ink)}
 .adm .rl-stats span{font-size:11.5px;color:#6B7280;line-height:1.25}
 .adm .rl-stats .on b{color:#166534}.adm .rl-stats .off b{color:#9B1C1F}
