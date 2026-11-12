@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b0b0c" />
     <meta name="robots" content="noindex" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
-    <link rel="apple-touch-icon" href="/icon-180.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/acc-32.png" />
+    <link rel="apple-touch-icon" href="/acc-180.png" />
     <script>
       // Application Calio (/admin) : plein écran une fois ajoutée à l'écran d'accueil (iPhone), sans barre Safari.
       if (location.pathname.indexOf('/admin') === 0) {
@@ -14,12 +14,15 @@
         var l = document.createElement('link'); l.rel = 'manifest'; l.href = '/admin.webmanifest'; document.head.appendChild(l)
         var t = document.querySelector('meta[name="theme-color"]'); if (t) t.content = '#0E1116'
         document.title = 'Calio'
+        // L'app Calio garde sa propre icône ; les pages publiques (candidature, aperçu WhatsApp) affichent le logo de L'Accélérateur.
+        document.querySelector('link[rel=icon]').href = '/icon-32.png'; document.querySelector('link[rel=apple-touch-icon]').href = '/icon-180.png'
       }
     </script>
-    <title>Réserve ton appel · L'Accélérateur</title>
+    <title>Réserve ton appel · E-Connect</title>
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="L'Accélérateur" />
-    <meta property="og:title" content="Réserve ton appel · L'Accélérateur" />
+    <meta property="og:site_name" content="E-Connect" />
+    <meta property="og:image" content="https://rdv.theambitiousman.fr/acc-512.png" />
+    <meta property="og:title" content="Réserve ton appel · E-Connect" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" />

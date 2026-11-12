@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 
 // /decouvrir a son propre titre et son propre aperçu de lien (WhatsApp ne lit que le HTML de départ, pas le JavaScript).
 // On fabrique donc dist/decouvrir.html à partir de la page d'accueil construite, avec un autre titre.
-const T = "Comprendre le business · L'Accélérateur", D = "Regarde la vidéo et vois comment je t'accompagne, avant qu'on se parle."
+const T = "Comprendre le business · E-Connect", D = "Regarde la vidéo et vois comment je t'accompagne, avant qu'on se parle."
 const decouvrir = () => ({
   name: 'decouvrir-html',
   closeBundle() {

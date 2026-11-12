@@ -91,7 +91,7 @@ function Main() {
 
 export default function Decouvrir() {
   const [cat, setCat] = useState('start'); const [all, setAll] = useState(false); const [play, setPlay] = useState(null)
-  useEffect(() => { document.title = 'Comprendre le business · L’Accélérateur'; track('open') }, [])
+  useEffect(() => { document.title = 'Comprendre le business · E-Connect'; track('open') }, [])
   const playVid = (a) => { setPlay(a); track('play', a[1]) }
   const cur = CATS.find((c) => c[0] === cat)
   const list = all ? cur[2] : cur[2].slice(0, 6)
