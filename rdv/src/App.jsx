@@ -68,8 +68,10 @@ const fmtDay = (k) => { const d = new Date(k + 'T12:00:00Z'); return { w: new In
 // D'où vient la personne (TikTok, Instagram…) : on le mémorise à la 1ère visite et on l'envoie avec la fiche.
 const SRC = (() => {
   try {
-    const k = 'cand_src'; const old = localStorage.getItem(k); if (old) return JSON.parse(old)
+    const k = 'cand_src'; const old = localStorage.getItem(k)
     const q = new URLSearchParams(location.search); const utm = {}
+    // Une visite qui arrive avec des paramètres de pub (utm_…, ttclid, fbclid) remplace toujours l'origine gardée d'une visite précédente : la dernière pub cliquée est celle qui compte.
+    if (old && !['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'ttclid', 'fbclid', 'src'].some((x) => q.get(x))) return JSON.parse(old)
     ;['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'ttclid', 'fbclid', 'src'].forEach((x) => { const v = q.get(x); if (v) utm[x.replace('utm_', '')] = v.slice(0, 100) })
     let ref = ''; try { ref = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, '') : '' } catch { /* */ }
     if (/theambitiousman\.fr$|vercel\.app$/.test(ref)) ref = ''

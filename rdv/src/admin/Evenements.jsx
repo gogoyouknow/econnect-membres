@@ -6,6 +6,10 @@ import { Routing, useClosers } from './Routage'
 
 const BASE = 'https://rdv.theambitiousman.fr'
 const linkOf = (e) => (e.main ? BASE : `${BASE}/e/${e.slug}`)
+// Code à coller dans une page HTML. Les paramètres de pub (utm_…, ttclid, fbclid) de la page où il est collé sont repris automatiquement : le suivi des UTM continue jusque dans Calio.
+const fwd = (id) => `<script>(function(){var e=document.getElementById('${id}'),q=location.search.slice(1);if(e&&q){var k=e.tagName==='IFRAME'?'src':'href';e[k]+=(e[k].indexOf('?')>-1?'&':'?')+q}})();</script>`
+const htmlButton = (url, name) => `<a id="calio-rdv" href="${url}" style="display:inline-block;background:#E9C53E;color:#1a1400;font-weight:700;text-decoration:none;padding:14px 26px;border-radius:12px;font-family:Arial,sans-serif;font-size:16px">Réserver mon appel</a>\n${fwd('calio-rdv')}`
+const htmlEmbed = (url) => `<iframe id="calio-rdv" src="${url}" style="width:100%;max-width:520px;height:760px;border:0;border-radius:12px" loading="lazy" title="Réserver un appel"></iframe>\n${fwd('calio-rdv')}`
 const slugify = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) + ' %' : '–')
 
@@ -92,7 +96,7 @@ function Editor({ ev, rows, closers, toast, stats, onChange, onDeleted }) {
         <label>Origine affichée sur les fiches prospects <small className="muted">(optionnel)</small><input className="ti" placeholder="ex. Pub TikTok" value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })} /></label>
         <label>Note interne <small className="muted">(pour toi, personne ne la voit)</small><input className="ti" placeholder="ex. VSL FB COD" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
       </div>
-      <div className="ev-link"><code>{url}</code><button type="button" className="btn ghost sm" onClick={() => copyText(url, toast, 'Lien copié')}>Copier le lien</button><a className="btn ghost sm" href={url} target="_blank" rel="noreferrer">Ouvrir</a></div>
+      <div className="ev-link"><code>{url}</code><button type="button" className="btn ghost sm" onClick={() => copyText(url, toast, 'Lien copié')}>Copier le lien</button><button type="button" className="btn ghost sm" onClick={() => copyText(htmlButton(url, ev.name), toast, 'Code HTML copié (bouton)')}>Copier le code HTML</button><button type="button" className="btn ghost sm" onClick={() => copyText(htmlEmbed(url), toast, 'Code HTML copié (page intégrée)')}>Code HTML intégré</button><a className="btn ghost sm" href={url} target="_blank" rel="noreferrer">Ouvrir</a></div>
       <p className="muted s12">{ev.main ? 'C’est le lien que tu utilises déjà. Les liens avec ?closer_id=… (lien personnel d’un closer) restent prioritaires.' : 'Tu peux ajouter tes paramètres de pub au bout du lien (?utm_campaign=…). Si tu désactives l’événement, le lien continue de marcher avec la répartition habituelle.'}</p>
       <div className="acts">{!ev.main && <button type="button" className="btn danger sm" onClick={del}>Supprimer</button>}<span style={{ flex: 1 }} /><button type="button" className="btn" disabled={!dirty || busy} onClick={save}>{busy ? '…' : 'Enregistrer'}</button></div>
     </section>
