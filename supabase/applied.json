@@ -70,5 +70,6 @@
   "0069_sequence_methode.sql",
   "0070_calio_mot_de_passe.sql",
   "0071_montant_signe.sql",
-  "0072_connexion_par_code.sql"
+  "0072_connexion_par_code.sql",
+  "0073_code_sans_expiration.sql"
 ]
