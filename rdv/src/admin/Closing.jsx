@@ -29,7 +29,7 @@ export function OutcomeChips({ c, onPick }) {
 export default function Closing({ toast }) {
   useCloserNames()
   const [rows, setRows] = useState(null); const [per, setPer] = usePS('cl_per', '30'); const [err, setErr] = useState('')
-  const load = () => supabase.from('candidatures').select('id,first_name,last_name,starts_at,status,closer,outcome,outcome_at').order('starts_at', { ascending: false }).limit(2000)
+  const load = () => supabase.from('candidatures').select('id,first_name,starts_at,status,closer,outcome,outcome_at').order('starts_at', { ascending: false }).limit(2000)
     .then(({ data, error }) => { if (error) return setErr(friendlyError(error)); setErr(''); setRows(data || []) })
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   const pick = async (c, v) => {
@@ -64,7 +64,7 @@ export default function Closing({ toast }) {
 
     {todo.length > 0 && <><h3 className="cl-h">Résultat à renseigner</h3>
       <div className="cl-todo">{todo.slice(0, 30).map((c) => <div key={c.id} className="cl-row">
-        <div><b>{[c.first_name, c.last_name].filter(Boolean).join(' ') || 'Sans nom'}</b><small>{new Date(c.starts_at).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short' })} · avec {cname(c.closer)}</small></div>
+        <div><b>{c.first_name || 'Sans nom'}</b><small>{new Date(c.starts_at).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short' })} · avec {cname(c.closer)}</small></div>
         <OutcomeChips c={c} onPick={pick} /></div>)}</div></>}
 
     <h3 className="cl-h">Par closer</h3>

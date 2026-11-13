@@ -86,7 +86,7 @@ export default function Admin() {
     const { error } = await supabase.auth.signInWithPassword({ email: String(f.get('email')).trim(), password: String(f.get('password')) })
     setBusy(false)
     if (!error) { try { localStorage.setItem('calio_keep', f.get('keep') ? '1' : '0'); sessionStorage.setItem('calio_sess', '1') } catch { /* */ } }
-    if (error) toast(/invalid login/i.test(error.message) ? 'Email ou mot de passe incorrect' : 'Erreur : ' + error.message, true)
+    if (error) toast(/invalid login/i.test(error.message) ? 'Email ou mot de passe incorrect. Tu l\'as oublié ? Touche « Mot de passe oublié » : je t\'envoie un code.' : 'Erreur : ' + error.message, true)
   }
   const joinSubmit = async (e) => {
     e.preventDefault(); setBusy(true)
@@ -111,13 +111,29 @@ export default function Admin() {
     }
     setBusy(false)
   }
+  // Mot de passe oublié : un code à 6 chiffres par email, puis le nouveau mot de passe (tout se passe ici, sans lien ni autre application).
   const sendReset = async (e) => {
     e.preventDefault(); setBusy(true)
-    const email = String(new FormData(e.target).get('email')).trim()
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: 'https://econnect-membres.vercel.app/#reset' })
+    const f = new FormData(e.target)
+    try {
+      if (!sent) {
+        const email = String(f.get('email') || '').trim().toLowerCase()
+        const { error } = await supabase.rpc('calio_reset_request', { p_email: email })
+        if (error) throw error
+        setSent(email); toast('Code envoyé : regarde tes emails (et les spams)')
+      } else {
+        const pw = String(f.get('password') || ''); if (pw.length < 8) throw new Error('8 caractères minimum pour le mot de passe.')
+        if (pw !== String(f.get('password2') || '')) throw new Error('Les deux mots de passe ne sont pas identiques.')
+        const { data, error } = await supabase.rpc('calio_reset_confirm', { p_email: sent, p_code: String(f.get('code') || ''), p_password: pw })
+        if (error) throw error
+        if (!data?.ok) throw new Error(data?.error || 'Code incorrect.')
+        const r = await supabase.auth.signInWithPassword({ email: sent, password: pw })
+        if (r.error) throw new Error('Mot de passe changé. Connecte-toi avec.')
+        try { localStorage.setItem('calio_keep', '1'); sessionStorage.setItem('calio_sess', '1') } catch { /* */ }
+        setForgot(false); setSent(false)
+      }
+    } catch (er) { toast(er.message || "Impossible pour le moment, réessaie", true) }
     setBusy(false)
-    if (error) return toast("Impossible d'envoyer le lien pour le moment", true)
-    setSent(true)
   }
   if (sess === undefined) return <div className="adm"><p className="muted ctr">Chargement…</p></div>
   if (!sess && join) return <div className="adm"><form className="login" onSubmit={joinSubmit}>
@@ -136,10 +152,15 @@ export default function Admin() {
   </form></div>
   if (!sess && forgot) return <div className="adm"><form className="login" onSubmit={sendReset}>
     <Logo s={44} /><b className="brand">CALIO</b><h1>Mot de passe oublié</h1>
-    {sent ? <p className="muted">C'est envoyé. Ouvre l'email, clique sur le lien et choisis un nouveau mot de passe (tu arrives sur L'Accélérateur). Reviens ensuite ici pour te connecter avec.</p>
-      : <><p className="muted">Entre ton email : on t'envoie un lien pour en choisir un nouveau.</p>
-        <input name="email" type="email" placeholder="Email" autoComplete="username" required />
-        <button className="btn big" disabled={busy}>{busy ? '…' : 'Envoyer le lien'}</button></>}
+    {sent ? <><p className="muted">Je viens d'envoyer un code à 6 chiffres à <b>{sent}</b>. Entre-le ici, puis choisis ton nouveau mot de passe.</p>
+        <input name="code" inputMode="numeric" autoComplete="one-time-code" placeholder="Code à 6 chiffres" maxLength={8} required />
+        <input name="password" type={showPw ? 'text' : 'password'} placeholder="Nouveau mot de passe (8 caractères min.)" autoComplete="new-password" required />
+        <input name="password2" type={showPw ? 'text' : 'password'} placeholder="Répète le mot de passe" autoComplete="new-password" required />
+        <label className="showpw"><input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} /> Afficher le mot de passe</label>
+        <button className="btn big" disabled={busy}>{busy ? '…' : 'Changer mon mot de passe'}</button></>
+      : <><p className="muted">Entre l'email de ton compte Calio : je t'envoie un code à 6 chiffres.</p>
+        <input name="email" type="email" inputMode="email" placeholder="Email" autoComplete="username" autoCapitalize="none" required />
+        <button className="btn big" disabled={busy}>{busy ? '…' : 'Recevoir mon code'}</button></>}
     <button type="button" className="btn ghost" onClick={() => { setForgot(false); setSent(false) }}>Retour</button>
     {msg && <small className="err">{msg.t}</small>}
   </form></div>
