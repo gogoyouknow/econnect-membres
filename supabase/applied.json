@@ -67,5 +67,6 @@
   "0066_delai_minimum.sql",
   "0067_closer_compte_existant.sql",
   "0068_blocages.sql",
-  "0069_sequence_methode.sql"
+  "0069_sequence_methode.sql",
+  "0070_calio_mot_de_passe.sql"
 ]
