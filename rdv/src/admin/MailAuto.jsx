@@ -6,9 +6,9 @@ const TZ = 'Europe/Paris'
 const dayKey = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d)
 const addDays = (k, n) => { const x = new Date(k + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10) }
 const dayFr = (k) => new Date(k + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
-const SEQ = { contact: 'A laissé son email ou son numéro', partial: 'A commencé à répondre', noshow: 'Rendez-vous manqué (no-show)', nurture: 'Séquence 30 jours (histoire)' }
-const SEQ_ORDER = ['contact', 'partial', 'noshow', 'nurture']
-const prev = (b) => String(b || '').replace(/\{prenom\}/g, 'Karim').replace(/\{video\}/g, '▶ [Bouton : Regarder la vidéo]').replace(/\{rdv\}/g, 'rdv.theambitiousman.fr')
+const SEQ = { contact: 'A laissé son email ou son numéro', partial: 'A commencé à répondre', noshow: 'Rendez-vous manqué (no-show)', nurture: 'Séquence 30 jours (histoire)', methode: 'Moins de 500 € : Méthode à 97 €' }
+const SEQ_ORDER = ['contact', 'partial', 'noshow', 'methode', 'nurture']
+const prev = (b) => String(b || '').replace(/\{prenom\}/g, 'Karim').replace(/\{video\}/g, '▶ [Bouton : Regarder la vidéo]').replace(/\{methode:([^}]*)\}/g, '▶ [Bouton jaune : $1]').replace(/\{rdv\}/g, 'rdv.theambitiousman.fr')
 
 /** « Emails automatiques » : tout ce qui part tout seul, avec ta validation jour par jour pendant la période de contrôle. */
 export default function MailAuto({ toast }) {

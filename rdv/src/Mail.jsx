@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { rpc } from './api'
 import Logo from './Logo'
 
-// /v/<jeton> : compte le clic sur la vidéo puis ouvre YouTube. /stop/<jeton> : désinscription (avec un bouton, pour que les scanners de liens n'agissent pas à ta place).
+// /v/<jeton> : compte le clic puis ouvre la vidéo YouTube (ou la page de la Méthode). /stop/<jeton> : désinscription (avec un bouton, pour que les scanners de liens n'agissent pas à ta place).
 const [, kind, token] = location.pathname.split('/')
 
 function Click() {
@@ -13,7 +13,7 @@ function Click() {
     const t = setTimeout(() => setFail(true), 4000)
     return () => { off = true; clearTimeout(t) }
   }, [])
-  return <section className="screen"><div className="col"><h2>Je t'ouvre la vidéo…</h2>{fail && <p className="muted"><a href="https://www.youtube.com/@theambitiousman">Si rien ne s'ouvre, clique ici.</a></p>}</div></section>
+  return <section className="screen"><div className="col"><h2>Je t'ouvre la page…</h2>{fail && <p className="muted"><a href="https://www.youtube.com/@theambitiousman">Si rien ne s'ouvre, clique ici.</a></p>}</div></section>
 }
 
 function Stop() {
