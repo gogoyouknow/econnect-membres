@@ -353,9 +353,14 @@ export default function App() {
       <p><b>Ce blocage est volontaire.</b> Ce n'est pas une erreur technique : mon temps et celui de mon équipe comptent, et le respect de l'engagement est la base d'un accompagnement.</p>
       <p className="muted">Si tu penses qu'il y a eu une erreur, tu peux m'écrire en message privé sur TikTok (@theambitious.man).</p></div></section>}
 
-    {step === 'block' && <section className="screen"><h2>Ce n'est pas le bon moment</h2><div className="card">
-      <p>Avec moins de 500 € disponibles, je ne peux pas t'accompagner correctement et je ne veux pas te faire perdre ton temps.</p>
-      <p className="muted">Reviens dès que tu as de quoi investir, ou suis mes contenus en attendant.</p></div>
+    {step === 'block' && <section className="screen"><h2>Ce n'est pas le bon moment pour un appel</h2><div className="card">
+      <p>Avec moins de 500 € disponibles, je ne peux pas t'accompagner personnellement et je ne veux pas te faire perdre ton temps.</p>
+      <p>Mais tu peux avancer dès maintenant, à ton rythme, avec ma méthode pas à pas.</p>
+      <div className="m97"><b>La Méthode E-Connect</b>
+        <span>Créer ta boutique, trouver un produit et lancer tes premières publicités avec un petit budget.</span>
+        <ul><li>Ta boutique en moins de 30 minutes</li><li>Le testing, pas à pas</li><li>3 bonus inclus</li></ul>
+        <strong>97 € · accès à vie</strong></div>
+      <a className="btn" href="https://econnect-membres.vercel.app/methode/?utm_source=calio&utm_medium=moins500&utm_campaign=ecran_budget">Découvrir la Méthode →</a></div>
       </section>}
 
     {step === 'budget' && <section className="screen"><h2>Une dernière question, franche</h2><div className="card">
