@@ -169,4 +169,3 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;text-align:
 .fbmeta span{background:var(--surface-2);border:1px solid var(--line);border-radius:99px;font-size:12px;padding:4px 10px;color:var(--fg)}
 .m97{background:var(--gold-soft);border:1px solid var(--gold);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:14px}
 .m97 b{font-family:var(--display);font-size:16px}.m97 span{color:var(--muted);font-size:13px}.m97 ul{margin:0;padding-left:18px;font-size:13px}.m97 strong{color:var(--gold);font-family:var(--display);font-size:18px}
-a.btn{display:block;text-align:center;text-decoration:none}
