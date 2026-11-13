@@ -43,6 +43,8 @@ export default function Admin() {
   const [tab, setTab] = usePS('tab', 'appels')
   useScrollMemory(tab)
   const [forgot, setForgot] = useState(false)
+  // Connexion par code : null = fermé ; { step: 'email' | 'code', email }. L'adresse /admin#code l'ouvre directement à l'étape du code.
+  const [lc, setLc] = useState(() => (location.hash === '#code' ? { step: 'code', email: '' } : null))
   const [showPw, setShowPw] = useState(false)
   const [sent, setSent] = useState(false)
   const [nLeads, setNLeads] = useState(0)
@@ -135,6 +137,25 @@ export default function Admin() {
     } catch (er) { toast(er.message || "Impossible pour le moment, réessaie", true) }
     setBusy(false)
   }
+  const codeLogin = async (e) => {
+    e.preventDefault(); setBusy(true)
+    const f = new FormData(e.target); const email = String(f.get('email') || lc.email).trim().toLowerCase()
+    try {
+      if (lc.step === 'email') {
+        const { error } = await supabase.rpc('calio_login_request', { p_email: email })
+        if (error) throw error
+        setLc({ step: 'code', email }); toast('Code envoyé : regarde tes emails (et les spams)')
+      } else {
+        const { data, error } = await supabase.functions.invoke('calio-login', { body: { email, code: String(f.get('code') || '') } })
+        if (error || !data?.ok) throw new Error(data?.error || 'Connexion impossible pour le moment, réessaie.')
+        const r = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'magiclink' })
+        if (r.error) throw new Error('Ce code n\'est plus valable. Demande-en un nouveau.')
+        try { localStorage.setItem('calio_keep', '1'); sessionStorage.setItem('calio_sess', '1') } catch { /* */ }
+        setLc(null); try { history.replaceState(null, '', location.pathname) } catch { /* */ }
+      }
+    } catch (er) { toast(er.message || 'Impossible pour le moment, réessaie', true) }
+    setBusy(false)
+  }
   if (sess === undefined) return <div className="adm"><p className="muted ctr">Chargement…</p></div>
   if (!sess && join) return <div className="adm"><form className="login" onSubmit={joinSubmit}>
     <Logo s={44} /><b className="brand">CALIO</b><h1>Créer mon compte</h1>
@@ -148,6 +169,20 @@ export default function Admin() {
         <label className="showpw"><input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} /> Afficher le mot de passe</label>
         <button className="btn big" disabled={busy}>{busy ? '…' : 'Créer mon compte'}</button></>}
     <button type="button" className="btn ghost" onClick={() => { setJoin(false); setJstep('form') }}>J'ai déjà un compte</button>
+    {msg && <small className="err">{msg.t}</small>}
+  </form></div>
+  if (!sess && lc) return <div className="adm"><form className="login" onSubmit={codeLogin}>
+    <Logo s={44} /><b className="brand">CALIO</b><h1>Connexion par code</h1>
+    {lc.step === 'email' ? <><p className="muted">Entre l'email de ton compte Calio : je t'envoie un code à 6 chiffres, sans mot de passe.</p>
+        <input name="email" type="email" inputMode="email" placeholder="Email" autoComplete="username" autoCapitalize="none" defaultValue={lc.email} required />
+        <button className="btn big" disabled={busy}>{busy ? '…' : 'Recevoir mon code'}</button>
+        <button type="button" className="linkbtn" onClick={() => setLc({ step: 'code', email: lc.email })}>J'ai déjà un code</button></>
+      : <><p className="muted">Entre ton email et le code à 6 chiffres reçu par email.</p>
+        <input name="email" type="email" inputMode="email" placeholder="Email" autoComplete="username" autoCapitalize="none" defaultValue={lc.email} required />
+        <input name="code" inputMode="numeric" autoComplete="one-time-code" placeholder="Code à 6 chiffres" maxLength={8} required autoFocus={!!lc.email} />
+        <button className="btn big" disabled={busy}>{busy ? '…' : 'Me connecter'}</button>
+        <button type="button" className="linkbtn" onClick={() => setLc({ step: 'email', email: lc.email })}>Recevoir un nouveau code</button></>}
+    <button type="button" className="btn ghost" onClick={() => setLc(null)}>Retour</button>
     {msg && <small className="err">{msg.t}</small>}
   </form></div>
   if (!sess && forgot) return <div className="adm"><form className="login" onSubmit={sendReset}>
@@ -171,7 +206,8 @@ export default function Admin() {
     <label className="showpw"><input type="checkbox" name="keep" checked={keep} onChange={e => setKeep(e.target.checked)} /> Rester connecté</label>
     <label className="showpw"><input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} /> Afficher le mot de passe</label>
     <button className="btn big" disabled={busy}>{busy ? '…' : 'Me connecter'}</button>
-    <button type="button" className="btn ghost" onClick={() => setForgot(true)}>Mot de passe oublié</button>
+    <button type="button" className="btn ghost" onClick={() => setLc({ step: 'email', email: '' })}>Me connecter avec un code reçu par email</button>
+    <button type="button" className="linkbtn" onClick={() => setForgot(true)}>Mot de passe oublié</button>
     <button type="button" className="linkbtn" onClick={() => setJoin(true)}>Tu as reçu une invitation ? Crée ton compte</button>
     {msg && <small className="err">{msg.t}</small>}
   </form></div>
