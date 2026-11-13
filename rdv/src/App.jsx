@@ -340,7 +340,7 @@ export default function App() {
       <button className="link" onClick={() => go(NEW ? 'situ' : 'exp')}>← Retour</button></section>}
 
     {step === 'cap' && <section className="screen"><div className="col"><span className="eyebrow">Question 4 sur 5</span><h2>Combien peux-tu investir maintenant dans ton projet ?</h2></div><div className="card">
-      <div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('budget', { capital: v }); go(v === 'lt500' ? 'block' : 'budget') }}>{l}</button>)}</div></div>
+      <div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('budget', { capital: v }); go('budget') }}>{l}</button>)}</div></div>
       <button className="link" onClick={() => go(NEW ? 'inv' : 'txt')}>← Retour</button></section>}
 
     {step === 'geo' && <section className="screen"><div className="col"><span className="eyebrow">Merci pour ton message</span><h2>Je ne peux pas encore t'accompagner depuis ton pays</h2></div><div className="card">
@@ -361,7 +361,7 @@ export default function App() {
     {step === 'budget' && <section className="screen"><h2>Une dernière question, franche</h2><div className="card">
       <p>Tu as indiqué <b>{CAP_LBL[f.capital]}</b>. Beaucoup de personnes cochent un montant qu'elles n'ont pas encore, et on perd du temps tous les deux.</p>
       <div className="field"><span className="lbl">Tu peux vraiment mobiliser ce budget maintenant ?</span><div className="chips col">
-        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }); if (NEW) go(v === 'yes' ? 'slot' : v === 'soon' ? 'when' : 'block2') }}>{l}</button>)}</div></div>
+        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }); if (NEW) go(f.capital === 'lt500' ? 'block' : v === 'yes' ? 'slot' : v === 'soon' ? 'when' : 'block2') }}>{l}</button>)}</div></div>
       <p className="muted s13">Sois honnête, ça m'aide à te dire la vérité.</p>
       <div className="err">{err}</div>{!NEW && <button className="btn" onClick={next.budget}>Choisir mon créneau →</button>}</div>
       </section>}
