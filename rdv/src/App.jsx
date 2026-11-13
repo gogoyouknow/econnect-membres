@@ -18,7 +18,7 @@ const EVENT = (() => { try { const m = location.pathname.toLowerCase().match(/^\
 const CLOSER_NAME = { clement: 'Clément', amandine: 'Amandine' }[CLOSER]
 const WA_DEF = { clement: '33756849421', amandine: '33763850319' }[CLOSER]
 const CAPS = [['lt500', 'Moins de 500 €'], ['500-1000', 'Entre 500 € et 1 000 €'], ['1000-3000', 'Entre 1 000 € et 3 000 €'], ['gt3000', 'Plus de 3 000 €']]
-const CAP_LBL = { '500-1000': 'entre 500 € et 1 000 €', '1000-3000': 'entre 1 000 € et 3 000 €', gt3000: 'plus de 3 000 €' }
+const CAP_LBL = { lt500: 'moins de 500 €', '500-1000': 'entre 500 € et 1 000 €', '1000-3000': 'entre 1 000 € et 3 000 €', gt3000: 'plus de 3 000 €' }
 const SITUS = ['Salarié', 'Étudiant', 'Entrepreneur', 'Sans activité']
 const EXPS = ['Jamais vendu en ligne', 'Quelques ventes', 'Boutique active']
 const MIN_TXT = 40
