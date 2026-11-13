@@ -68,5 +68,7 @@
   "0067_closer_compte_existant.sql",
   "0068_blocages.sql",
   "0069_sequence_methode.sql",
-  "0070_calio_mot_de_passe.sql"
+  "0070_calio_mot_de_passe.sql",
+  "0071_montant_signe.sql",
+  "0072_connexion_par_code.sql"
 ]
