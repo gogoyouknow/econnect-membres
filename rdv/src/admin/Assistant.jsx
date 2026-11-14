@@ -106,8 +106,8 @@ export default function Assistant({ onOpen }) {
   // wantRef = ce que tu veux (écouter ou non) ; runRef = ce que le navigateur fait vraiment. Les deux peuvent différer quelques instants
   // (le navigateur met du temps à s'arrêter) : c'est là que se logeaient les bugs d'arrêt et de relance.
   const wantRef = useRef(false); const runRef = useRef(false); const recRef = useRef(null); const baseRef = useRef(''); const inRef = useRef('')
-  const wdRef = useRef(null); const audioRef = useRef(false); const finalRef = useRef(''); const gotRef = useRef(false); const t0Ref = useRef(0); const failRef = useRef(0); const dropRef = useRef(false)
-  inRef.current = input
+  const usedMicRef = useRef(false); const hiddenAtRef = useRef(0); const busyRef = useRef(false); const wdRef = useRef(null); const audioRef = useRef(false); const finalRef = useRef(''); const gotRef = useRef(false); const t0Ref = useRef(0); const failRef = useRef(0); const dropRef = useRef(false)
+  inRef.current = input; busyRef.current = busy
   const ta = useRef(null)
   // Le champ s'agrandit pendant que tu écris ou dictes (jusqu'à 8 lignes) : tu vois tout ce que tu as écrit.
   useEffect(() => { const t = ta.current; if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 190) + 'px'; t.scrollTop = t.scrollHeight }, [input, open])
@@ -177,7 +177,7 @@ export default function Assistant({ onOpen }) {
   const listen = () => {
     if (wantRef.current) return stopListen()
     if (!SR) return say('Le micro intégré n’est pas disponible ici. Utilise le micro de ton clavier pour dicter.')
-    dropRef.current = false; failRef.current = 0
+    usedMicRef.current = true; dropRef.current = false; failRef.current = 0
     wantRef.current = true; baseRef.current = input ? input.trimEnd() + ' ' : ''; finalRef.current = ''; setRec(true)
     // Après un passage en arrière-plan, ou si le navigateur croit encore l'ancienne écoute active, on repart sur une instance neuve.
     begin(runRef.current || hiddenRef.current)
@@ -187,13 +187,22 @@ export default function Assistant({ onOpen }) {
   // Envoi : on coupe la dictée et on jette ce qui arrive encore, sinon le texte revient dans le champ juste après l'envoi.
   const sendNow = () => { if (wantRef.current || runRef.current) { dropRef.current = true; stopListen(true) } send() }
   useEffect(() => { if (!open) stopListen(true) }, [open])
-  useEffect(() => { try { const t = Number(localStorage.getItem('calio_mic_reload') || 0); if (t && Date.now() - t < 20000) { setOpen(true); setMsgs((m) => [...m, { role: 'assistant', text: 'J’ai remis le micro à zéro. Touche-le pour reprendre ta dictée : ton texte est toujours là.' }]) } } catch { /* */ } }, []) // eslint-disable-line
+  useEffect(() => { try { const t = Math.max(Number(localStorage.getItem('calio_mic_reload') || 0), Number(localStorage.getItem('calio_mic_back') || 0)); if (t && Date.now() - t < 20000) { setOpen(true); setMsgs((m) => [...m, { role: 'assistant', text: 'Micro remis à zéro. Touche-le pour reprendre ta dictée : ton texte est toujours là.' }]) } } catch { /* */ } }, []) // eslint-disable-line
   // iPhone : quand l'app passe en arrière-plan, le système coupe le micro. On remet l'écran dans un état clair (le texte reste), et au retour
   // on oublie l'ancienne écoute pour que le prochain toucher sur le micro reparte bien.
   useEffect(() => {
     const f = () => {
-      if (document.hidden) { ev('app en arrière-plan'); hiddenRef.current = true; if (wantRef.current) stopListen(true) }
-      else { ev('retour dans l’app'); if (!wantRef.current) { runRef.current = false; setRec(false) } }
+      if (document.hidden) { ev('app en arrière-plan'); hiddenRef.current = true; hiddenAtRef.current = Date.now(); if (wantRef.current) stopListen(true) }
+      else {
+        ev('retour dans l’app')
+        // Après un passage dans une autre appli, iPhone laisse souvent le micro de la page muet (il « écoute » mais n'entend plus). Seule une page rechargée le retrouve :
+        // si tu avais utilisé la dictée, on recharge au retour. Ton texte et ta conversation sont gardés, il te reste à retoucher le micro.
+        if (usedMicRef.current && hiddenAtRef.current && Date.now() - hiddenAtRef.current > 2000 && !busyRef.current) {
+          try { localStorage.setItem('calio_mic_back', String(Date.now())) } catch { /* */ }
+          location.reload(); return
+        }
+        hiddenAtRef.current = 0
+        if (!wantRef.current) { runRef.current = false; setRec(false) } }
     }
     document.addEventListener('visibilitychange', f); window.addEventListener('pageshow', f)
     return () => { document.removeEventListener('visibilitychange', f); window.removeEventListener('pageshow', f) }
