@@ -72,5 +72,6 @@
   "0071_montant_signe.sql",
   "0072_connexion_par_code.sql",
   "0073_code_sans_expiration.sql",
-  "0074_ronde_horaire.sql"
+  "0074_ronde_horaire.sql",
+  "0075_ronde_horaire_correctif.sql"
 ]
