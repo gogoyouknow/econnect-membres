@@ -73,5 +73,6 @@
   "0072_connexion_par_code.sql",
   "0073_code_sans_expiration.sql",
   "0074_ronde_horaire.sql",
-  "0075_ronde_horaire_correctif.sql"
+  "0075_ronde_horaire_correctif.sql",
+  "0076_ronde_horaire_variable.sql"
 ]
