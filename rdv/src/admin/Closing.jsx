@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePS } from './persist'
 import { supabase, friendlyError } from './supabase'
 import LoadErr from './LoadErr'
@@ -22,17 +22,39 @@ function stats(list) {
 const weekStart = (iso) => { const d = new Date(new Date(iso).toLocaleString('en-US', { timeZone: 'Europe/Paris' })); const w = (d.getDay() + 6) % 7; d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - w); return d }
 
 /** « Closé à combien ? » : montant signé, affiché dès que le résultat est « Signé ». */
+/** « 2 500 », « 2500€ », « 2.500 », « 1 997,50 » → nombre (null si vide, NaN si illisible). */
+function parseAmount(s) {
+  let t = String(s || '').replace(/[^\d.,]/g, '')
+  if (!t) return null
+  if (/^\d{1,3}([.,]\d{3})+$/.test(t)) t = t.replace(/[.,]/g, '')
+  else t = t.replace(',', '.')
+  const n = Number(t)
+  return Number.isFinite(n) ? n : NaN
+}
+
 function AmountField({ c, onAmount }) {
-  const [v, setV] = useState(c.signed_amount == null ? '' : String(c.signed_amount))
-  useEffect(() => { setV(c.signed_amount == null ? '' : String(c.signed_amount)) }, [c.signed_amount, c.id])
+  const cur = c.signed_amount == null ? null : Number(c.signed_amount)
+  const [v, setV] = useState(cur == null ? '' : String(cur))
+  const [bad, setBad] = useState(false)
+  const sent = useRef(cur)
+  useEffect(() => { sent.current = cur; setV(cur == null ? '' : String(cur)); setBad(false) }, [c.signed_amount, c.id])
   const save = () => {
-    const n = v.trim() === '' ? null : Number(v.replace(',', '.').replace(/\s/g, ''))
-    if (n != null && (!Number.isFinite(n) || n < 0)) return
-    if (n !== (c.signed_amount == null ? null : Number(c.signed_amount))) onAmount(c, n)
+    const n = parseAmount(v)
+    if (Number.isNaN(n) || (n != null && n < 0)) { setBad(true); return }
+    setBad(false)
+    if (n === sent.current) return
+    sent.current = n
+    onAmount(c, n)
   }
-  return <label className="cl-amt"><span>Closé à combien ?</span>
-    <div><input type="text" inputMode="decimal" placeholder="Montant" value={v} onChange={(e) => setV(e.target.value)} onBlur={save} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }} /><i>€</i>
-      <button type="button" className="btn sm" onClick={save}>OK</button></div></label>
+  const done = parseAmount(v) === cur && cur != null
+  // Sur mobile, toucher le bouton fait d'abord perdre le focus au champ : le clavier se ferme, la page bouge et le toucher rate le bouton.
+  // On enregistre donc dès le toucher (pointerdown) et on empêche le champ de perdre le focus avant.
+  return <form className="cl-amt" noValidate onSubmit={(e) => { e.preventDefault(); save(); e.currentTarget.querySelector('input')?.blur() }}>
+    <span>Closé à combien ?</span>
+    <div><input type="text" inputMode="decimal" enterKeyHint="done" autoComplete="off" placeholder="Montant" value={v} onChange={(e) => { setV(e.target.value); setBad(false) }} onBlur={save} /><i>€</i>
+      <button type="submit" className={`btn sm ${done ? 'ok' : ''}`} onMouseDown={(e) => e.preventDefault()} onPointerDown={(e) => { if (e.pointerType !== 'mouse') save() }}>{done ? '✓ Enregistré' : 'Enregistrer'}</button></div>
+    {bad && <small className="cl-bad">Écris juste le nombre, par exemple 2500.</small>}
+  </form>
 }
 
 export function OutcomeChips({ c, onPick, onAmount }) {
