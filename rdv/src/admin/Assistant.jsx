@@ -106,7 +106,7 @@ export default function Assistant({ onOpen }) {
   // wantRef = ce que tu veux (écouter ou non) ; runRef = ce que le navigateur fait vraiment. Les deux peuvent différer quelques instants
   // (le navigateur met du temps à s'arrêter) : c'est là que se logeaient les bugs d'arrêt et de relance.
   const wantRef = useRef(false); const runRef = useRef(false); const recRef = useRef(null); const baseRef = useRef(''); const inRef = useRef('')
-  const finalRef = useRef(''); const gotRef = useRef(false); const t0Ref = useRef(0); const failRef = useRef(0); const dropRef = useRef(false)
+  const wdRef = useRef(null); const finalRef = useRef(''); const gotRef = useRef(false); const t0Ref = useRef(0); const failRef = useRef(0); const dropRef = useRef(false)
   inRef.current = input
   const ta = useRef(null)
   // Le champ s'agrandit pendant que tu écris ou dictes (jusqu'à 8 lignes) : tu vois tout ce que tu as écrit.
@@ -123,7 +123,7 @@ export default function Assistant({ onOpen }) {
   const getRec = () => {
     if (recRef.current) return recRef.current
     const r = new SR(); r.lang = 'fr-FR'; r.interimResults = true; r.continuous = true; recRef.current = r
-    r.onstart = () => { runRef.current = true; t0Ref.current = Date.now(); gotRef.current = false; finalRef.current = '' }
+    r.onstart = () => { clearTimeout(wdRef.current); runRef.current = true; t0Ref.current = Date.now(); gotRef.current = false; finalRef.current = '' }
     // On ne recopie que ce qui est nouveau (resultIndex) : plus de phrases répétées, et un résultat tardif ne revient pas remplir le champ après l'envoi.
     r.onresult = (e) => {
       if (dropRef.current) return
@@ -137,6 +137,7 @@ export default function Assistant({ onOpen }) {
       else if (e.error === 'audio-capture') { stopListen(true); say('Je n’entends aucun micro. Vérifie qu’un autre appli ne l’utilise pas, puis réessaie.') }
     }
     r.onend = () => {
+      if (r !== recRef.current) return // ancienne instance remplacée : on ne la relance pas
       runRef.current = false
       if (!wantRef.current) return setRec(false)
       // La dictée se coupe toute seule après un silence : on relance, sauf si le navigateur échoue en boucle.
@@ -147,22 +148,41 @@ export default function Assistant({ onOpen }) {
     }
     return r
   }
+  // Démarre l'écoute. Après un passage en arrière-plan, iPhone laisse parfois l'ancienne reconnaissance morte (elle ne démarre plus et ne signale rien) :
+  // si rien ne démarre en 1,2 s, on jette cette instance et on en crée une neuve.
+  const begin = (fresh) => {
+    if (fresh) { try { recRef.current?.abort() } catch { /* */ } recRef.current = null; runRef.current = false }
+    clearTimeout(wdRef.current)
+    startRec(getRec())
+    wdRef.current = setTimeout(() => {
+      if (!wantRef.current || runRef.current) return
+      if (!fresh) return begin(true)
+      wantRef.current = false; setRec(false); say('Le micro ne repart pas. Touche-le encore une fois, ou ferme et rouvre l’assistant.')
+    }, 1200)
+  }
   const listen = () => {
     if (wantRef.current) return stopListen()
     if (!SR) return say('Le micro intégré n’est pas disponible ici. Utilise le micro de ton clavier pour dicter.')
     dropRef.current = false; failRef.current = 0
     wantRef.current = true; baseRef.current = input ? input.trimEnd() + ' ' : ''; finalRef.current = ''; setRec(true)
-    const r = getRec()
-    // Relance alors que le navigateur n'a pas fini de s'arrêter : on le coupe net, c'est onend qui relancera.
-    if (runRef.current) { try { r.abort() } catch { /* */ } } else startRec(r)
+    // Si le navigateur croit encore l'ancienne écoute active (arrêt tout juste demandé, ou retour d'arrière-plan), on repart sur une instance neuve.
+    begin(runRef.current)
   }
   // Si tu écris au clavier pendant la dictée, ton texte devient la nouvelle base : la dictée n'efface plus ce que tu viens de taper.
   const onType = (v) => { setInput(v); if (wantRef.current) { baseRef.current = v ? v.trimEnd() + ' ' : ''; finalRef.current = '' } }
   // Envoi : on coupe la dictée et on jette ce qui arrive encore, sinon le texte revient dans le champ juste après l'envoi.
   const sendNow = () => { if (wantRef.current || runRef.current) { dropRef.current = true; stopListen(true) } send() }
   useEffect(() => { if (!open) stopListen(true) }, [open])
-  // iPhone : quand l'app passe en arrière-plan, la dictée est coupée par le système ; on remet l'écran dans un état clair.
-  useEffect(() => { const f = () => { if (document.hidden && wantRef.current) stopListen(true) }; document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f) }, [])
+  // iPhone : quand l'app passe en arrière-plan, le système coupe le micro. On remet l'écran dans un état clair (le texte reste), et au retour
+  // on oublie l'ancienne écoute pour que le prochain toucher sur le micro reparte bien.
+  useEffect(() => {
+    const f = () => {
+      if (document.hidden) { if (wantRef.current) stopListen(true) }
+      else { clearTimeout(wdRef.current); if (!wantRef.current) { runRef.current = false; setRec(false) } }
+    }
+    document.addEventListener('visibilitychange', f); window.addEventListener('pageshow', f)
+    return () => { document.removeEventListener('visibilitychange', f); window.removeEventListener('pageshow', f) }
+  }, [])
   useEffect(() => () => { wantRef.current = false; try { recRef.current?.abort() } catch { /* */ } }, [])
 
   return <>
