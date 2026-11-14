@@ -85,7 +85,7 @@ export default function Formulaires({ toast, onOpen }) {
           {open && <div className="fm-qa">
             {QS.map(([q, g], i) => { const v = g(r); return <div key={q} className="fm-row"><span>{q}</span>{v ? <b>{v}</b> : <em>— pas de réponse</em>}</div> })}
             {r.utm && Object.keys(r.utm).length > 0 && <div className="fm-row"><span>Origine</span><b>{Object.entries(r.utm).map(([k, v]) => `${k} : ${v}`).join(' · ')}</b></div>}
-            <div className="acts"><button className="btn ghost sm" onClick={() => onOpen(r.id)}>Ouvrir la fiche prospect</button></div>
+            {onOpen && <div className="acts"><button className="btn ghost sm" onClick={() => onOpen(r.id)}>Ouvrir la fiche prospect</button></div>}
           </div>}
         </article>
       })}</div>
