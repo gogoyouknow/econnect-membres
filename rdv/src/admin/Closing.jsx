@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { usePS } from './persist'
 import { supabase, friendlyError } from './supabase'
 import LoadErr from './LoadErr'
@@ -35,25 +35,26 @@ function parseAmount(s) {
 function AmountField({ c, onAmount }) {
   const cur = c.signed_amount == null ? null : Number(c.signed_amount)
   const [v, setV] = useState(cur == null ? '' : String(cur))
+  const [editing, setEditing] = useState(cur == null)
   const [bad, setBad] = useState(false)
-  const sent = useRef(cur)
-  useEffect(() => { sent.current = cur; setV(cur == null ? '' : String(cur)); setBad(false) }, [c.signed_amount, c.id])
+  useEffect(() => { setV(cur == null ? '' : String(cur)); setEditing(cur == null); setBad(false) }, [c.signed_amount, c.id])
   const save = () => {
     const n = parseAmount(v)
     if (Number.isNaN(n) || (n != null && n < 0)) { setBad(true); return }
     setBad(false)
-    if (n === sent.current) return
-    sent.current = n
-    onAmount(c, n)
+    if (n !== cur) onAmount(c, n)
+    setV(n == null ? '' : String(n)); setEditing(n == null)
   }
-  const done = parseAmount(v) === cur && cur != null
-  // Sur mobile, toucher le bouton fait d'abord perdre le focus au champ : le clavier se ferme, la page bouge et le toucher rate le bouton.
-  // On enregistre donc dès le toucher (pointerdown) et on empêche le champ de perdre le focus avant.
-  return <form className="cl-amt" noValidate onSubmit={(e) => { e.preventDefault(); save(); e.currentTarget.querySelector('input')?.blur() }}>
+  // Montant enregistré : on l'affiche en gros, avec un bouton pour le modifier.
+  if (!editing && cur != null) return <div className="cl-amt cl-amt-show">
+    <span>Closé à</span>
+    <div className="cl-amt-val"><b>{eur(cur)}</b><button type="button" className="btn ghost" onClick={() => setEditing(true)}>Modifier</button></div>
+  </div>
+  return <form className="cl-amt" noValidate onSubmit={(e) => { e.preventDefault(); save() }}>
     <span>Closé à combien ?</span>
-    <div><input type="text" inputMode="decimal" enterKeyHint="done" autoComplete="off" placeholder="Montant" value={v} onChange={(e) => { setV(e.target.value); setBad(false) }} onBlur={save} /><i>€</i>
-      <button type="submit" className={`btn sm ${done ? 'ok' : ''}`} onMouseDown={(e) => e.preventDefault()} onPointerDown={(e) => { if (e.pointerType !== 'mouse') save() }}>{done ? '✓ Enregistré' : 'Enregistrer'}</button></div>
+    <div className="cl-amt-row"><input type="text" inputMode="decimal" enterKeyHint="done" autoComplete="off" placeholder="Ex : 2500" value={v} onChange={(e) => { setV(e.target.value); setBad(false) }} /><i>€</i></div>
     {bad && <small className="cl-bad">Écris juste le nombre, par exemple 2500.</small>}
+    <button type="submit" className="btn cl-amt-go">OK</button>
   </form>
 }
 
