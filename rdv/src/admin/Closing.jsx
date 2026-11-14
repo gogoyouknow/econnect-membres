@@ -40,7 +40,7 @@ function AmountField({ c, onAmount }) {
   useEffect(() => { setV(cur == null ? '' : String(cur)); setEditing(cur == null); setBad(false) }, [c.signed_amount, c.id])
   const save = () => {
     const n = parseAmount(v)
-    if (Number.isNaN(n) || (n != null && n < 0)) { setBad(true); return }
+    if (Number.isNaN(n) || (n != null && (n < 0 || n > 100000))) { setBad(true); return }
     setBad(false)
     if (n !== cur) onAmount(c, n)
     setV(n == null ? '' : String(n)); setEditing(n == null)
@@ -53,7 +53,7 @@ function AmountField({ c, onAmount }) {
   return <form className="cl-amt" noValidate onSubmit={(e) => { e.preventDefault(); save() }}>
     <span>Closé à combien ?</span>
     <div className="cl-amt-row"><input type="text" inputMode="decimal" enterKeyHint="done" autoComplete="off" placeholder="Ex : 2500" value={v} onChange={(e) => { setV(e.target.value); setBad(false) }} /><i>€</i></div>
-    {bad && <small className="cl-bad">Écris juste le nombre, par exemple 2500.</small>}
+    {bad && <small className="cl-bad">Écris juste le montant, par exemple 2500 (100 000 € maximum).</small>}
     <button type="submit" className="btn cl-amt-go">OK</button>
   </form>
 }
