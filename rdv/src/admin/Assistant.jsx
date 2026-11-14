@@ -106,11 +106,15 @@ export default function Assistant({ onOpen }) {
   // wantRef = ce que tu veux (écouter ou non) ; runRef = ce que le navigateur fait vraiment. Les deux peuvent différer quelques instants
   // (le navigateur met du temps à s'arrêter) : c'est là que se logeaient les bugs d'arrêt et de relance.
   const wantRef = useRef(false); const runRef = useRef(false); const recRef = useRef(null); const baseRef = useRef(''); const inRef = useRef('')
-  const wdRef = useRef(null); const finalRef = useRef(''); const gotRef = useRef(false); const t0Ref = useRef(0); const failRef = useRef(0); const dropRef = useRef(false)
+  const wdRef = useRef(null); const audioRef = useRef(false); const finalRef = useRef(''); const gotRef = useRef(false); const t0Ref = useRef(0); const failRef = useRef(0); const dropRef = useRef(false)
   inRef.current = input
   const ta = useRef(null)
   // Le champ s'agrandit pendant que tu écris ou dictes (jusqu'à 8 lignes) : tu vois tout ce que tu as écrit.
   useEffect(() => { const t = ta.current; if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 190) + 'px'; t.scrollTop = t.scrollHeight }, [input, open])
+  // Journal des derniers événements du micro, envoyé au journal d'erreurs seulement quand le micro échoue : ça permet de voir ce qui se passe vraiment sur l'iPhone.
+  const evs = useRef([]); const hiddenRef = useRef(false)
+  const ev = (t) => { evs.current = [...evs.current.slice(-24), new Date().toISOString().slice(11, 19) + ' ' + t] }
+  const logMic = (why) => { try { supabase.from('client_errors').insert({ message: 'micro: ' + why, url: location.pathname, ua: String(navigator.userAgent).slice(0, 200), extra: { events: evs.current, standalone: !!navigator.standalone } }).then(() => {}, () => {}) } catch { /* */ } }
   const say = (text) => setMsgs((m) => [...m, { role: 'assistant', text, err: true }])
   const startRec = (r) => { try { r.start() } catch (e) { if (e && e.name === 'InvalidStateError') { try { r.abort() } catch { /* */ } } else { wantRef.current = false; setRec(false); say('Je n’arrive pas à lancer le micro. Touche-le encore une fois, ou utilise le micro de ton clavier.') } } }
   // Arrêt : on laisse le navigateur finir la phrase en cours ; s'il traîne (plus de 1,5 s), on le coupe de force pour pouvoir relancer tout de suite.
@@ -123,20 +127,24 @@ export default function Assistant({ onOpen }) {
   const getRec = () => {
     if (recRef.current) return recRef.current
     const r = new SR(); r.lang = 'fr-FR'; r.interimResults = true; r.continuous = true; recRef.current = r
-    r.onstart = () => { clearTimeout(wdRef.current); runRef.current = true; t0Ref.current = Date.now(); gotRef.current = false; finalRef.current = '' }
+    r.onaudiostart = () => { ev('onaudiostart'); audioRef.current = true; hiddenRef.current = false; clearTimeout(wdRef.current) }
+    r.onstart = () => { ev('onstart'); runRef.current = true; t0Ref.current = Date.now(); gotRef.current = false; finalRef.current = '' }
     // On ne recopie que ce qui est nouveau (resultIndex) : plus de phrases répétées, et un résultat tardif ne revient pas remplir le champ après l'envoi.
     r.onresult = (e) => {
       if (dropRef.current) return
+      audioRef.current = true; clearTimeout(wdRef.current); hiddenRef.current = false
       gotRef.current = true; failRef.current = 0
       let interim = ''
       for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) finalRef.current += x[0].transcript; else interim += x[0].transcript }
       setInput(baseRef.current + finalRef.current + interim)
     }
     r.onerror = (e) => {
+      ev('onerror:' + e.error); if (!['no-speech', 'aborted'].includes(e.error)) logMic('erreur ' + e.error)
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { stopListen(true); recRef.current = null; say('Le micro est bloqué. Sur iPhone : Réglages → Apps → Safari → Micro, puis choisis « Autoriser » (ou touche « aA » dans la barre d’adresse → Réglages du site → Micro → Autoriser). Ensuite, rouvre l’assistant.') }
       else if (e.error === 'audio-capture') { stopListen(true); say('Je n’entends aucun micro. Vérifie qu’un autre appli ne l’utilise pas, puis réessaie.') }
     }
     r.onend = () => {
+      ev('onend' + (r !== recRef.current ? ' (ancienne)' : ''))
       if (r !== recRef.current) return // ancienne instance remplacée : on ne la relance pas
       runRef.current = false
       if (!wantRef.current) return setRec(false)
@@ -151,34 +159,41 @@ export default function Assistant({ onOpen }) {
   // Démarre l'écoute. Après un passage en arrière-plan, iPhone laisse parfois l'ancienne reconnaissance morte (elle ne démarre plus et ne signale rien) :
   // si rien ne démarre en 1,2 s, on jette cette instance et on en crée une neuve.
   const begin = (fresh) => {
+    ev('begin' + (fresh ? ' neuve' : ''))
     if (fresh) { try { recRef.current?.abort() } catch { /* */ } recRef.current = null; runRef.current = false }
-    clearTimeout(wdRef.current)
+    clearTimeout(wdRef.current); audioRef.current = false
     startRec(getRec())
     wdRef.current = setTimeout(() => {
-      if (!wantRef.current || runRef.current) return
+      if (!wantRef.current || audioRef.current) return
       if (!fresh) return begin(true)
-      wantRef.current = false; setRec(false); say('Le micro ne repart pas. Touche-le encore une fois, ou ferme et rouvre l’assistant.')
-    }, 1200)
+      // Même une instance neuve ne démarre pas : iPhone a laissé le micro de la page bloqué. Seul un rechargement le débloque (ton texte est gardé).
+      ev('watchdog : pas de son capté'); logMic('le micro ne repart pas')
+      wantRef.current = false; setRec(false)
+      let last = 0; try { last = Number(localStorage.getItem('calio_mic_reload') || 0) } catch { /* */ }
+      if (Date.now() - last > 120000) { try { localStorage.setItem('calio_mic_reload', String(Date.now())) } catch { /* */ } location.reload() }
+      else say('Le micro ne repart pas. Ferme complètement Calio (balaye-la vers le haut), rouvre-la, puis touche le micro.')
+    }, 3500)
   }
   const listen = () => {
     if (wantRef.current) return stopListen()
     if (!SR) return say('Le micro intégré n’est pas disponible ici. Utilise le micro de ton clavier pour dicter.')
     dropRef.current = false; failRef.current = 0
     wantRef.current = true; baseRef.current = input ? input.trimEnd() + ' ' : ''; finalRef.current = ''; setRec(true)
-    // Si le navigateur croit encore l'ancienne écoute active (arrêt tout juste demandé, ou retour d'arrière-plan), on repart sur une instance neuve.
-    begin(runRef.current)
+    // Après un passage en arrière-plan, ou si le navigateur croit encore l'ancienne écoute active, on repart sur une instance neuve.
+    begin(runRef.current || hiddenRef.current)
   }
   // Si tu écris au clavier pendant la dictée, ton texte devient la nouvelle base : la dictée n'efface plus ce que tu viens de taper.
   const onType = (v) => { setInput(v); if (wantRef.current) { baseRef.current = v ? v.trimEnd() + ' ' : ''; finalRef.current = '' } }
   // Envoi : on coupe la dictée et on jette ce qui arrive encore, sinon le texte revient dans le champ juste après l'envoi.
   const sendNow = () => { if (wantRef.current || runRef.current) { dropRef.current = true; stopListen(true) } send() }
   useEffect(() => { if (!open) stopListen(true) }, [open])
+  useEffect(() => { try { const t = Number(localStorage.getItem('calio_mic_reload') || 0); if (t && Date.now() - t < 20000) { setOpen(true); setMsgs((m) => [...m, { role: 'assistant', text: 'J’ai remis le micro à zéro. Touche-le pour reprendre ta dictée : ton texte est toujours là.' }]) } } catch { /* */ } }, []) // eslint-disable-line
   // iPhone : quand l'app passe en arrière-plan, le système coupe le micro. On remet l'écran dans un état clair (le texte reste), et au retour
   // on oublie l'ancienne écoute pour que le prochain toucher sur le micro reparte bien.
   useEffect(() => {
     const f = () => {
-      if (document.hidden) { if (wantRef.current) stopListen(true) }
-      else { clearTimeout(wdRef.current); if (!wantRef.current) { runRef.current = false; setRec(false) } }
+      if (document.hidden) { ev('app en arrière-plan'); hiddenRef.current = true; if (wantRef.current) stopListen(true) }
+      else { ev('retour dans l’app'); if (!wantRef.current) { runRef.current = false; setRec(false) } }
     }
     document.addEventListener('visibilitychange', f); window.addEventListener('pageshow', f)
     return () => { document.removeEventListener('visibilitychange', f); window.removeEventListener('pageshow', f) }
