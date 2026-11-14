@@ -65,11 +65,11 @@ export function OutcomeChips({ c, onPick, onAmount }) {
 }
 
 /** Onglet « Closing » : taux de closing global, par closer et par semaine, + appels dont le résultat reste à renseigner. */
-export default function Closing({ toast }) {
+export default function Closing({ toast, only }) {
   useCloserNames()
   const [rows, setRows] = useState(null); const [per, setPer] = usePS('cl_per', '30'); const [err, setErr] = useState('')
   const load = () => supabase.from('candidatures').select('id,first_name,starts_at,status,closer,outcome,outcome_at,signed_amount').order('starts_at', { ascending: false }).limit(2000)
-    .then(({ data, error }) => { if (error) return setErr(friendlyError(error)); setErr(''); setRows(data || []) })
+    .then(({ data, error }) => { if (error) return setErr(friendlyError(error)); setErr(''); setRows((data || []).filter(x => !only || x.closer === only)) })
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   const pick = async (c, v) => {
     const patch = { outcome: v, outcome_at: v ? new Date().toISOString() : null }

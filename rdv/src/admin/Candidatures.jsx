@@ -44,13 +44,13 @@ const countdown = (iso) => {
 }
 
 /** Mes appels : accueil (prochain appel + liste) et disponibilités. `tab` = 'appels' | 'dispos'. */
-export default function Candidatures({ toast, tab: main , closer }) {
+export default function Candidatures({ toast, tab: main , closer, only }) {
   useCloserNames()
   const [rows, setRows] = useState([]); const [tab, setTab] = usePS('ca_tab', 'avenir'); const [open, setOpen] = usePS('ca_open', null)
   const [tpl, setTpl] = useState(DEFAULT_MSG); const [edit, setEdit] = usePS('ca_edit', null); const [qs, setQs] = useState({}); const [ev, setEv] = useState({}); const [rep, setRep] = useState(null)
   const [lerr, setLerr] = useState('')
   const [blk, setBlk] = useState(null)
-  const load = () => supabase.from('candidatures').select('*').order('starts_at', { ascending: true }).limit(500).then(({ data, error }) => { if (error) return setLerr(friendlyError(error)); setLerr(''); setRows(data || []) }).catch((e) => setLerr(friendlyError(e)))
+  const load = () => supabase.from('candidatures').select('*').order('starts_at', { ascending: true }).limit(500).then(({ data, error }) => { if (error) return setLerr(friendlyError(error)); setLerr(''); setRows((data || []).filter(x => !only || x.closer === only)) }).catch((e) => setLerr(friendlyError(e)))
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
   const loadQs = () => supabase.from('cand_questions').select('candidature_id,name,body,updated_at').not('candidature_id', 'is', null).then(({ data }) => { const m = {}; (data || []).forEach((q) => { if (q.body && q.body.trim()) m[q.candidature_id] = q }); setQs(m) })
   useEffect(() => { if (edit === null && !rep) return; const b = document.body, h = document.documentElement; const o = [b.style.overflow, h.style.overflow]; b.style.overflow = h.style.overflow = 'hidden'; return () => { b.style.overflow = o[0]; h.style.overflow = o[1] } }, [edit !== null || !!rep])
