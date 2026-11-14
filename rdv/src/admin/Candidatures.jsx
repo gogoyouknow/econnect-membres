@@ -6,7 +6,7 @@ import Portal from './Portal'
 import { BlockModal } from './Blocages'
 import { closerName, useCloserNames } from './closerNames'
 import { ToSend, ConfSeqEditor } from './ConfSeq'
-import { OutcomeChips } from './Closing'
+import { OutcomeChips, eur } from './Closing'
 import { DEFAULT_MSG, RESCHEDULE_MSG, fillMsg, waWeb, openWA, NURTURE_URL } from './whatsapp'
 import { copyText } from './copy'
 import PrepTrack from './PrepTrack'
@@ -111,7 +111,7 @@ export default function Candidatures({ toast, tab: main , closer }) {
           <div className="crow" onClick={() => setOpen(open === c.id ? null : c.id)}>
             <div className="ctime">{timeOf(c.starts_at)}</div>
             <div className="cmain"><b>{c.first_name}</b><small>{[c.situation, CAPL[c.capital] || c.capital].filter(Boolean).join(' · ')}</small></div>
-            <span className={`badge ${c.status === 'fait' && c.outcome === 'signe' ? 'ok' : c.status === 'fait' && c.outcome === 'reflechit' ? 'wait' : (ST[c.status] || [c.status, 'done'])[1]}`}>{c.status === 'fait' && c.outcome ? (c.outcome === 'signe' ? 'Signé' : c.outcome === 'reflechit' ? 'Il réfléchit' : 'Pas signé') : (ST[c.status] || [c.status, 'done'])[0]}</span>
+            <span className={`badge ${c.status === 'fait' && c.outcome === 'signe' ? 'ok' : c.status === 'fait' && c.outcome === 'reflechit' ? 'wait' : (ST[c.status] || [c.status, 'done'])[1]}`}>{c.status === 'fait' && c.outcome ? (c.outcome === 'signe' ? (c.signed_amount != null ? 'Signé · ' + eur(c.signed_amount) : 'Signé · montant ?') : c.outcome === 'reflechit' ? 'Il réfléchit' : 'Pas signé') : (ST[c.status] || [c.status, 'done'])[0]}</span>
           </div>
           {open === c.id && <div className="cdet">
             <div className="drow"><label>WhatsApp</label><a href={waWeb(c.phone, fillMsg(tpl, c))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, c.phone, fillMsg(tpl, c))}>{c.phone}</a> <button className="cpy" onClick={() => copyText(c.phone, toast, 'Numéro copié')}>Copier</button></div>

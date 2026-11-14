@@ -8,7 +8,7 @@ export const OUTCOMES = [['signe', 'Signé'], ['reflechit', 'Il réfléchit'], [
 const PERIODS = [['7', '7 jours'], ['30', '30 jours'], ['90', '90 jours'], ['all', 'Tout']]
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : null)
 const fmt = (v) => (v == null ? '–' : v + ' %')
-const eur = (v) => (v == null ? '–' : Number(v).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' €')
+export const eur = (v) => (v == null ? '–' : Number(v).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' €')
 const cname = closerName
 
 function stats(list) {

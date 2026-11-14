@@ -103,29 +103,67 @@ export default function Assistant({ onOpen }) {
     upd(i, { pstate: 'done', err: null, proposal: { ...p, _id: data?.id } })
   }
   // Dictée : touche le micro pour démarrer, touche le carré pour arrêter. Elle continue d'écouter tant que tu n'as pas arrêté (même après un silence).
-  const wantRef = useRef(false); const recRef = useRef(null); const baseRef = useRef(''); const inRef = useRef('')
+  // wantRef = ce que tu veux (écouter ou non) ; runRef = ce que le navigateur fait vraiment. Les deux peuvent différer quelques instants
+  // (le navigateur met du temps à s'arrêter) : c'est là que se logeaient les bugs d'arrêt et de relance.
+  const wantRef = useRef(false); const runRef = useRef(false); const recRef = useRef(null); const baseRef = useRef(''); const inRef = useRef('')
+  const finalRef = useRef(''); const gotRef = useRef(false); const t0Ref = useRef(0); const failRef = useRef(0); const dropRef = useRef(false)
   inRef.current = input
   const ta = useRef(null)
   // Le champ s'agrandit pendant que tu écris ou dictes (jusqu'à 8 lignes) : tu vois tout ce que tu as écrit.
   useEffect(() => { const t = ta.current; if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 190) + 'px'; t.scrollTop = t.scrollHeight }, [input, open])
-  // Une seule instance de reconnaissance, réutilisée à chaque relance : le navigateur ne redemande pas l'autorisation du micro à chaque fois.
-  const stopListen = () => { wantRef.current = false; try { recRef.current?.stop() } catch { /* */ } setRec(false) }
+  const say = (text) => setMsgs((m) => [...m, { role: 'assistant', text, err: true }])
+  const startRec = (r) => { try { r.start() } catch (e) { if (e && e.name === 'InvalidStateError') { try { r.abort() } catch { /* */ } } else { wantRef.current = false; setRec(false); say('Je n’arrive pas à lancer le micro. Touche-le encore une fois, ou utilise le micro de ton clavier.') } } }
+  // Arrêt : on laisse le navigateur finir la phrase en cours ; s'il traîne (plus de 1,5 s), on le coupe de force pour pouvoir relancer tout de suite.
+  const stopListen = (hard) => {
+    wantRef.current = false; setRec(false)
+    const r = recRef.current; if (!r) return
+    try { hard ? r.abort() : r.stop() } catch { /* */ }
+    setTimeout(() => { if (!wantRef.current && runRef.current) { try { r.abort() } catch { /* */ } } }, 1500)
+  }
   const getRec = () => {
     if (recRef.current) return recRef.current
     const r = new SR(); r.lang = 'fr-FR'; r.interimResults = true; r.continuous = true; recRef.current = r
-    r.onresult = (e) => { let t = ''; for (const x of e.results) t += x[0].transcript; setInput(baseRef.current + t) }
-    r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { stopListen(); recRef.current = null; setMsgs((m) => [...m, { role: 'assistant', text: 'Le micro est bloqué. Sur iPhone : Réglages → Apps → Safari → Micro, puis choisis « Autoriser » (ou touche « aA » dans la barre d’adresse → Réglages du site → Micro → Autoriser). Ensuite, rouvre l’assistant.', err: true }]) } }
-    r.onend = () => { if (wantRef.current) { baseRef.current = inRef.current ? inRef.current.trimEnd() + ' ' : ''; setTimeout(() => { try { if (wantRef.current) r.start() } catch { stopListen() } }, 150) } else setRec(false) }
+    r.onstart = () => { runRef.current = true; t0Ref.current = Date.now(); gotRef.current = false; finalRef.current = '' }
+    // On ne recopie que ce qui est nouveau (resultIndex) : plus de phrases répétées, et un résultat tardif ne revient pas remplir le champ après l'envoi.
+    r.onresult = (e) => {
+      if (dropRef.current) return
+      gotRef.current = true; failRef.current = 0
+      let interim = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) finalRef.current += x[0].transcript; else interim += x[0].transcript }
+      setInput(baseRef.current + finalRef.current + interim)
+    }
+    r.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { stopListen(true); recRef.current = null; say('Le micro est bloqué. Sur iPhone : Réglages → Apps → Safari → Micro, puis choisis « Autoriser » (ou touche « aA » dans la barre d’adresse → Réglages du site → Micro → Autoriser). Ensuite, rouvre l’assistant.') }
+      else if (e.error === 'audio-capture') { stopListen(true); say('Je n’entends aucun micro. Vérifie qu’un autre appli ne l’utilise pas, puis réessaie.') }
+    }
+    r.onend = () => {
+      runRef.current = false
+      if (!wantRef.current) return setRec(false)
+      // La dictée se coupe toute seule après un silence : on relance, sauf si le navigateur échoue en boucle.
+      if (!gotRef.current && Date.now() - t0Ref.current < 1500) failRef.current += 1; else failRef.current = 0
+      if (failRef.current >= 4) { stopListen(true); recRef.current = null; return say('La dictée se coupe sans arrêt. Touche le micro pour réessayer, ou utilise le micro de ton clavier.') }
+      baseRef.current = inRef.current ? inRef.current.trimEnd() + ' ' : ''; finalRef.current = ''
+      setTimeout(() => { if (wantRef.current && !runRef.current) startRec(r) }, 250)
+    }
     return r
   }
   const listen = () => {
     if (wantRef.current) return stopListen()
-    if (!SR) return setMsgs((m) => [...m, { role: 'assistant', text: 'Le micro intégré n’est pas disponible ici. Utilise le micro de ton clavier pour dicter.', err: true }])
-    wantRef.current = true; baseRef.current = input ? input.trimEnd() + ' ' : ''; setRec(true)
-    try { getRec().start() } catch { stopListen() }
+    if (!SR) return say('Le micro intégré n’est pas disponible ici. Utilise le micro de ton clavier pour dicter.')
+    dropRef.current = false; failRef.current = 0
+    wantRef.current = true; baseRef.current = input ? input.trimEnd() + ' ' : ''; finalRef.current = ''; setRec(true)
+    const r = getRec()
+    // Relance alors que le navigateur n'a pas fini de s'arrêter : on le coupe net, c'est onend qui relancera.
+    if (runRef.current) { try { r.abort() } catch { /* */ } } else startRec(r)
   }
-  useEffect(() => { if (!open) stopListen() }, [open])
-  useEffect(() => () => { wantRef.current = false; try { recRef.current?.stop() } catch { /* */ } }, [])
+  // Si tu écris au clavier pendant la dictée, ton texte devient la nouvelle base : la dictée n'efface plus ce que tu viens de taper.
+  const onType = (v) => { setInput(v); if (wantRef.current) { baseRef.current = v ? v.trimEnd() + ' ' : ''; finalRef.current = '' } }
+  // Envoi : on coupe la dictée et on jette ce qui arrive encore, sinon le texte revient dans le champ juste après l'envoi.
+  const sendNow = () => { if (wantRef.current || runRef.current) { dropRef.current = true; stopListen(true) } send() }
+  useEffect(() => { if (!open) stopListen(true) }, [open])
+  // iPhone : quand l'app passe en arrière-plan, la dictée est coupée par le système ; on remet l'écran dans un état clair.
+  useEffect(() => { const f = () => { if (document.hidden && wantRef.current) stopListen(true) }; document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f) }, [])
+  useEffect(() => () => { wantRef.current = false; try { recRef.current?.abort() } catch { /* */ } }, [])
 
   return <>
     <button className="as-fab" onClick={() => setOpen(true)} aria-label="Ouvrir l’assistant" title="Assistant"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9l-4.7 1.8L12 15.5l-1.8-4.7L5.5 9l4.7-1.3z" /><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z" /></svg></button>
@@ -147,8 +185,8 @@ export default function Assistant({ onOpen }) {
         </>}
         <div ref={end} />
       </div>
-      {ready !== false && <form className="as-in" onSubmit={(e) => { e.preventDefault(); send() }}>
-        <textarea ref={ta} rows={1} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !window.matchMedia('(pointer: coarse)').matches) { e.preventDefault(); if (!busy && input.trim()) send() } }} placeholder={rec ? 'Je t’écoute… touche le carré pour arrêter' : 'Écris ou dicte…'} />
+      {ready !== false && <form className="as-in" onSubmit={(e) => { e.preventDefault(); sendNow() }}>
+        <textarea ref={ta} rows={1} value={input} onChange={(e) => onType(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !window.matchMedia('(pointer: coarse)').matches) { e.preventDefault(); if (!busy && input.trim()) sendNow() } }} placeholder={rec ? 'Je t’écoute… touche le carré pour arrêter' : 'Écris ou dicte…'} />
         <button type="button" className={`as-mic ${rec ? 'on' : ''}`} onClick={listen} aria-label={rec ? 'Arrêter la dictée' : 'Dicter'}>{rec
           ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3" /></svg>
           : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>}</button>
