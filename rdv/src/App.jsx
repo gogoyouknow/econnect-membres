@@ -12,6 +12,7 @@ const QS = new URLSearchParams(typeof location !== 'undefined' ? location.search
 const gq = (k) => (QS.get(k) || '').trim().toLowerCase()
 // Lien personnel d'un closer (?closer_id=amandine) = imposé. Sinon c'est la répartition de l'événement (règles par profil, priorités) qui décide, au moment de la réservation.
 const FORCED = (() => { const c = gq('closer_id'); if (c === '9512') return 'amandine'; if (/^[a-z0-9-]{2,30}$/.test(c)) return c; return (gq('assigned_to').includes('amandine') || gq('utm_campaign').includes('amandine')) ? 'amandine' : '' })()
+const INV = (() => { const t = (new URLSearchParams(typeof location !== 'undefined' ? location.search : '').get('inv') || '').trim(); return /^[0-9a-fA-F-]{36}$/.test(t) ? t : '' })() // lien d'invitation personnel : directement le choix du créneau
 const CLOSER = FORCED || 'clement'
 // Événement personnalisé : rdv.theambitiousman.fr/e/mon-lien
 const EVENT = (() => { try { const m = location.pathname.toLowerCase().match(/^\/e\/([a-z0-9-]{2,60})\/?$/); return m ? m[1] : '' } catch { return '' } })()
@@ -178,18 +179,18 @@ export default function App() {
   // Sauvegarde silencieuse de ce que la personne a déjà saisi (pour pouvoir la relancer si elle ne réserve pas)
   const [evSrc, setEvSrc] = useState('')
   const leadBody = (stp, g) => { const [pf, d] = effTel(g); const af = AF_BLOCK.test(intlOf(g.prefix, g.tel)) ? intlOf(g.prefix, g.tel) : (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)) ? intlOf(g.wprefix, g.wtel) : ''); return { sid, step: stp, first_name: g.first_name.trim(), phone: af || (d.length >= 8 ? pf + d : ''), phone_raw: af || (d ? pf + d : ''), email: g.email.trim(), situation: g.situation, experience: g.experience, invest: g.invest || '', blocage: g.blocage, capital: g.capital, budget_confirmed: g.have, consent: NEW && g.email.trim() ? '1' : '', ...SRC, ...(EVENT ? { source: evSrc || SRC.source, utm: { ...(SRC.utm || {}), event: EVENT } } : {}) } }
-  const saveLead = (stp, over = {}) => { if (!configured) return; rpcW('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
+  const saveLead = (stp, over = {}) => { if (!configured || INV) return; rpcW('cand_lead', { p: leadBody(stp, { ...f, ...over }) }).catch(() => {}) }
   // On garde TOUT ce qui est tapé, même sans clic sur « Continuer » : sauvegarde auto 0,7 s après la dernière frappe, et à la fermeture / au changement d'onglet.
   const LS = { who: 'who', geo: 'who', situ: 'situ', exp: 'situ', txt: 'situ', inv: 'situ', cap: 'budget', block: 'budget', budget: 'budget', block2: 'budget', when: 'budget', later: 'budget', slot: 'slot' }
   const live = useRef({})
   live.current = { f, step }
   useEffect(() => {
-    if (!configured || !LS[step] || !(f.first_name.trim() || f.tel.trim() || f.email.trim())) return
+    if (!configured || INV || !LS[step] || !(f.first_name.trim() || f.tel.trim() || f.email.trim())) return
     const t = setTimeout(() => rpcW('cand_lead', { p: leadBody(LS[step], f) }).catch(() => {}), 700)
     return () => clearTimeout(t)
   }, [f, step])
   useEffect(() => {
-    const flush = () => { const { f: g, step: s } = live.current; if (configured && LS[s] && (g.first_name.trim() || g.tel.trim() || g.email.trim())) rpcW('cand_lead', { p: leadBody(LS[s], g) }).catch(() => {}) }
+    const flush = () => { const { f: g, step: s } = live.current; if (configured && !INV && LS[s] && (g.first_name.trim() || g.tel.trim() || g.email.trim())) rpcW('cand_lead', { p: leadBody(LS[s], g) }).catch(() => {}) }
     const vis = () => { if (document.visibilityState === 'hidden') flush() }
     window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', vis)
     return () => { window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', vis) }
@@ -197,6 +198,8 @@ export default function App() {
   const n = { who: 1, situ: 2, exp: 3, txt: NEW ? 3 : 4, inv: 4, cap: 5, block: 5, budget: 6, block2: 6, when: 6, later: 6, slot: 7 }[step] || 0
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
+  const [invd, setInvd] = useState(null)
+  useEffect(() => { if (!INV || !configured || TEST) return; rpc('cand_invite', { p_token: INV }).then((d) => { if (d?.email) { setInvd(d); setF((x) => ({ ...x, first_name: d.first_name || '', email: d.email, situation: d.situation || '', capital: d.capital || '' })); setDone(null); go(d.booked ? 'intro' : 'slot') } }).catch(() => {}) }, [])
   const [evLt, setEvLt] = useState(false)   // une règle de l'événement ouvre le calendrier aux « moins de 500 € »
   useEffect(() => { if (configured) rpc('cand_event_info', { p_slug: EVENT || '' }).then((e) => { if (EVENT && e?.source) setEvSrc(e.source); setEvLt(Boolean(e?.lt500)) }).catch(() => {}) }, [])
   const loadSlots = () => rpc('cand_slots', DELAI ? { p_delai: DELAI } : {}).then((s) => setSlots(s || [])).catch(() => setSlots([]))
@@ -245,7 +248,7 @@ export default function App() {
         const r = await rpcW('cand_resched', { p: { delai: DELAI, email: f.email.trim().toLowerCase(), phone: tel_, starts_at: pick } })
         setDone({ ...r, moved: true }); setResched(false); go('done'); setBusy(false); return
       }
-      const r = TEST ? fakeBook() : await rpc('cand_book', { p: { delai: DELAI, closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick } })
+      const r = TEST ? fakeBook() : await rpc('cand_book', { p: { delai: DELAI, closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: invd ? invd.phone : (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick, invite: invd ? INV : undefined } })
       if (r?.blocked) { setBlockWhy(r.reason || 'autre'); setBusy(false); return go('blocked') }
       setDone(r); setWaOpened(false); setRelEnd(Date.now() + (r.release_hours || cfg.release_hours || 4) * 3600000); go(ATT && r.status !== 'confirme' ? 'attention' : 'done')
     } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
