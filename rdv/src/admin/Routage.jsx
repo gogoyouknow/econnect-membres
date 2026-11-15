@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 
-export const CAPS = [['500-1000', '500 – 1 000 €'], ['1000-3000', '1 000 – 3 000 €'], ['gt3000', 'Plus de 3 000 €']]
+export const CAPS = [['lt500', 'Moins de 500 € (exception)'], ['500-1000', '500 – 1 000 €'], ['1000-3000', '1 000 – 3 000 €'], ['gt3000', 'Plus de 3 000 €']]
 export const SITS = ['Salarié', 'Étudiant', 'Entrepreneur', 'Sans activité']
 const PRIOS = [['haute', 'Haute'], ['moyenne', 'Moyenne'], ['basse', 'Basse'], ['off', 'Désactivé']]
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)

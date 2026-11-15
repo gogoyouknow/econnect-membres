@@ -197,7 +197,8 @@ export default function App() {
   const n = { who: 1, situ: 2, exp: 3, txt: NEW ? 3 : 4, inv: 4, cap: 5, block: 5, budget: 6, block2: 6, when: 6, later: 6, slot: 7 }[step] || 0
 
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
-  useEffect(() => { if (configured && EVENT) rpc('cand_event_info', { p_slug: EVENT }).then((e) => e?.source && setEvSrc(e.source)).catch(() => {}) }, [])
+  const [evLt, setEvLt] = useState(false)   // une règle de l'événement ouvre le calendrier aux « moins de 500 € »
+  useEffect(() => { if (configured) rpc('cand_event_info', { p_slug: EVENT || '' }).then((e) => { if (EVENT && e?.source) setEvSrc(e.source); setEvLt(Boolean(e?.lt500)) }).catch(() => {}) }, [])
   const loadSlots = () => rpc('cand_slots', DELAI ? { p_delai: DELAI } : {}).then((s) => setSlots(s || [])).catch(() => setSlots([]))
   useEffect(() => { if (step === 'slot') { loadSlots(); if (!resched) saveLead('slot') } }, [step])
   const days = useMemo(() => { const m = new Map(); (slots || []).forEach((s) => { const k = dayKey(s); if (!m.has(k)) m.set(k, []); m.get(k).push(s) }); return [...m.entries()] }, [slots])
@@ -376,7 +377,7 @@ export default function App() {
     {step === 'budget' && <section className="screen"><h2>Une dernière question, franche</h2><div className="card">
       <p>Tu as indiqué <b>{CAP_LBL[f.capital]}</b>. Beaucoup de personnes cochent un montant qu'elles n'ont pas encore, et on perd du temps tous les deux.</p>
       <div className="field"><span className="lbl">Tu peux vraiment mobiliser ce budget maintenant ?</span><div className="chips col">
-        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }); if (NEW) go(f.capital === 'lt500' ? 'block' : v === 'yes' ? 'slot' : v === 'soon' ? 'when' : 'block2') }}>{l}</button>)}</div></div>
+        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }); if (NEW) go(f.capital === 'lt500' && !evLt ? 'block' : v === 'yes' ? 'slot' : v === 'soon' ? 'when' : 'block2') }}>{l}</button>)}</div></div>
       <p className="muted s13">Sois honnête, ça m'aide à te dire la vérité.</p>
       <div className="err">{err}</div>{!NEW && <button className="btn" onClick={next.budget}>Choisir mon créneau →</button>}</div>
       </section>}

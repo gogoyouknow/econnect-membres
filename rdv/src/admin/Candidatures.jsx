@@ -12,7 +12,7 @@ import { copyText } from './copy'
 import PrepTrack from './PrepTrack'
 
 const ST = { reserve: ['À confirmer', 'wait'], confirme: ['Confirmé', 'ok'], fait: ['Fait', 'done'], absent: ['Absent', 'done'], annule: ['Annulé', 'done'] }
-const CAPL = { '500-1000': '500–1 000 €', '1000-3000': '1 000–3 000 €', gt3000: '+ 3 000 €' }
+const CAPL = { lt500: 'moins de 500 €', '500-1000': '500–1 000 €', '1000-3000': '1 000–3 000 €', gt3000: '+ 3 000 €' }
 const TZ = 'Europe/Paris'
 const timeOf = (iso) => new Date(iso).toLocaleTimeString('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })
 const dayKey = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(iso))
