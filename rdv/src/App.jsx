@@ -230,7 +230,7 @@ export default function App() {
     },
     budget() {
       if (!f.have) return setErr('Choisis une réponse pour continuer.')
-      saveLead('budget'); go(f.have === 'yes' ? 'slot' : f.have === 'soon' ? 'when' : 'block2')
+      saveLead('budget'); go(evLt || f.have === 'yes' ? 'slot' : f.have === 'soon' ? 'when' : 'block2')
     },
     async when() {
       if (!f.bdate) return setErr('Choisis la date à laquelle tu pourras investir.')
@@ -380,7 +380,7 @@ export default function App() {
     {step === 'budget' && <section className="screen"><h2>Une dernière question, franche</h2><div className="card">
       <p>Tu as indiqué <b>{CAP_LBL[f.capital]}</b>. Beaucoup de personnes cochent un montant qu'elles n'ont pas encore, et on perd du temps tous les deux.</p>
       <div className="field"><span className="lbl">Tu peux vraiment mobiliser ce budget maintenant ?</span><div className="chips col">
-        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }); if (NEW) go(f.capital === 'lt500' && !evLt ? 'block' : v === 'yes' ? 'slot' : v === 'soon' ? 'when' : 'block2') }}>{l}</button>)}</div></div>
+        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }); if (NEW) go(evLt ? 'slot' : f.capital === 'lt500' ? 'block' : v === 'yes' ? 'slot' : v === 'soon' ? 'when' : 'block2') }}>{l}</button>)}</div></div>
       <p className="muted s13">Sois honnête, ça m'aide à te dire la vérité.</p>
       <div className="err">{err}</div>{!NEW && <button className="btn" onClick={next.budget}>Choisir mon créneau →</button>}</div>
       </section>}
