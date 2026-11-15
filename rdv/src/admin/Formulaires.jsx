@@ -12,7 +12,7 @@ const dt = (iso) => iso ? new Date(iso).toLocaleString('fr-FR', { timeZone: TZ, 
 const dcall = (iso) => iso ? new Date(iso).toLocaleString('fr-FR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : ''
 const full = (r) => [r.first_name, r.last_name].filter(Boolean).join(' ') || 'Sans prénom'
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-const reached = (r, i) => Boolean(r.call_id) || (ORD[r.step] ?? 0) >= i
+const reached = (r, i) => Boolean((r.call_id || r.booked)) || (ORD[r.step] ?? 0) >= i
 
 // Les questions, dans l'ordre et avec les mots exacts de la page de réservation.
 const QS = [
@@ -51,11 +51,11 @@ export default function Formulaires({ toast, onOpen, closer }) {
     const k = days === 'today' ? day(Date.now()) : days === 'yday' ? day(Date.now() - 864e5) : ''
     return (rows || []).filter((r) => k ? day(r.created_at) === k : !days || new Date(r.created_at).getTime() > Date.now() - days * 864e5)
   }, [rows, days])
-  const fun = useMemo(() => [inRange.length, ...[1, 2, 3].map((i) => inRange.filter((r) => reached(r, i)).length), inRange.filter((r) => r.call_id).length], [inRange])
+  const fun = useMemo(() => [inRange.length, ...[1, 2, 3].map((i) => inRange.filter((r) => reached(r, i)).length), inRange.filter((r) => (r.call_id || r.booked)).length], [inRange])
   const labels = ['Ont commencé le formulaire', 'Sont arrivés à la question « situation »', 'Sont arrivés à la question « budget »', 'Ont vu les créneaux', 'Ont réservé un appel']
   const list = useMemo(() => {
     const nq = norm(q)
-    return inRange.filter((r) => (f === 'all' || (f === 'done' ? r.call_id : !r.call_id)) && (!nq || norm(full(r) + ' ' + (r.email || r.email_raw || '') + ' ' + (r.phone || r.phone_raw || '') + ' ' + (r.situation || '')).includes(nq)))
+    return inRange.filter((r) => (f === 'all' || (f === 'done' ? (r.call_id || r.booked) : !(r.call_id || r.booked))) && (!nq || norm(full(r) + ' ' + (r.email || r.email_raw || '') + ' ' + (r.phone || r.phone_raw || '') + ' ' + (r.situation || '')).includes(nq)))
   }, [inRange, f, q])
   const total = fun[0]
 
@@ -74,13 +74,13 @@ export default function Formulaires({ toast, onOpen, closer }) {
         <div className="pills" style={{ marginBottom: 0 }}>{[['all', `Toutes · ${inRange.length}`], ['done', `Réservées · ${fun[4]}`], ['drop', `Abandonnées · ${inRange.length - fun[4]}`]].map(([k, l]) => <button key={k} className={`pill ${f === k ? 'on' : ''}`} onClick={() => setF(k)}>{l}</button>)}</div>
         <input className="fm-q" type="search" placeholder="Rechercher un nom, un numéro, un email…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
-      {!list.length && <div className="sys">{closer && !(rows || []).length ? 'Ici apparaissent les formulaires des personnes qui réservent un de tes créneaux. Pour l’instant aucun appel ne t’est attribué : dès qu’une personne réserve avec toi, son formulaire s’affiche (toutes ses réponses).' : 'Aucune réponse pour le moment'}</div>}
+      {!list.length && <div className="sys">Aucune réponse pour le moment</div>}
       <div className="fm-list">{list.slice(0, more).map((r) => {
         const last = ORD[r.step] ?? 0; const open = openId === r.id
         return <article key={r.id} className={`fm-card ${open ? 'open' : ''}`}>
           <header onClick={() => setOpenId(open ? null : r.id)}>
             <div><b>{full(r)}</b><small>{dt(r.created_at)}{r.source ? ` · ${r.source}` : ''}</small></div>
-            {r.call_id ? <span className="badge ok">Appel réservé</span> : r.stage === 'disqualifie' ? <span className="badge dq">Disqualifié{r.capital === 'lt500' ? ' : moins de 500 €' : ''}</span> : <span className="badge wait">Arrêté : {STEPN[last]}</span>}
+            {(r.call_id || r.booked) ? <span className="badge ok">Appel réservé</span> : r.stage === 'disqualifie' ? <span className="badge dq">Disqualifié{r.capital === 'lt500' ? ' : moins de 500 €' : ''}</span> : <span className="badge wait">Arrêté : {STEPN[last]}</span>}
           </header>
           {open && <div className="fm-qa">
             {QS.map(([q, g], i) => { const v = g(r); return <div key={q} className="fm-row"><span>{q}</span>{v ? <b>{v}</b> : <em>— pas de réponse</em>}</div> })}
