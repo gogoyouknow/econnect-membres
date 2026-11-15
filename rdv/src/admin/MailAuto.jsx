@@ -7,13 +7,14 @@ const dayKey = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(
 const addDays = (k, n) => { const x = new Date(k + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10) }
 const dayFr = (k) => new Date(k + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 const SEQ = { contact: 'A laissé son email ou son numéro', partial: 'A commencé à répondre', noshow: 'Rendez-vous manqué (no-show)', nurture: 'Séquence 30 jours (histoire)', methode: 'Moins de 500 € : Méthode à 97 €' }
+const PERM = '2999-12-31'   // validation « une fois pour toutes » (comme côté base de données)
 const SEQ_ORDER = ['contact', 'partial', 'noshow', 'methode', 'nurture']
 const prev = (b) => String(b || '').replace(/\{prenom\}/g, 'Karim').replace(/\{video\}/g, '▶ [Bouton : Regarder la vidéo]').replace(/\{methode:([^}]*)\}/g, '▶ [Bouton jaune : $1]').replace(/\{rdv\}/g, 'rdv.theambitiousman.fr')
 
-/** « Emails automatiques » : tout ce qui part tout seul, avec ta validation jour par jour pendant la période de contrôle. */
+/** « Emails automatiques » : tout ce qui part tout seul, avec ta validation (une seule fois par email) pendant la période de contrôle. */
 export default function MailAuto({ toast }) {
   const [cfg, setCfg] = useState(null); const [steps, setSteps] = useState(null); const [outs, setOuts] = useState([]); const [oks, setOks] = useState([]); const [stats, setStats] = useState([]); const [enr, setEnr] = useState([])
-  const [open, setOpen] = usePS('ma_open', false); const [edit, setEdit] = useState(null); const [day, setDay] = usePS('ma_day', 'demain'); const [seeAll, setSeeAll] = usePS('ma_all', false)
+  const [open, setOpen] = usePS('ma_open', false); const [edit, setEdit] = useState(null); const [seeAll, setSeeAll] = usePS('ma_all', false)
   const today = dayKey(new Date()); const tomorrow = addDays(today, 1)
   const load = async () => {
     const [a, b, c, d, e, f] = await Promise.all([
@@ -28,21 +29,16 @@ export default function MailAuto({ toast }) {
     setCfg(a.data); setSteps(b.data || []); setOuts(c.data || []); setOks(d.data || []); setStats(e.data || []); setEnr(f.data || [])
   }
   useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i) }, [])
-  const target = day === 'demain' ? tomorrow : today
-  const isOk = (sid, k) => oks.some((o) => o.step_id === sid && o.day === k)
-  const groups = useMemo(() => {
-    const m = {}
-    for (const o of outs) { const k = dayKey(new Date(o.due_at)); (m[k] = m[k] || {}); m[k][o.step_id] = (m[k][o.step_id] || 0) + 1 }
-    return m
-  }, [outs])
-  const pendingFor = (k) => (steps || []).filter((s) => groups[k]?.[s.id])
-  const toValidate = (k) => pendingFor(k).filter((s) => !isOk(s.id, k))
-  const nToday = toValidate(today).length, nTomorrow = toValidate(tomorrow).length
+  const isOk = (sid) => oks.some((o) => o.step_id === sid && o.day === PERM)
+  const counts = useMemo(() => { const m = {}; for (const o of outs) m[o.step_id] = (m[o.step_id] || 0) + 1; return m }, [outs])
+  const pending = (steps || []).filter((s) => counts[s.id])
+  const toValidate = pending.filter((s) => !isOk(s.id))
+  const nToValidate = toValidate.length
 
   const run = async (p, msg) => { const { error } = await p; if (error) { toast(friendlyError(error), true); return false } if (msg) toast(msg); load(); return true }
-  const validate = (sid, k) => run(supabase.from('mail_ok').upsert({ step_id: sid, day: k }), 'Validé')
-  const unvalidate = (sid, k) => run(supabase.from('mail_ok').delete().eq('step_id', sid).eq('day', k), 'Validation retirée')
-  const validateAll = (k) => run(supabase.from('mail_ok').upsert(toValidate(k).map((s) => ({ step_id: s.id, day: k }))), 'Tout est validé')
+  const validate = (sid) => run(supabase.from('mail_ok').upsert({ step_id: sid, day: PERM }), 'Validé pour tout le monde')
+  const unvalidate = (sid) => run(supabase.from('mail_ok').delete().eq('step_id', sid), 'Validation retirée')
+  const validateAll = () => run(supabase.from('mail_ok').upsert(toValidate.map((s) => ({ step_id: s.id, day: PERM }))), 'Tout est validé')
   const setMode = (mode) => run(supabase.from('mail_settings').update({ mode }).eq('id', 1), mode === 'pause' ? 'Envois en pause' : mode === 'auto' ? 'Mode automatique activé' : 'Validation réactivée')
   const save = async (s) => { if (await run(supabase.from('mail_steps').update({ label: s.label, subject_a: s.subject_a, subject_b: s.subject_b || '', body: s.body, video_id: s.video_id || null, video_title: s.video_title || null, delay_h: Number(s.delay_h) || 0, at_hour: s.at_hour === '' || s.at_hour == null ? null : Number(s.at_hour), active: s.active }).eq('id', s.id), 'Enregistré')) setEdit(null) }
   const stat = (sid, v) => stats.find((x) => x.step_id === sid && x.variant === v) || { sent: 0, clicked: 0 }
@@ -51,18 +47,18 @@ export default function MailAuto({ toast }) {
   const end = new Date(cfg.control_until); const launch = new Date(cfg.launch_at)
   const dayN = Math.min(30, Math.max(1, Math.floor((Date.now() - launch.getTime()) / 864e5) + 1)); const finished = Date.now() >= end.getTime()
   const count = (seq, st) => enr.filter((e) => e.seq === seq && e.status === st).length
-  const Card = ({ s, k }) => { const n = groups[k]?.[s.id] || 0; const ok = isOk(s.id, k)
+  const Card = ({ s }) => { const n = counts[s.id] || 0; const ok = isOk(s.id)
     return <div className={`ma-card ${ok ? 'ok' : ''}`}>
       <div className="ma-top"><b>{s.label}</b><span className="muted s12">{n ? `${n} personne${n > 1 ? 's' : ''}` : 'personne pour l’instant'}</span></div>
       <div className="ma-sub"><span className="ma-tag">A</span>{s.subject_a.replace(/\{prenom\}/g, 'Karim')}</div>
       {s.subject_b && <div className="ma-sub"><span className="ma-tag b">B</span>{s.subject_b.replace(/\{prenom\}/g, 'Karim')}</div>}
       <details><summary className="muted s12">Lire l’email</summary><div className="ma-body">{prev(s.body)}</div></details>
-      <div className="acts">{ok ? <button className="btn ghost sm" onClick={() => unvalidate(s.id, k)}>✓ Validé · retirer</button> : <button className="btn sm" onClick={() => validate(s.id, k)}>Valider pour {k === today ? 'aujourd’hui' : 'demain'}</button>}
+      <div className="acts">{ok ? <button className="btn ghost sm" onClick={() => unvalidate(s.id)}>✓ Validé · retirer</button> : <button className="btn sm" onClick={() => validate(s.id)}>Valider cet email</button>}
         <button className="btn ghost sm" onClick={() => setEdit({ ...s })}>Modifier</button></div>
     </div> }
 
   return <details className="settings msgs ma" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-    <summary>Emails automatiques{(nToday + nTomorrow) > 0 && <span className="ma-badge">{nToday + nTomorrow} à valider</span>}</summary>
+    <summary>Emails automatiques{nToValidate > 0 && <span className="ma-badge">{nToValidate} à valider</span>}</summary>
 
     <div className="msgbox">
       {cfg.mode === 'auto' ? <p><b>Mode automatique.</b> Les emails partent tout seuls.</p>
@@ -74,16 +70,14 @@ export default function MailAuto({ toast }) {
         {cfg.mode === 'validation' && <button className="btn ghost sm" disabled={!finished} onClick={() => window.confirm('Passer en automatique ? Les emails partiront ensuite sans ton accord.') && setMode('auto')}>Passer en automatique{finished ? '' : ' (après 30 jours)'}</button>}
         {cfg.mode === 'auto' && <button className="btn ghost sm" onClick={() => setMode('validation')}>Revenir à la validation</button>}
       </div>
-      <p className="muted s12">Le système te prévient 3 fois la veille (10 h, 15 h, 19 h) et 3 fois le jour même (9 h, 13 h, 16 h) tant que tu n’as pas validé. Pas de validation = pas d’envoi.</p>
+      <p className="muted s12">Tu es prévenu une seule fois par email (notification, sans email). Tu valides chaque email une seule fois : c’est valable pour toutes les personnes. Si tu modifies son texte, il faudra le valider de nouveau. Pas de validation = pas d’envoi.</p>
     </div>
 
     <div className="msgbox">
-      <div className="lq">À valider</div>
-      <div className="acts"><button className={`btn sm ${day === 'demain' ? '' : 'ghost'}`} onClick={() => setDay('demain')}>Demain{nTomorrow ? ` (${nTomorrow})` : ''}</button><button className={`btn sm ${day === 'jour' ? '' : 'ghost'}`} onClick={() => setDay('jour')}>Aujourd’hui{nToday ? ` (${nToday})` : ''}</button></div>
-      <p className="muted s12">{dayFr(target)}</p>
-      {pendingFor(target).length === 0 && <p className="muted">Aucun email prévu ce jour-là pour l’instant.</p>}
-      {pendingFor(target).map((s) => <Card key={s.id} s={s} k={target} />)}
-      {toValidate(target).length > 1 && <button className="btn sm" onClick={() => validateAll(target)}>Tout valider ({toValidate(target).length})</button>}
+      <div className="lq">À valider{nToValidate ? ` (${nToValidate})` : ''}</div>
+      {pending.length === 0 && <p className="muted">Aucun email en attente pour l’instant.</p>}
+      {pending.map((s) => <Card key={s.id} s={s} />)}
+      {toValidate.length > 1 && <button className="btn sm" onClick={validateAll}>Tout valider ({toValidate.length})</button>}
     </div>
 
     <div className="msgbox">

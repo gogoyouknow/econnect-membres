@@ -81,5 +81,6 @@
   "0080_agenda_closer.sql",
   "0081_notif_appel_lien.sql",
   "0082_objet_rappels_notre_appel.sql",
-  "0083_closer_voit_tous_formulaires.sql"
+  "0083_closer_voit_tous_formulaires.sql",
+  "0084_validation_unique.sql"
 ]
