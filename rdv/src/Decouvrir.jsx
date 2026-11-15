@@ -45,6 +45,7 @@ const FAQ = [
 ]
 
 // Qui écrit ? Le lien personnel (?t=…) envoyé sur WhatsApp, sinon l'identifiant du navigateur utilisé pour réserver.
+const OK = (() => { try { return new URLSearchParams(location.search).get('ok') === '1' } catch { return false } })()
 const TOKEN = (() => { try { return new URLSearchParams(location.search).get('t') || '' } catch { return '' } })()
 const SID = (() => { try { let v = localStorage.getItem('cand_sid'); if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); localStorage.setItem('cand_sid', v) } return v } catch { return 'mem-' + Date.now() + Math.random().toString(16).slice(2) } })()
 
@@ -99,6 +100,7 @@ export default function Decouvrir() {
   return <div className="shell">
     <header><Logo /></header>
 
+    {OK && <div className="card okbar"><b>✓ Ton message est bien arrivé, ton appel est confirmé.</b><span>Dernière chose : regarde la vidéo ci-dessous, puis note tes questions juste en dessous.</span></div>}
     <section className="screen">
       <div className="col"><span className="eyebrow">Avant notre appel</span>
         <h1>Regarde cette vidéo en premier</h1>

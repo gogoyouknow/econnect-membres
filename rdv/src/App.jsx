@@ -33,6 +33,10 @@ const DELAI = (() => { try { const q = (new URLSearchParams(location.search).get
 const FB = EVENT === 'appel-decouverte-fb'
 const NEW = true // le nouveau parcours est validé : actif pour tout le monde (?test=1 reste un mode démo sans enregistrement)
 const rpcW = (n, a) => (TEST ? Promise.resolve(null) : rpc(n, a))
+// Après le clic sur « Je confirme sur WhatsApp » : au retour de WhatsApp (ou si la page se recharge), on ouvre la page « Avant notre appel » (vidéo + questions).
+const GO_KEY = 'cand_wa_go'
+const readGo = () => { try { return JSON.parse(localStorage.getItem(GO_KEY) || 'null') } catch { return null } }
+const goDecouvrir = () => { const o = readGo(); try { localStorage.removeItem(GO_KEY) } catch { /* */ } if (!o || Date.now() - o.t > 3 * 3600000) return; location.replace('/decouvrir?ok=1' + (o.tk ? '&t=' + encodeURIComponent(o.tk) : '')) }
 const COUNTRIES = [['+33', '🇫🇷', 'France'], ['+32', '🇧🇪', 'Belgique'], ['+41', '🇨🇭', 'Suisse'], ['+352', '🇱🇺', 'Luxembourg'], ['+1', '🇨🇦', 'Canada / États-Unis'], ['+212', '🇲🇦', 'Maroc'], ['+213', '🇩🇿', 'Algérie'], ['+216', '🇹🇳', 'Tunisie'], ['+351', '🇵🇹', 'Portugal'], ['+40', '🇷🇴', 'Roumanie'],
   ['+229', '🇧🇯', 'Bénin'], ['+237', '🇨🇲', 'Cameroun'], ['+228', '🇹🇬', 'Togo'], ['+224', '🇬🇳', 'Guinée'], ['+241', '🇬🇦', 'Gabon'], ['+242', '🇨🇬', 'Congo'], ['+243', '🇨🇩', 'RD Congo'], ['+261', '🇲🇬', 'Madagascar'], ['+230', '🇲🇺', 'Maurice'], ['+262', '🇷🇪', 'La Réunion'], ['+590', '🇬🇵', 'Guadeloupe'], ['+596', '🇲🇶', 'Martinique'], ['+594', '🇬🇫', 'Guyane'], ['+509', '🇭🇹', 'Haïti'],
   ['+34', '🇪🇸', 'Espagne'], ['+39', '🇮🇹', 'Italie'], ['+49', '🇩🇪', 'Allemagne'], ['+44', '🇬🇧', 'Royaume-Uni'], ['+31', '🇳🇱', 'Pays-Bas'], ['+90', '🇹🇷', 'Turquie'], ['+20', '🇪🇬', 'Égypte']]
@@ -137,6 +141,11 @@ export default function App() {
   const [waOpened, setWaOpened] = useState(false); const [relEnd, setRelEnd] = useState(0); const [tick, setTick] = useState(0)
   useEffect(() => { if (step !== 'attention') return; const t = setInterval(() => setTick((x) => x + 1), 20000); return () => clearInterval(t) }, [step])
   const [canGo, setCanGo] = useState(false)
+  useEffect(() => {
+    const back = () => { if (document.visibilityState !== 'visible') return; const o = readGo(); if (o && Date.now() - o.t > 2500) goDecouvrir() }
+    document.addEventListener('visibilitychange', back); window.addEventListener('pageshow', back); back()
+    return () => { document.removeEventListener('visibilitychange', back); window.removeEventListener('pageshow', back) }
+  }, [])
   useEffect(() => { if (step !== 'attention') return; setCanGo(false); const t = setTimeout(() => setCanGo(true), 25000); return () => clearTimeout(t) }, [step])
   const [mine, setMine] = useState(null); const [resched, setResched] = useState(false)
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
@@ -248,7 +257,8 @@ export default function App() {
   const waMsg = bk ? `Salut ${cn}, c’est ${(bk.first_name || f.first_name).trim()}. ${ATT && !done?.moved ? `Je confirme mon appel du ${bk.when}.` : `Je viens de ${done?.moved ? 'déplacer' : 'réserver'} mon appel pour ${bk.when}.`}` : ''
   const waHref = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`
   const copy = () => { setCanGo(true); try { navigator.clipboard.writeText('+' + waNum) } catch {} }
-  const waClick = (e) => { setWaOpened(true); setCanGo(true); openChat(e, waNum, waMsg, waHref); try { rpcW('cand_wa_click', { p: { email: f.email.trim().toLowerCase(), phone: effTel(f).join('') } }).catch(() => {}) } catch { /* */ } }
+  const waClick = (e) => { setWaOpened(true); setCanGo(true); openChat(e, waNum, waMsg, waHref); try { localStorage.setItem(GO_KEY, JSON.stringify({ t: Date.now(), tk: '' })) } catch { /* */ }
+    try { rpcW('cand_wa_click', { p: { email: f.email.trim().toLowerCase(), phone: effTel(f).join('') } }).then((tk) => { if (typeof tk !== 'string') return; const o = readGo(); if (o) try { localStorage.setItem(GO_KEY, JSON.stringify({ ...o, tk })) } catch { /* */ } }).catch(() => {}) } catch { /* */ } }
   const cur = days.find((d) => d[0] === day)
   const relH = bk?.release_hours || cfg.release_hours
   const confirmBtn = () => <div className="card confirm"><p><b>Tu n'as pas encore envoyé ton message ?</b></p><p className="muted s13">C'est la seule chose qui confirme ton créneau.</p>

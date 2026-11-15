@@ -7,10 +7,11 @@ const cname = closerName
 const TZ = 'Europe/Paris'
 const heure = (d) => d.toLocaleTimeString('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
 const dateFr = (d) => d.toLocaleDateString('fr-FR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' }) + ' à ' + heure(d)
-const fill = (tpl, c) => { const d = new Date(c.starts_at); return String(tpl || '').replace(/\{prenom\}/g, c.first_name || '').replace(/\{date\}/g, dateFr(d)).replace(/\{heure\}/g, heure(d)).replace(/\{closer\}/g, cname(c.closer)).replace(/\{(lien_wa|bouton)\}/g, '') }
-const ANCHOR = { after: 'après la réservation', before: 'avant l’appel', release: 'avant la libération du créneau' }
+const fill = (tpl, c) => { const d = new Date(c.starts_at); const v = 'https://rdv.theambitiousman.fr/decouvrir' + (c.qtoken ? '?t=' + c.qtoken : ''); return String(tpl || '').replace(/\{prenom\}/g, c.first_name || '').replace(/\{date\}/g, dateFr(d)).replace(/\{heure\}/g, heure(d)).replace(/\{closer\}/g, cname(c.closer)).replace(/\{(video|lien_video)\}/g, v).replace(/\{(lien_wa|bouton|photo)\}/g, '') }
+const ANCHOR = { after: 'après la réservation', before: 'avant l’appel', release: 'avant la libération du créneau', click: 'après le clic sur « Je confirme sur WhatsApp »' }
 export const human = (m) => { const n = Number(m) || 0; if (n === 0) return '0 min'; if (n % 1440 === 0) return n / 1440 + ' j'; if (n % 60 === 0) return n / 60 + ' h'; return n + ' min' }
 const dueAt = (st, c, relH) => { const cr = new Date(c.created_at).getTime(), s = new Date(c.starts_at).getTime(), m = st.minutes * 60000
+  if (st.anchor === 'click') return c.wa_clicked_at ? new Date(c.wa_clicked_at).getTime() + m : Infinity
   return st.anchor === 'after' ? cr + m : st.anchor === 'before' ? s - m : cr + relH * 3600000 - m }
 
 function useSeq() {
@@ -56,22 +57,23 @@ export function ConfSeqEditor({ toast }) {
   if (!rows) return null
   const ok = async (p) => { const { error } = await p; if (error) { toast(friendlyError(error), true); return false } return true }
   const chg = (id, k, v) => setRows(rows.map((r) => (r.id === id ? { ...r, [k]: v } : r)))
-  const save = async (s) => { if (await ok(supabase.from('cand_cseq').update({ label: s.label, anchor: s.anchor, minutes: Math.max(0, Number(s.minutes) || 0), channel: s.channel, subject: s.channel === 'email' ? s.subject : '', body: s.body, only_unconfirmed: !!s.only_unconfirmed, active: !!s.active }).eq('id', s.id))) { toast('Enregistré'); load() } }
+  const save = async (s) => { if (await ok(supabase.from('cand_cseq').update({ label: s.label, anchor: s.anchor, minutes: Math.max(0, Number(s.minutes) || 0), channel: s.channel, subject: s.channel === 'email' ? s.subject : '', body: s.body, only_unconfirmed: !!s.only_unconfirmed, active: !!s.active, cond: s.cond || 'always' }).eq('id', s.id))) { toast('Enregistré'); load() } }
   const del = async (s) => { if (window.confirm(`Supprimer l’étape « ${s.label} » ?`) && await ok(supabase.from('cand_cseq').delete().eq('id', s.id))) load() }
   const add = async () => { const pos = Math.max(0, ...rows.map((r) => r.pos)) + 1; if (await ok(supabase.from('cand_cseq').insert({ pos, label: 'Nouveau message', anchor: 'before', minutes: 60, channel: 'whatsapp', body: 'Salut {prenom}, c’est {closer}. ' }))) load() }
   const sample = { first_name: 'Karim', starts_at: new Date(Date.now() + 86400000).toISOString(), closer: 'clement' }
   return <details className="settings msgs">
     <summary>Séquence de confirmation ({rows.filter((r) => r.active).length} messages actifs)</summary>
-    <p className="muted s12">Ces messages partent autour de chaque rendez-vous. Les <b>emails</b> partent tout seuls. Les messages <b>WhatsApp</b> apparaissent en haut de « À venir » au bon moment : tu n’as qu’à taper « Envoyer ». Variables : {'{prenom}'} {'{date}'} {'{heure}'} {'{closer}'} {'{lien_wa}'} {'{bouton}'} (bouton vert « Je confirme sur WhatsApp », email seulement).</p>
-    {[...rows].sort((a, b) => (a.anchor === 'after' ? 0 : a.anchor === 'release' ? 1 : 2) - (b.anchor === 'after' ? 0 : b.anchor === 'release' ? 1 : 2) || (a.anchor === 'before' ? b.minutes - a.minutes : a.minutes - b.minutes)).map((s) => <div key={s.id} className={`seqedit cs-step ${s.active ? '' : 'off'}`}>
+    <p className="muted s12">Ces messages partent autour de chaque rendez-vous. Les <b>emails</b> partent tout seuls. Les messages <b>WhatsApp</b> apparaissent en haut de « À venir » au bon moment : tu n’as qu’à taper « Envoyer ». Variables : {'{prenom}'} {'{date}'} {'{heure}'} {'{closer}'} {'{lien_wa}'} {'{bouton}'} (bouton vert « Je confirme sur WhatsApp », email seulement) {'{video}'} (bouton rouge vers la vidéo) {'{lien_video}'} {'{photo}'} (photo « où écrire ses questions »).</p>
+    {[...rows].sort((a, b) => (({ click: -1, after: 0, release: 1 })[a.anchor] ?? 2) - (({ click: -1, after: 0, release: 1 })[b.anchor] ?? 2) || (a.anchor === 'before' ? b.minutes - a.minutes : a.minutes - b.minutes)).map((s) => <div key={s.id} className={`seqedit cs-step ${s.active ? '' : 'off'}`}>
       <div className="cs-top"><input className="ti" value={s.label} onChange={(e) => chg(s.id, 'label', e.target.value)} />
         <label className="tgl"><input type="checkbox" checked={s.active} onChange={(e) => chg(s.id, 'active', e.target.checked)} />Actif</label></div>
       <div className="cs-when">
         <select value={s.channel} onChange={(e) => chg(s.id, 'channel', e.target.value)}><option value="email">Email (automatique)</option><option value="whatsapp">WhatsApp (à envoyer)</option></select>
         <label className="inl"><input type="number" min="0" value={s.minutes} onChange={(e) => chg(s.id, 'minutes', e.target.value)} />min</label>
-        <select value={s.anchor} onChange={(e) => chg(s.id, 'anchor', e.target.value)}><option value="after">après la réservation</option><option value="before">avant l’appel</option><option value="release">avant la libération du créneau</option></select>
+        <select value={s.anchor} onChange={(e) => chg(s.id, 'anchor', e.target.value)}><option value="after">après la réservation</option><option value="before">avant l’appel</option><option value="release">avant la libération du créneau</option><option value="click">après le clic sur WhatsApp</option></select>
       </div>
       <p className="muted s12">= {human(s.minutes)} {ANCHOR[s.anchor]}{s.anchor === 'before' && Number(s.minutes) >= 60 ? ` (${s.minutes} min)` : ''}</p>
+      {s.channel === 'email' && <label className="inl">Condition&nbsp;<select value={s.cond || 'always'} onChange={(e) => chg(s.id, 'cond', e.target.value)}><option value="always">Toujours envoyer</option><option value="not_played">Seulement si la vidéo n’a PAS été lancée</option><option value="played">Seulement si la vidéo a été lancée</option></select></label>}
       <label className="tgl"><input type="checkbox" checked={!!s.only_unconfirmed} onChange={(e) => chg(s.id, 'only_unconfirmed', e.target.checked)} />Seulement si la personne n’a pas encore confirmé</label>
       {s.channel === 'email' && <input className="ti" value={s.subject} onChange={(e) => chg(s.id, 'subject', e.target.value)} placeholder="Objet de l’email" />}
       <textarea rows={s.channel === 'email' ? 7 : 4} value={s.body} onChange={(e) => chg(s.id, 'body', e.target.value)} />
