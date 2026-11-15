@@ -14,7 +14,13 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const url = new URL((event.notification.data && event.notification.data.url) || '/admin', self.location.origin).href
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-    for (const c of list) { if (c.url.startsWith(self.location.origin + '/admin') && 'focus' in c) return c.focus() }
+    // L'appli est déjà ouverte : on lui dit où aller (sans la recharger), puis on la met au premier plan.
+    for (const c of list) {
+      if (c.url.startsWith(self.location.origin + '/admin') && 'focus' in c) {
+        c.postMessage({ type: 'calio-open', url })
+        return c.focus().catch(() => {})
+      }
+    }
     return self.clients.openWindow(url)
   }))
 })

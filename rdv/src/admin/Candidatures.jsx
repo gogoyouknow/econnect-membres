@@ -1,6 +1,6 @@
 import LoadErr from './LoadErr'
 import { usePS } from './persist'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase, friendlyError } from './supabase'
 import Portal from './Portal'
 import { BlockModal } from './Blocages'
@@ -44,7 +44,7 @@ const countdown = (iso) => {
 }
 
 /** Mes appels : accueil (prochain appel + liste) et disponibilités. `tab` = 'appels' | 'dispos'. */
-export default function Candidatures({ toast, tab: main , closer, only }) {
+export default function Candidatures({ toast, tab: main , closer, only, focusCall }) {
   useCloserNames()
   const [rows, setRows] = useState([]); const [tab, setTab] = usePS('ca_tab', 'avenir'); const [open, setOpen] = usePS('ca_open', null)
   const [tpl, setTpl] = useState(DEFAULT_MSG); const [edit, setEdit] = usePS('ca_edit', null); const [qs, setQs] = useState({}); const [ev, setEv] = useState({}); const [rep, setRep] = useState(null)
@@ -73,6 +73,15 @@ export default function Candidatures({ toast, tab: main , closer, only }) {
 
   const now = Date.now()
   const live = (c) => ['reserve', 'confirme'].includes(c.status)
+  // Arrivée depuis une notification : on ouvre l'appel concerné et on le montre à l'écran.
+  const doneFocus = useRef(0)
+  useEffect(() => {
+    if (!focusCall || !rows.length || doneFocus.current === focusCall.t) return
+    const c = rows.find((x) => x.id === focusCall.id); doneFocus.current = focusCall.t
+    if (!c) return
+    setTab(c.status === 'annule' ? 'annules' : (live(c) && new Date(c.starts_at).getTime() > Date.now() - 3600000) ? 'avenir' : 'passes'); setOpen(c.id)
+    setTimeout(() => { const el = document.getElementById('call-' + c.id); el && el.scrollIntoView({ block: 'center', behavior: 'smooth' }) }, 350)
+  }, [focusCall, rows])
   const upcoming = rows.filter(c => live(c) && new Date(c.starts_at).getTime() > now - 3600000).sort((a, b) => a.starts_at.localeCompare(b.starts_at))
   const next = upcoming.find(c => new Date(c.starts_at).getTime() > now - 15 * 60000)
   const nToConfirm = rows.filter(c => c.status === 'reserve').length
@@ -107,7 +116,7 @@ export default function Candidatures({ toast, tab: main , closer, only }) {
       {tab === 'avenir' && <ToSend rows={rows} toast={toast} reload={load} />}
       {!groups.length && !lerr && <div className="sys">Aucun appel ici pour l'instant</div>}
       {groups.map(g => <div key={g.k} className="dgroup"><div className="dlabel">{g.label}</div>
-        {g.items.map(c => <div key={c.id} className={`call ${open === c.id ? 'open' : ''}`}>
+        {g.items.map(c => <div key={c.id} id={`call-${c.id}`} className={`call ${open === c.id ? 'open' : ''}`}>
           <div className="crow" onClick={() => setOpen(open === c.id ? null : c.id)}>
             <div className="ctime">{timeOf(c.starts_at)}</div>
             <div className="cmain"><b>{c.first_name}</b><small>{[c.situation, CAPL[c.capital] || c.capital].filter(Boolean).join(' · ')}</small></div>
