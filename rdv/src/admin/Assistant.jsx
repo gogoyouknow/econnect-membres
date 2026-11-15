@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { usePS } from './persist'
 import { supabase, friendlyError } from './supabase'
 
-const SUGG = ['Qui a réservé un appel aujourd’hui ?', 'Combien de candidatures cette semaine ?', 'Qui dois-je relancer ?', 'Où en est Nawal ?', 'Mets Karim demain à 14h']
+const SUGG = ['Qui a réservé un appel aujourd’hui ?', 'Combien de candidatures cette semaine ?', 'Qui dois-je relancer ?', 'Où en est Nawal ?', 'Mets Karim demain à 14h', 'Amandine prend les appels à moins de 500 €']
 const CAPL = { lt500: 'Moins de 500 €', '500-1000': '500 à 1 000 €', '1000-3000': '1 000 à 3 000 €', gt3000: 'Plus de 3 000 €' }
 const FIELDS = [['first_name', 'Prénom'], ['last_name', 'Nom'], ['phone', 'WhatsApp'], ['email', 'Email'], ['situation', 'Situation'], ['experience', 'Expérience'], ['capital', 'Budget'], ['source', 'Source']]
 const digits = (s) => String(s || '').replace(/\D/g, '')
@@ -43,6 +43,46 @@ function RdvCard({ p, state, err, onConfirm, onCancel }) {
     <div className="as-acts"><button className="as-btn" onClick={onConfirm}>Prendre le rendez-vous</button><button className="as-btn ghost" onClick={onCancel}>Annuler</button></div>
     <small>Posé même si l’horaire est hors de tes disponibilités. Aucun message n’est envoyé au prospect.</small>
     {err && <p className="as-err">{err}</p>}</div>
+}
+
+
+// Carte « action » : règles de répartition, horaires, statuts, montants… Un tap pour confirmer, l'app l'exécute avec TA session.
+function ActionCard({ p, state, err, onConfirm, onCancel }) {
+  if (state === 'done') return <div className="as-card ok">✓ Fait : <b>{p.title}</b>{p.lines?.[0] ? <><br /><small>{p.lines[0]}</small></> : null}</div>
+  if (state === 'cancel') return <div className="as-card dim">Annulé, rien n’a été modifié.</div>
+  return <div className="as-card">
+    <b>{p.title}</b>
+    {(p.lines || []).map((l, i) => <div key={i} className="as-row"><span>{i === 0 ? '•' : ''}</span><b>{l}</b></div>)}
+    <div className="as-acts"><button className="as-btn" onClick={onConfirm}>Confirmer</button><button className="as-btn ghost" onClick={onCancel}>Annuler</button></div>
+    <small>{p.danger ? 'Action sensible : relis bien avant de confirmer. ' : ''}Rien n’est modifié tant que tu n’as pas confirmé.</small>
+    {err && <p className="as-err">{err}</p>}</div>
+}
+
+// Exécution des actions confirmées (même droits que toi dans l'app : rien de plus).
+const must = (r) => { if (r?.error) throw r.error; return r?.data }
+const nowIso = () => new Date().toISOString()
+const evOf = async (id) => must(await supabase.from('cand_events').select('*').eq('id', id).single())
+const ACT = {
+  regle_ajouter: async (a) => { const ev = await evOf(a.event_id); const rule = { closer: a.closer }; if (a.capital?.length) rule.capital = a.capital; if (a.situation?.length) rule.situation = a.situation; if (a.source) rule.source = a.source
+    const rules = a.position === 'fin' ? [...(ev.rules || []), rule] : [rule, ...(ev.rules || [])]; must(await supabase.from('cand_events').update({ rules, updated_at: nowIso() }).eq('id', ev.id)) },
+  regle_supprimer: async (a) => { const ev = await evOf(a.event_id); const r = (ev.rules || [])[a.numero - 1]; if (!r || r.closer !== a.closer) throw new Error('Les règles ont changé entre-temps : redemande-moi.'); must(await supabase.from('cand_events').update({ rules: ev.rules.filter((_, i) => i !== a.numero - 1), updated_at: nowIso() }).eq('id', ev.id)) },
+  priorite_closer: async (a) => { const ev = await evOf(a.event_id); const pool = [...(ev.pool || [])]; const i = pool.findIndex((x) => x.closer === a.closer); if (i >= 0) pool[i] = { ...pool[i], prio: a.prio }; else pool.push({ closer: a.closer, prio: a.prio }); must(await supabase.from('cand_events').update({ pool, updated_at: nowIso() }).eq('id', ev.id)) },
+  closer_actif: async (a) => must(await supabase.from('cand_closers').update({ active: a.actif }).eq('key', a.closer)),
+  reglage: async (a) => must(await supabase.from('cand_settings').update({ [a.champ]: a.valeur }).eq('id', 1)),
+  horaires_semaine: async (a) => must(await supabase.rpc('closer_set_week', { p_closer: a.closer, p: a.jours })),
+  jour_closer: async (a) => {
+    if (a.mode === 'off') { must(await supabase.from('cand_closer_blocked').upsert({ closer: a.closer, day: a.date })); return }
+    must(await supabase.from('cand_closer_blocked').delete().eq('closer', a.closer).eq('day', a.date))
+    must(await supabase.rpc('closer_set_day', { p_closer: a.closer, p_day: a.date, p: a.mode === 'plages' ? a.plages : [] }))
+  },
+  appel_statut: async (a) => must(await supabase.from('candidatures').update({ status: a.statut }).eq('id', a.id)),
+  appel_deplacer: async (a) => must(await supabase.from('candidatures').update({ starts_at: a.starts_at }).eq('id', a.id)),
+  appel_closer: async (a) => must(await supabase.from('candidatures').update({ closer: a.closer }).eq('id', a.id)),
+  appel_resultat: async (a) => must(await supabase.from('candidatures').update({ outcome: a.resultat === 'aucun' ? null : a.resultat, outcome_at: a.resultat === 'aucun' ? null : nowIso(), signed_amount: a.resultat === 'signe' ? a.montant : null }).eq('id', a.id)),
+  fiche_note: async (a) => must(await supabase.from('cand_leads').update({ note: a.note }).eq('id', a.id)),
+  fiche_relance: async (a) => must(await supabase.from('cand_leads').update({ follow: a.suivi }).eq('id', a.id)),
+  etape_sequence: async (a) => must(await supabase.from('cand_cseq').update({ [a.champ]: a.valeur }).eq('id', a.id)),
+  bloquer: async (a) => must(await supabase.rpc('block_add', { p: { lead_id: a.id, reason: a.raison, note: a.note || '', cancel: true } })),
 }
 
 export default function Assistant({ onOpen }) {
@@ -91,6 +131,11 @@ export default function Assistant({ onOpen }) {
     const { error } = await supabase.from('candidatures').insert(rec_)
     if (error) return upd(i, { err: error.code === '23505' ? 'Ce créneau vient d’être pris : demande-moi une autre heure.' : friendlyError(error) })
     upd(i, { pstate: 'done', err: null })
+  }
+  const act = async (i) => {
+    const p = msgs[i].proposal
+    try { await ACT[p.action](p.args); upd(i, { pstate: 'done', err: null }) }
+    catch (e) { upd(i, { err: e?.code === '23505' ? 'Ce créneau est déjà pris : demande-moi une autre heure.' : friendlyError(e) || 'Impossible de le faire pour le moment.' }) }
   }
   const create = async (i, how) => {
     const m = msgs[i]; const p = m.proposal
@@ -221,7 +266,8 @@ export default function Assistant({ onOpen }) {
           <div className="as-bot">Bonjour Clément. Pose-moi une question sur tes <b>appels</b> ou tes <b>prospects</b>, ou donne-moi une info à enregistrer.</div>
           {!msgs.length && <><div className="as-lbl">Essaie</div>{SUGG.map((s) => <button key={s} className="as-sug" onClick={() => send(s)}>{s}</button>)}
             <div className="as-tip"><b>Pour enregistrer un contact, dis-le simplement :</b><br />« Ajoute Karim, 06 12 34 56 78, salarié, budget 1 000 à 3 000 € »</div></>}
-          {msgs.map((m, i) => m.proposal?.kind === 'rdv' ? <RdvCard key={i} p={m.proposal} state={m.pstate} err={m.err} onConfirm={() => book(i)} onCancel={() => upd(i, { pstate: 'cancel' })} />
+          {msgs.map((m, i) => m.proposal?.kind === 'action' ? <ActionCard key={i} p={m.proposal} state={m.pstate} err={m.err} onConfirm={() => act(i)} onCancel={() => upd(i, { pstate: 'cancel' })} />
+            : m.proposal?.kind === 'rdv' ? <RdvCard key={i} p={m.proposal} state={m.pstate} err={m.err} onConfirm={() => book(i)} onCancel={() => upd(i, { pstate: 'cancel' })} />
             : m.proposal ? <Proposal key={i} p={m.proposal} state={m.pstate} onChange={(p) => upd(i, { proposal: p })} onCreate={(how) => create(i, how)} onCancel={() => upd(i, { pstate: 'cancel' })} />
             : <div key={i} className={m.role === 'user' ? 'as-me' : 'as-bot'}><Rich t={m.text} /></div>)}
           {msgs.map((m, i) => m.err && m.proposal && m.proposal.kind !== 'rdv' ? <p key={'e' + i} className="as-err">{m.err}</p> : null)}
