@@ -236,7 +236,7 @@ export default function App() {
       setBusy(false); go('later')
     },
   }
-  const fakeBook = () => { const d = new Date(pick); const w = new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' }).format(d); return { ok: true, when: w + ' à ' + fmtT(pick).replace(':', 'h'), closer_name: 'Clément', wa: cfg.wa, first_name: f.first_name, release_hours: cfg.release_hours, status: 'reserve' } }
+  const fakeBook = () => { const d = new Date(pick); const w = new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' }).format(d); return { ok: true, when: w + ' à ' + fmtT(pick).replace(':', 'h'), closer_name: CLOSER_NAME || 'Clément', wa: CLOSER === 'amandine' ? WA_DEF : cfg.wa, first_name: f.first_name, release_hours: cfg.release_hours, status: 'reserve' } }
   async function book() {
     setBusy(true); setErr('')
     try {
