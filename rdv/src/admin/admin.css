@@ -615,3 +615,6 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .cl-amt-val b{font-size:28px;font-weight:800;color:#166534}
 .adm .cl-amt-val .btn{width:auto;flex:none;min-height:44px;padding:0 16px}
 .adm .outc-wrap{display:flex;flex-direction:column;gap:10px}
+
+.adm .mc i s{text-decoration:none;margin:0 2px}.adm .mc.sel i s{color:#fff!important}
+.adm .slotchips .sc[style]{border:1px solid}

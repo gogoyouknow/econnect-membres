@@ -19,6 +19,8 @@ const fromMin = (n) => `${pad(Math.floor(n / 60))}:${pad(n % 60)}`
 const dowOf = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).getUTCDay() }
 const addDays = (k, n) => { const [y, m, d] = k.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d + n)); return key(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()) }
 const longDay = (k) => { const [y, m, d] = k.split('-').map(Number); const s = new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('fr-FR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }); return s.charAt(0).toUpperCase() + s.slice(1) }
+const CCOL = ['#7C5CFF', '#F59E0B', '#EC4899', '#0EA5E9', '#14B8A6']
+const CTINT = { '#7C5CFF': '#EEE9FF', '#F59E0B': '#FEF0D2', '#EC4899': '#FCE4F0', '#0EA5E9': '#DDF1FC', '#14B8A6': '#D8F5F0' }
 const badRange = (rs) => rs.some(r => !r[0] || !r[1] || r[0] >= r[1])
 
 /** Petit éditeur de plages horaires (début – fin, + ajouter, ✕ supprimer). */
@@ -40,7 +42,7 @@ export default function Dispos({ toast, admin }) {
   const [ym, setYm] = useState({ y: ty, m: tm - 1 })
   const [sel, setSel] = useState(todayK)
   const [week, setWeek] = useState(null); const [cfg, setCfg] = useState(null); const [blocked, setBlocked] = useState([]); const [over, setOver] = useState({})
-  const [free, setFree] = useState(new Set()); const [taken, setTaken] = useState(new Set())
+  const [free, setFree] = useState(new Set()); const [freeG, setFreeG] = useState(new Set()); const [cfree, setCfree] = useState({}); const [closers, setClosers] = useState([]); const [taken, setTaken] = useState(new Set())
   const [gcal, setGcal] = useState(null); const [busy, setBusy] = useState([])
   const [copy, setCopy] = useState(null); const [copyTo, setCopyTo] = useState([])
   const [editDay, setEditDay] = useState(false); const [dayRanges, setDayRanges] = useState([])
@@ -48,14 +50,16 @@ export default function Dispos({ toast, admin }) {
   const load = async () => {
     supabase.rpc('gcal_status').then(({ data }) => setGcal(data))
     supabase.from('busy_times').select('starts_at,ends_at,title').gte('ends_at', new Date().toISOString()).then(({ data }) => setBusy((data || []).map(e => { const [dk, a] = parisKey(e.starts_at), [dk2, b] = parisKey(e.ends_at); return { dk, a: toMin(a), b: dk2 === dk ? toMin(b) : 1440 } })))
-    const [h, s, b, o, sl, cd] = await Promise.all([
+    const [h, s, b, o, sl, slg, slc, cls, cd] = await Promise.all([
       supabase.from('cand_hours').select('*').order('start_time'), supabase.from('cand_settings').select('*').eq('id', 1).single(),
-      supabase.from('cand_blocked').select('day').order('day'), supabase.from('cand_overrides').select('*').order('start_time'), supabase.rpc('cand_slots', { p_delai: '0' }),
+      supabase.from('cand_blocked').select('day').order('day'), supabase.from('cand_overrides').select('*').order('start_time'), supabase.rpc('cand_slots', { p_delai: '0' }), supabase.rpc('cand_slots_global', { p_delai: '0' }), supabase.rpc('cand_slots_closers', { p_delai: '0' }), supabase.from('cand_closers').select('key,name,active').order('key'),
       supabase.from('candidatures').select('starts_at,status').in('status', ['reserve', 'confirme']).gte('starts_at', new Date(Date.now() - 864e5).toISOString())])
     const w = {}; DOW.forEach(([d]) => { w[d] = [] }); (h.data || []).forEach(r => w[r.weekday].push([hm(r.start_time), hm(r.end_time)]))
     const ov = {}; (o.data || []).forEach(r => { (ov[r.day] = ov[r.day] || []).push([hm(r.start_time), hm(r.end_time)]) })
     setWeek(w); setCfg(s.data); setBlocked((b.data || []).map(x => x.day)); setOver(ov)
-    setFree(new Set((sl.data || []).map(i => parisKey(i).join('|')))); setTaken(new Set((cd.data || []).map(c => parisKey(c.starts_at).join('|'))))
+    setFree(new Set((sl.data || []).map(i => parisKey(i).join('|')))); setFreeG(new Set((slg.data || sl.data || []).map(i => parisKey(i).join('|'))))
+    const cf = {}; (Array.isArray(slc.data) ? slc.data : []).forEach(x => { const [dk, hh] = parisKey(x.t); ((cf[x.c] = cf[x.c] || {})[dk] = cf[x.c][dk] || []).push(hh) }); setCfree(cf)
+    setClosers((cls.data || []).filter(c => c.active && cf[c.key]).map((c, i) => ({ key: c.key, name: c.name || c.key, col: CCOL[i % CCOL.length] }))); setTaken(new Set((cd.data || []).map(c => parisKey(c.starts_at).join('|'))))
   }
   useEffect(() => {
     load()
@@ -85,10 +89,12 @@ export default function Dispos({ toast, admin }) {
       const sl = slotsFor(k); const isBlocked = blocked.includes(k)
       let st = 'open'
       if (k < todayK) st = 'past'; else if (isBlocked) st = 'closed'; else if (!sl.length) st = 'off'; else if (k > horizonK) st = 'far'
-      const nFree = st === 'open' ? sl.filter(t => free.has(k + '|' + t)).length : 0
-      return { k, d: +k.slice(8), inMonth, st, n: nFree, ovr: !!over[k] }
+      const nFree = st === 'open' ? sl.filter(t => freeG.has(k + '|' + t)).length : 0
+      const cn = closers.map(c => ({ key: c.key, col: c.col, n: k < todayK || k > horizonK ? 0 : (cfree[c.key]?.[k] || []).length })).filter(x => x.n > 0)
+      if (cn.length && (st === 'off')) st = 'open'
+      return { k, d: +k.slice(8), inMonth, st, n: nFree, cn, ovr: !!over[k] }
     })
-  }, [week, cfg, blocked, free, ym, over])
+  }, [week, cfg, blocked, free, freeG, cfree, closers, ym, over])
 
   const saveWeek = async () => {
     for (const rs of Object.values(week)) if (badRange(rs)) return toast('Vérifie les horaires : le début doit précéder la fin', true)
@@ -196,15 +202,16 @@ export default function Dispos({ toast, admin }) {
       <div className="mhead"><h2 className="sh">{MONTHS[ym.m]} {ym.y}</h2><div className="mnav"><button onClick={() => nav(-1)} aria-label="Mois précédent">‹</button><button onClick={() => nav(1)} aria-label="Mois suivant">›</button></div></div>
       <div className="mcal">
         {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((w, i) => <div key={i} className="mw">{w}</div>)}
-        {cells.map(c => <button key={c.k} className={`mc ${c.st} ${c.inMonth ? '' : 'out'} ${c.k === sel ? 'sel' : ''} ${c.k === todayK ? 'today' : ''} ${c.ovr ? 'ovr' : ''}`} onClick={() => { setSel(c.k); setEditDay(false); if (!c.inMonth) setYm({ y: +c.k.slice(0, 4), m: +c.k.slice(5, 7) - 1 }) }}>
-          <b>{c.d}</b><i>{c.st === 'open' ? c.n : c.st === 'closed' ? 'fermé' : c.st === 'far' ? '—' : ''}</i></button>)}
+        {cells.map(c => <button key={c.k} className={`mc ${c.st} ${c.inMonth ? '' : 'out'} ${c.k === sel ? 'sel' : ''} ${c.k === todayK ? 'today' : ''} ${c.ovr ? 'ovr' : ''}`} style={c.k !== sel && c.st === 'open' && c.n === 0 && c.cn.length ? { background: CTINT[c.cn[0].col], borderColor: c.cn[0].col } : undefined} onClick={() => { setSel(c.k); setEditDay(false); if (!c.inMonth) setYm({ y: +c.k.slice(0, 4), m: +c.k.slice(5, 7) - 1 }) }}>
+          <b>{c.d}</b>{closers.length && (c.st === 'open' || c.cn.length) && c.st !== 'past' ? <i>{[c.n > 0 || !c.cn.length ? <s key="g" style={{ color: '#166534' }}>{c.n}</s> : null, ...c.cn.map(x => <s key={x.key} style={{ color: x.col }}>{x.n}</s>)]}</i> : <i>{c.st === 'open' ? c.n : c.st === 'closed' ? 'fermé' : c.st === 'far' ? '—' : ''}</i>}</button>)}
       </div>
-      <div className="mleg"><span><u className="g" /> Ouvert (créneaux libres)</span><span><u className="r" /> Fermé</span><span><u className="d" /> Horaires particuliers</span></div>
+      <div className="mleg"><span><u className="g" /> {closers.length ? 'Clément' : 'Ouvert (créneaux libres)'}</span>{closers.map(c => <span key={c.key}><u style={{ background: c.col }} /> {c.name}</span>)}<span><u className="r" /> Fermé</span><span><u className="d" /> Horaires particuliers</span></div>
 
       <div className="daycard">
         <div className="dchead"><b>{longDay(sel)}</b><span>{past ? 'Passé' : isBlocked ? 'Fermé' : sl.length ? `${nFreeSel} libre${nFreeSel > 1 ? 's' : ''} sur ${sl.length}` : 'Aucun horaire'}</span></div>
         {over[sel] && !isBlocked && <p className="small" style={{ margin: '6px 0 0', color: '#1D4ED8' }}>Horaires particuliers pour cette date : {over[sel].map(r => r.join('–')).join(' · ')}</p>}
-        {!isBlocked && !past && sl.length > 0 && <div className="slotchips">{sl.map(t => { const k = sel + '|' + t; const m0 = toMin(t); const inAgenda = busy.some(e => e.dk === sel && m0 < e.b && m0 + +cfg.slot_min > e.a); const st = free.has(k) ? 'ok' : taken.has(k) ? 'res' : 'off'; return <span key={t} className={`sc ${st}`}>{t}{st === 'res' ? ' · réservé' : st === 'off' && inAgenda ? ' · Agenda' : ''}</span> })}</div>}
+        {!isBlocked && !past && sl.length > 0 && <div className="slotchips">{sl.map(t => { const k = sel + '|' + t; const m0 = toMin(t); const inAgenda = busy.some(e => e.dk === sel && m0 < e.b && m0 + +cfg.slot_min > e.a); const st = freeG.has(k) ? 'ok' : taken.has(k) ? 'res' : 'off'; return <span key={t} className={`sc ${st}`}>{t}{st === 'res' ? ' · réservé' : st === 'off' && inAgenda ? ' · Agenda' : ''}</span> })}</div>}
+        {!past && closers.map(c => { const l = (cfree[c.key]?.[sel] || []); if (!l.length) return null; return <div key={c.key} style={{ marginTop: 10 }}><div className="small" style={{ fontWeight: 700, color: c.col }}>{c.name} · {l.length} libre{l.length > 1 ? 's' : ''}</div><div className="slotchips" style={{ marginTop: 6 }}>{l.map(t => <span key={t} className="sc" style={{ background: CTINT[c.col], borderColor: c.col, color: '#1b1b1b' }}>{t}</span>)}</div></div> })}
         {!isBlocked && !past && !sl.length && <p className="muted small" style={{ margin: '8px 0 0' }}>Pas d'horaire le {DNAME[d]}.</p>}
         {isBlocked && <p className="muted small" style={{ margin: '8px 0 0' }}>Ce jour est fermé : personne ne peut réserver.</p>}
         {!past && <div className="dcbtns">

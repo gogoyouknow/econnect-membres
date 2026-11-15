@@ -83,5 +83,7 @@
   "0082_objet_rappels_notre_appel.sql",
   "0083_closer_voit_tous_formulaires.sql",
   "0084_validation_unique.sql",
-  "0085_regle_moins_500.sql"
+  "0085_regle_moins_500.sql",
+  "0086_slots_par_closer.sql",
+  "0087_book_moins_500.sql"
 ]
