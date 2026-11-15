@@ -74,5 +74,7 @@
   "0073_code_sans_expiration.sql",
   "0074_ronde_horaire.sql",
   "0075_ronde_horaire_correctif.sql",
-  "0076_ronde_horaire_variable.sql"
+  "0076_ronde_horaire_variable.sql",
+  "0077_creneaux_par_closer.sql",
+  "0078_rappel_appel_1h.sql"
 ]

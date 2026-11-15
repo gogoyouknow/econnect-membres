@@ -96,7 +96,11 @@ $$;
 revoke all on function private.closer_owner(timestamptz, text) from public, anon, authenticated;
 
 -- Les créneaux généraux gardent leur calcul d'origine ; « cand_slots » y ajoute ceux des closers.
-alter function public.cand_slots(text) rename to cand_slots_global;
+do $$ begin
+  if not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'cand_slots_global') then
+    alter function public.cand_slots(text) rename to cand_slots_global;
+  end if;
+end $$;
 create or replace function public.cand_slots(p_delai text default null) returns jsonb
 language sql stable security definer set search_path = public, private as $$
   select coalesce(jsonb_agg(to_jsonb(u.x) order by u.x), '[]'::jsonb) from (
