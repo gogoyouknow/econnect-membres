@@ -79,5 +79,6 @@
   "0078_rappel_appel_1h.sql",
   "0079_apres_whatsapp_video.sql",
   "0080_agenda_closer.sql",
-  "0081_notif_appel_lien.sql"
+  "0081_notif_appel_lien.sql",
+  "0082_objet_rappels_notre_appel.sql"
 ]
