@@ -39,7 +39,7 @@ const GO_KEY = 'cand_wa_go'
 const readGo = () => { try { return JSON.parse(localStorage.getItem(GO_KEY) || 'null') } catch { return null } }
 const goDecouvrir = () => { const o = readGo(); try { localStorage.removeItem(GO_KEY) } catch { /* */ } if (!o || Date.now() - o.t > 3 * 3600000) return; location.replace('/decouvrir?ok=1' + (o.tk ? '&t=' + encodeURIComponent(o.tk) : '')) }
 const COUNTRIES = [['+33', '🇫🇷', 'France'], ['+32', '🇧🇪', 'Belgique'], ['+41', '🇨🇭', 'Suisse'], ['+352', '🇱🇺', 'Luxembourg'], ['+1', '🇨🇦', 'Canada / États-Unis'], ['+212', '🇲🇦', 'Maroc'], ['+213', '🇩🇿', 'Algérie'], ['+216', '🇹🇳', 'Tunisie'], ['+351', '🇵🇹', 'Portugal'], ['+40', '🇷🇴', 'Roumanie'],
-  ['+229', '🇧🇯', 'Bénin'], ['+237', '🇨🇲', 'Cameroun'], ['+228', '🇹🇬', 'Togo'], ['+224', '🇬🇳', 'Guinée'], ['+241', '🇬🇦', 'Gabon'], ['+242', '🇨🇬', 'Congo'], ['+243', '🇨🇩', 'RD Congo'], ['+261', '🇲🇬', 'Madagascar'], ['+230', '🇲🇺', 'Maurice'], ['+262', '🇷🇪', 'La Réunion'], ['+590', '🇬🇵', 'Guadeloupe'], ['+596', '🇲🇶', 'Martinique'], ['+594', '🇬🇫', 'Guyane'], ['+509', '🇭🇹', 'Haïti'],
+  ['+229', '🇧🇯', 'Bénin'], ['+221', '🇸🇳', 'Sénégal'], ['+223', '🇲🇱', 'Mali'], ['+225', '🇨🇮', "Côte d'Ivoire"], ['+226', '🇧🇫', 'Burkina Faso'], ['+237', '🇨🇲', 'Cameroun'], ['+228', '🇹🇬', 'Togo'], ['+224', '🇬🇳', 'Guinée'], ['+241', '🇬🇦', 'Gabon'], ['+242', '🇨🇬', 'Congo'], ['+243', '🇨🇩', 'RD Congo'], ['+261', '🇲🇬', 'Madagascar'], ['+230', '🇲🇺', 'Maurice'], ['+262', '🇷🇪', 'La Réunion'], ['+590', '🇬🇵', 'Guadeloupe'], ['+596', '🇲🇶', 'Martinique'], ['+594', '🇬🇫', 'Guyane'], ['+509', '🇭🇹', 'Haïti'],
   ['+34', '🇪🇸', 'Espagne'], ['+39', '🇮🇹', 'Italie'], ['+49', '🇩🇪', 'Allemagne'], ['+44', '🇬🇧', 'Royaume-Uni'], ['+31', '🇳🇱', 'Pays-Bas'], ['+90', '🇹🇷', 'Turquie'], ['+20', '🇪🇬', 'Égypte']]
 const PREFIX = COUNTRIES.map((c) => c[0])
 const PFX_OPTS = COUNTRIES.map(([c, fl, n]) => <option key={c} value={c} title={n}>{fl} {c}</option>)
@@ -64,7 +64,7 @@ const loadPV = () => PV ? Promise.resolve(PV) : import('libphonenumber-js/mobile
 // Numéro fixe français (01 à 05) : pas de WhatsApp possible.
 const isFixe = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); return pf === '+33' && /^[1-5]/.test(String(d)) }
 // Côte d'Ivoire, Burkina Faso, Mali, Sénégal : paiement impossible depuis ces pays, on le dit honnêtement.
-const AF_BLOCK = /^\+(?:221|223|225|226)/
+const AF_BLOCK = /(?!)/ // plus aucun pays écarté (Sénégal, Mali, Côte d'Ivoire et Burkina Faso sont de nouveau acceptés)
 const intlOf = (prefix, tel) => { const raw = String(tel || '').replace(/[^\d+]/g, ''); const d = raw.startsWith('00') ? '+' + raw.slice(2) : raw; const p = String(prefix || ''); return d.startsWith('+') ? d : p + (AF_BLOCK.test(p + '000') ? d : d.replace(/^0+/, '')) }
 const geoBlocked = (g) => AF_BLOCK.test(intlOf(g.prefix, g.tel)) || (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)))
 const telOk = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); if (d.length < 6) return false; if (isFixe(prefix, tel)) return String(d).length === 9; if (PV) { try { return PV.isValidPhoneNumber(pf + d) } catch { /* */ } } return d.length >= 8 && d.length <= 12 }
