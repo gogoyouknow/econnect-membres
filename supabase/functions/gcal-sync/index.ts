@@ -9,10 +9,43 @@ const rpc = async (fn: string, args: Record<string, unknown> = {}) => {
   const t = await r.text(); return t ? JSON.parse(t) : null
 }
 
+// Lit une adresse iCal secrète Google → créneaux occupés (14 prochains jours).
+const icsBusy = async (ics: string) => {
+  const txt = await fetch(ics, { headers: { 'User-Agent': 'laccelerateur-rdv/1.0' } }).then(r => { if (!r.ok) throw new Error(`iCal ${r.status}`); return r.text() })
+  const comp = new ICAL.Component(ICAL.parse(txt))
+  // fuseaux déclarés dans le fichier
+  for (const tz of comp.getAllSubcomponents('vtimezone')) { const id = tz.getFirstPropertyValue('tzid'); if (id && !ICAL.TimezoneService.has(id)) ICAL.TimezoneService.register(id, new ICAL.Timezone({ component: tz, tzid: id })) }
+  const from = ICAL.Time.fromJSDate(new Date(Date.now() - 86400000), true), to = ICAL.Time.fromJSDate(new Date(Date.now() + 30 * 86400000), true)
+  const busy: { s: string, e: string, t: string }[] = []
+  for (const ve of comp.getAllSubcomponents('vevent')) {
+    const ev = new ICAL.Event(ve)
+    if (ev.getFirstPropertyValue?.('transp') === 'TRANSPARENT' || ve.getFirstPropertyValue('transp') === 'TRANSPARENT') continue   // « disponible » dans Google
+    if (ve.getFirstPropertyValue('status') === 'CANCELLED') continue
+    const push = (s: ICAL.Time, e: ICAL.Time) => { if (s.isDate) return; busy.push({ s: s.toJSDate().toISOString(), e: e.toJSDate().toISOString(), t: String(ev.summary || '') }) }
+    if (ev.isRecurring()) {
+      const it = ev.iterator(); let n = 0, next
+      while ((next = it.next()) && n++ < 500) { if (next.compare(to) > 0) break; const d = ev.getOccurrenceDetails(next); if (d.endDate.compare(from) < 0) continue; push(d.startDate, d.endDate) }
+    } else { if (ev.endDate.compare(from) < 0 || ev.startDate.compare(to) > 0) continue; push(ev.startDate, ev.endDate) }
+  }
+  return busy
+}
+
+// Agendas Google des closers (chacun colle SON adresse iCal secrète dans « Mes horaires »).
+const syncClosers = async () => {
+  const list = (await rpc('closer_cals_for_fn')) as { closer: string, ics: string }[]
+  let ok = 0, ko = 0
+  for (const c of list ?? []) {
+    try { const b = await icsBusy(c.ics); await rpc('closer_replace_busy_for_fn', { p_closer: c.closer, p: b }); ok++ }
+    catch (e) { await rpc('closer_replace_busy_for_fn', { p_closer: c.closer, p: [], p_err: String((e as Error).message).slice(0, 200) }); ko++ }
+  }
+  return { ok, ko }
+}
+
 Deno.serve(async (req) => {
   try {
     const token = req.headers.get('x-push-token') ?? ''
     await rpc('push_payload', { p_token: token, p_user: '00000000-0000-0000-0000-000000000000' })   // vérifie le jeton
+    const cl = await syncClosers()
     // Connexion directe Google (prioritaire) : créneaux occupés via l'API freeBusy
     const oc = await rpc('gcal_oauth_for_fn')
     if (oc?.refresh && oc.client_id && oc.client_secret) {
@@ -50,27 +83,12 @@ Deno.serve(async (req) => {
       if (!fb.ok) throw new Error('freeBusy : ' + (fj.error?.message || fb.status))
       const busyG = ((fj.calendars?.primary?.busy ?? []) as { start: string, end: string }[]).map(b => ({ s: b.start, e: b.end, t: 'Occupé' }))
       const nG = await rpc('gcal_replace_busy_for_fn', { p: busyG })
-      return Response.json({ ok: true, mode: 'google', events: busyG.length, stored: nG, pushed, pushErr })
+      return Response.json({ ok: true, closers: cl, mode: 'google', events: busyG.length, stored: nG, pushed, pushErr })
     }
     const ics = await rpc('gcal_ics_for_fn')
-    if (!ics) return Response.json({ ok: false, error: 'pas d\'adresse iCal' })
-    const txt = await fetch(ics, { headers: { 'User-Agent': 'laccelerateur-rdv/1.0' } }).then(r => { if (!r.ok) throw new Error(`iCal ${r.status}`); return r.text() })
-    const comp = new ICAL.Component(ICAL.parse(txt))
-    // fuseaux déclarés dans le fichier
-    for (const tz of comp.getAllSubcomponents('vtimezone')) { const id = tz.getFirstPropertyValue('tzid'); if (id && !ICAL.TimezoneService.has(id)) ICAL.TimezoneService.register(id, new ICAL.Timezone({ component: tz, tzid: id })) }
-    const from = ICAL.Time.fromJSDate(new Date(Date.now() - 86400000), true), to = ICAL.Time.fromJSDate(new Date(Date.now() + 14 * 86400000), true)
-    const busy: { s: string, e: string, t: string }[] = []
-    for (const ve of comp.getAllSubcomponents('vevent')) {
-      const ev = new ICAL.Event(ve)
-      if (ev.getFirstPropertyValue?.('transp') === 'TRANSPARENT' || ve.getFirstPropertyValue('transp') === 'TRANSPARENT') continue   // « disponible » dans Google
-      if (ve.getFirstPropertyValue('status') === 'CANCELLED') continue
-      const push = (s: ICAL.Time, e: ICAL.Time) => { if (s.isDate) return; busy.push({ s: s.toJSDate().toISOString(), e: e.toJSDate().toISOString(), t: String(ev.summary || '') }) }
-      if (ev.isRecurring()) {
-        const it = ev.iterator(); let n = 0, next
-        while ((next = it.next()) && n++ < 500) { if (next.compare(to) > 0) break; const d = ev.getOccurrenceDetails(next); if (d.endDate.compare(from) < 0) continue; push(d.startDate, d.endDate) }
-      } else { if (ev.endDate.compare(from) < 0 || ev.startDate.compare(to) > 0) continue; push(ev.startDate, ev.endDate) }
-    }
+    if (!ics) return Response.json({ ok: cl.ok + cl.ko > 0, closers: cl, error: cl.ok + cl.ko > 0 ? undefined : 'pas d\'adresse iCal' })
+    const busy = await icsBusy(ics)
     const n = await rpc('gcal_replace_busy_for_fn', { p: busy })
-    return Response.json({ ok: true, events: busy.length, stored: n })
+    return Response.json({ ok: true, closers: cl, events: busy.length, stored: n })
   } catch (e) { return Response.json({ ok: false, error: (e as Error).message }, { status: 500 }) }
 })

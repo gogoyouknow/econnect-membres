@@ -29,7 +29,7 @@ const QS = [
 ]
 
 /** « Formulaires » : toutes les réponses au formulaire de réservation + où les gens s'arrêtent. */
-export default function Formulaires({ toast, onOpen }) {
+export default function Formulaires({ toast, onOpen, closer }) {
   const [rows, setRows] = useState(null); const [days, setDays] = usePS('fo_days', 'today'); const [f, setF] = usePS('fo_f', 'all'); const [q, setQ] = usePS('fo_q', ''); const [more, setMore] = usePS('fo_more', 24); const [openId, setOpenId] = usePS('fo_open', null)
   const [lerr, setLerr] = useState('')
   const load = async () => {
@@ -74,7 +74,7 @@ export default function Formulaires({ toast, onOpen }) {
         <div className="pills" style={{ marginBottom: 0 }}>{[['all', `Toutes · ${inRange.length}`], ['done', `Réservées · ${fun[4]}`], ['drop', `Abandonnées · ${inRange.length - fun[4]}`]].map(([k, l]) => <button key={k} className={`pill ${f === k ? 'on' : ''}`} onClick={() => setF(k)}>{l}</button>)}</div>
         <input className="fm-q" type="search" placeholder="Rechercher un nom, un numéro, un email…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
-      {!list.length && <div className="sys">Aucune réponse pour le moment</div>}
+      {!list.length && <div className="sys">{closer && !(rows || []).length ? 'Ici apparaissent les formulaires des personnes qui réservent un de tes créneaux. Pour l’instant aucun appel ne t’est attribué : dès qu’une personne réserve avec toi, son formulaire s’affiche (toutes ses réponses).' : 'Aucune réponse pour le moment'}</div>}
       <div className="fm-list">{list.slice(0, more).map((r) => {
         const last = ORD[r.step] ?? 0; const open = openId === r.id
         return <article key={r.id} className={`fm-card ${open ? 'open' : ''}`}>

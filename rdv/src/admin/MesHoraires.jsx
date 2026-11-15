@@ -18,6 +18,37 @@ function Ranges({ ranges, onChange }) {
   </>
 }
 
+/** Relier son Google Agenda : adresse secrète iCal → ses rendez-vous / événements perso bloquent ses créneaux. */
+function AgendaGoogle({ closer, toast, who }) {
+  const [st, setSt] = useState(null); const [url, setUrl] = useState(''); const [busy, setBusy] = useState(false); const [help, setHelp] = useState(false)
+  const load = () => supabase.rpc('closer_cal_status', { p_closer: closer }).then(({ data }) => setSt(data || null))
+  useEffect(() => { setSt(null); setUrl(''); load() }, [closer]) // eslint-disable-line
+  useEffect(() => { if (!st?.set || st.synced_at || st.err) return; const i = setInterval(load, 8000); return () => clearInterval(i) }, [st]) // eslint-disable-line
+  const save = async (v) => {
+    setBusy(true)
+    const { error } = await supabase.rpc('closer_cal_set', { p_closer: closer, p_url: v })
+    setBusy(false)
+    if (error) return toast(friendlyError(error), true)
+    setUrl(''); toast(v ? 'Agenda relié : synchronisation en cours' : 'Agenda retiré'); load()
+  }
+  const ago = st?.synced_at ? new Date(st.synced_at).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''
+  return <>
+    <h3 className="cl-h" style={{ marginTop: 22 }}>{who} Google Agenda</h3>
+    <p className="muted small">Relie l’agenda : ses rendez-vous et événements bloquent automatiquement les créneaux proposés (rien n’est écrit dans l’agenda, il est seulement lu). Mise à jour toutes les 10 minutes.</p>
+    {st?.set && <div className="sys" style={{ margin: '8px 0' }}>
+      {st.err ? <>Agenda relié, mais la lecture a échoué : {st.err}. Vérifie l’adresse ci-dessous.</> : st.synced_at ? <>✓ Agenda relié · dernière lecture {ago} · {st.busy} événement{st.busy > 1 ? 's' : ''} à venir bloque{st.busy > 1 ? 'nt' : ''} des créneaux</> : <>Agenda relié · première lecture en cours…</>}
+      {' '}<button type="button" className="linkbtn" disabled={busy} onClick={() => save('')}>Retirer</button></div>}
+    <div className="hrange" style={{ marginLeft: 0 }}><input type="url" inputMode="url" style={{ flex: 1, minWidth: 0 }} placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" value={url} onChange={(e) => setUrl(e.target.value)} /><button type="button" className="btn sm" disabled={busy || !url.trim()} onClick={() => save(url)}>{st?.set ? 'Remplacer' : 'Relier'}</button></div>
+    <button type="button" className="linkbtn" style={{ paddingLeft: 0 }} onClick={() => setHelp(!help)}>{help ? 'Masquer' : 'Où trouver cette adresse ?'}</button>
+    {help && <ol className="muted small" style={{ margin: '6px 0 0 18px', lineHeight: 1.6 }}>
+      <li>Sur ordinateur, ouvre <b>calendar.google.com</b> (l’appli mobile ne montre pas cette option).</li>
+      <li>À gauche, passe la souris sur ton agenda → <b>⋮ → Paramètres et partage</b>.</li>
+      <li>Descends jusqu’à <b>« Adresse secrète au format iCal »</b> et copie le lien.</li>
+      <li>Colle-le ci-dessus et appuie sur <b>Relier</b>. Ne le partage à personne : il donne accès à ton agenda.</li>
+    </ol>}
+  </>
+}
+
 /** Horaires d'un closer : semaine type, jours off, dates particulières. Pour le closer lui-même, ou pour Clément (avec un choix du closer). */
 export default function MesHoraires({ toast, staff }) {
   const [list, setList] = useState([]); const [key, setKey] = useState(null); const [err, setErr] = useState('')
@@ -105,5 +136,7 @@ export default function MesHoraires({ toast, staff }) {
     {dayK && <><Ranges ranges={dayR} onChange={setDayR} /><button type="button" className="btn" style={{ marginTop: 8 }} disabled={busy} onClick={saveDay}>Enregistrer cette date</button></>}
     {Object.keys(over).map((d) => <div key={d} className="wrow"><div className="whead"><b style={{ flex: 1 }}>{longDay(d)}</b><span className="muted">{over[d].map((r) => `${r[0]}–${r[1]}`).join(' · ')}</span>
       <button type="button" className="btn ghost sm" aria-label="Supprimer cette date" onClick={() => rmDay(d)}>✕</button></div></div>)}
+
+    <AgendaGoogle closer={key} toast={toast} who={staff ? 'Son' : 'Mon'} />
   </div>
 }
