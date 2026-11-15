@@ -86,5 +86,6 @@
   "0085_regle_moins_500.sql",
   "0086_slots_par_closer.sql",
   "0087_book_moins_500.sql",
-  "0088_lien_invitation.sql"
+  "0088_lien_invitation.sql",
+  "0089_creneaux_du_closer.sql"
 ]

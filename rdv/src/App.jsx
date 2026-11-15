@@ -202,7 +202,7 @@ export default function App() {
   useEffect(() => { if (!INV || !configured || TEST) return; rpc('cand_invite', { p_token: INV }).then((d) => { if (d?.email) { setInvd(d); setF((x) => ({ ...x, first_name: d.first_name || '', email: d.email, situation: d.situation || '', capital: d.capital || '' })); setDone(null); go(d.booked ? 'intro' : 'slot') } }).catch(() => {}) }, [])
   const [evLt, setEvLt] = useState(false)   // une règle de l'événement ouvre le calendrier aux « moins de 500 € »
   useEffect(() => { if (configured) rpc('cand_event_info', { p_slug: EVENT || '' }).then((e) => { if (EVENT && e?.source) setEvSrc(e.source); setEvLt(Boolean(e?.lt500)) }).catch(() => {}) }, [])
-  const loadSlots = () => rpc('cand_slots', DELAI ? { p_delai: DELAI } : {}).then((s) => setSlots(s || [])).catch(() => setSlots([]))
+  const loadSlots = () => (INV && FORCED ? rpc('cand_slots_for', { p_closer: FORCED, ...(DELAI ? { p_delai: DELAI } : {}) }) : rpc('cand_slots', DELAI ? { p_delai: DELAI } : {})).then((s) => setSlots(s || [])).catch(() => setSlots([]))
   useEffect(() => { if (step === 'slot') { loadSlots(); if (!resched) saveLead('slot') } }, [step])
   const days = useMemo(() => { const m = new Map(); (slots || []).forEach((s) => { const k = dayKey(s); if (!m.has(k)) m.set(k, []); m.get(k).push(s) }); return [...m.entries()] }, [slots])
   useEffect(() => { if (days.length && !days.find((d) => d[0] === day)) setDay(days[0][0]) }, [days])
