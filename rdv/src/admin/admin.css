@@ -485,7 +485,7 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .rt-save{position:sticky;bottom:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;box-shadow:0 -6px 18px rgba(15,23,42,.06);font-size:13.5px;color:#6B7280}
 .adm .rt-save.dirty{border-color:#F5C451;background:#FFFAEB;color:#92400E;font-weight:600}
 .adm .rt-sim{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px}
-@media (min-width:900px){.adm .rt-sim{grid-template-columns:1.2fr 1fr 1.2fr auto;align-items:center}}
+@media (min-width:900px){.adm .rt-sim{grid-template-columns:repeat(3,minmax(0,1fr));align-items:center}}
 .adm .rt-res{margin:10px 0 0;font-size:15px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
 .adm .ev{padding:4px 0 40px}
@@ -624,20 +624,6 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .ownchip{display:inline-flex;align-items:center;gap:5px;background:#12151C;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px 2px 3px;margin-left:6px;vertical-align:middle;white-space:nowrap}
 .adm .ownchip i{width:16px;height:16px;border-radius:50%;background:#fff;color:#12151C;font-style:normal;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
 .adm .hero .ownchip{background:#fff;color:#12151C}.adm .hero .ownchip i{background:#12151C;color:#fff}
-
-/* Questions du formulaire (Événements) — mêmes cartes et couleurs que Répartition */
-.adm .qf .rt-rule{margin:12px 0}
-.adm .qf-l{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600}
-.adm .qf-l .ti,.adm .qf-t{width:100%;font:inherit;font-size:16px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;color:var(--ink);box-sizing:border-box;min-width:0}
-.adm .qf-row{flex-wrap:wrap}
-.adm .qf-row .qf-t{flex:1 1 220px}
-.adm .qf-s{flex:1 1 230px;min-width:0}
-.adm .qf-sum{margin:14px 0 12px}
-.adm .qf-grid{display:grid;grid-template-columns:minmax(120px,1.3fr) repeat(3,minmax(0,1fr));gap:6px 8px;margin-top:8px;align-items:center;overflow-x:auto}
-.adm .qf-h{font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#6B7280}
-.adm .qf-r{font-size:13.5px;font-weight:600}
-.adm .qf-grid .badge{display:inline-block}
-.adm .qf-act{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 
 /* Coach d'appels (ordinateur) — mêmes cartes, mêmes couleurs que Événements / Répartition */
 .adm .cc-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px;align-items:start}

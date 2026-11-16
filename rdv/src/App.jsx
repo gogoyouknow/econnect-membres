@@ -218,19 +218,18 @@ export default function App() {
   useEffect(() => { if (configured) rpc('cand_config').then(setCfg).catch(() => {}) }, [])
   const [invd, setInvd] = useState(null)
   useEffect(() => { if (!INV || !configured || TEST) return; rpc('cand_invite', { p_token: INV }).then((d) => { if (d?.email) { setInvd(d); setF((x) => ({ ...x, first_name: d.first_name || '', email: d.email, situation: d.situation || '', capital: d.capital || '' })); setDone(null); go(d.booked ? 'intro' : 'slot') } }).catch(() => {}) }, [])
-  const [evLt, setEvLt] = useState(false)   // une règle de l'événement ouvre le calendrier aux « moins de 500 € » (ancien réglage, gardé si le serveur n'envoie pas encore « qual »)
-  const [evQ, setEvQ] = useState(null)       // réglage « Questions du formulaire » de l'événement (Admin → Événements)
-  useEffect(() => { if (configured) rpc('cand_event_info', { p_slug: EVENT || '' }).then((e) => { if (EVENT && e?.source) setEvSrc(e.source); setEvLt(Boolean(e?.lt500)); setEvQ(e?.qual || null) }).catch(() => {}) }, [])
-  // Où va la personne après sa réponse à « Tu peux vraiment mobiliser ce budget maintenant ? » (slot | when | block2 | block)
-  const afterHave = (v, cap) => {
-    if (!evQ) return evLt ? 'slot' : cap === 'lt500' ? 'block' : v === 'yes' ? 'slot' : v === 'soon' ? 'when' : 'block2'
-    const a = evQ.cap?.[cap] || 'ask'
-    if (a === 'slot' || a === 'block') return a
-    return evQ.have?.[v] || (v === 'yes' ? 'slot' : v === 'soon' ? 'when' : 'block2')
+  const [evLt, setEvLt] = useState(false)   // une règle de l'événement ouvre le calendrier aux « moins de 500 € »
+  // Cette personne peut-elle réserver ? Même réponse que le serveur (budget dispo, exception « moins de 500 € », règle ciblant « Pas encore » / « Non »).
+  const srcStr = () => [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' ')
+  const afterHave = async (v, cap) => {
+    const legacy = evLt || (cap !== 'lt500' && v === 'yes') ? 'slot' : cap === 'lt500' ? 'block' : v === 'soon' ? 'when' : 'block2'
+    if (!configured) return legacy
+    try {
+      const ok = await rpc('cand_can_book', { p: { event: EVENT || '', capital: cap, have: v, situation: f.situation, invest: f.invest, src: srcStr() } })
+      if (typeof ok !== 'boolean') return legacy
+      return ok ? 'slot' : cap === 'lt500' ? 'block' : v === 'soon' ? 'when' : 'block2'
+    } catch { return legacy }
   }
-  const qT = evQ?.q || {}
-  const capLbl = (v, d) => (qT.cap_labels?.[v] || '').trim() || d
-  const haveLbl = (v, d) => (qT.have_labels?.[v] || '').trim() || d
   const loadSlots = () => (INV && FORCED ? rpc('cand_slots_for', { p_closer: FORCED, ...(DELAI ? { p_delai: DELAI } : {}) }) : rpc('cand_slots', DELAI ? { p_delai: DELAI } : {})).then((s) => setSlots(s || [])).catch(() => setSlots([]))
   useEffect(() => { if (step === 'slot') { loadSlots(); if (!resched) saveLead('slot') } }, [step])
   const days = useMemo(() => { const m = new Map(); (slots || []).forEach((s) => { const k = dayKey(s, vtz); if (!m.has(k)) m.set(k, []); m.get(k).push(s) }); return [...m.entries()] }, [slots, vtz])
@@ -257,9 +256,9 @@ export default function App() {
       if (f.blocage.trim().length < MIN_TXT) return setErr(`Écris-moi quelques mots de plus (${MIN_TXT} caractères minimum).`)
       saveLead('situ'); go(NEW ? 'inv' : 'cap')
     },
-    budget() {
+    async budget() {
       if (!f.have) return setErr('Choisis une réponse pour continuer.')
-      saveLead('budget'); go(afterHave(f.have, f.capital))
+      saveLead('budget'); setBusy(true); const d = await afterHave(f.have, f.capital); setBusy(false); go(d)
     },
     async when() {
       if (!f.bdate) return setErr('Choisis la date à laquelle tu pourras investir.')
@@ -277,7 +276,7 @@ export default function App() {
         const r = await rpcW('cand_resched', { p: { delai: DELAI, email: f.email.trim().toLowerCase(), phone: tel_, starts_at: pick } })
         setDone({ ...r, moved: true }); setResched(false); go('done'); setBusy(false); return
       }
-      const r = TEST ? fakeBook() : await rpc('cand_book', { p: { delai: DELAI, closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: invd ? invd.phone : (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick, invite: invd ? INV : undefined } })
+      const r = TEST ? fakeBook() : await rpc('cand_book', { p: { delai: DELAI, closer: FORCED, event: EVENT, src: srcStr(), first_name: f.first_name.trim(), phone: invd ? invd.phone : (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, invest: f.invest, starts_at: pick, invite: invd ? INV : undefined } })
       if (r?.blocked) { setBlockWhy(r.reason || 'autre'); setBusy(false); return go('blocked') }
       if (r?.id && !TEST) rpc('cand_set_tz', { p_id: r.id, p_tz: vtz }).catch(() => {})
       setDone(r); setWaOpened(false); setRelEnd(Date.now() + (r.release_hours || cfg.release_hours || 4) * 3600000); go(ATT && r.status !== 'confirme' ? 'attention' : 'done')
@@ -384,8 +383,8 @@ export default function App() {
       <div className="err">{err}</div><button className="btn" disabled={f.blocage.trim().length < MIN_TXT} onClick={next.txt}>Continuer →</button></div>
       <button className="link" onClick={() => go(NEW ? 'situ' : 'exp')}>← Retour</button></section>}
 
-    {step === 'cap' && <section className="screen"><div className="col"><span className="eyebrow">Question 4 sur 5</span><h2>{(qT.cap_title || '').trim() || 'Combien peux-tu investir maintenant dans ton projet ?'}</h2></div><div className="card">
-      <div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('budget', { capital: v }); go('budget') }}>{capLbl(v, l)}</button>)}</div></div>
+    {step === 'cap' && <section className="screen"><div className="col"><span className="eyebrow">Question 4 sur 5</span><h2>Combien peux-tu investir maintenant dans ton projet ?</h2></div><div className="card">
+      <div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('budget', { capital: v }); go('budget') }}>{l}</button>)}</div></div>
       <button className="link" onClick={() => go(NEW ? 'inv' : 'txt')}>← Retour</button></section>}
 
     {step === 'geo' && <section className="screen"><div className="col"><span className="eyebrow">Merci pour ton message</span><h2>Je ne peux pas encore t'accompagner depuis ton pays</h2></div><div className="card">
@@ -410,8 +409,8 @@ export default function App() {
 
     {step === 'budget' && <section className="screen"><h2>Une dernière question, franche</h2><div className="card">
       <p>Tu as indiqué <b>{CAP_LBL[f.capital]}</b>. Beaucoup de personnes cochent un montant qu'elles n'ont pas encore, et on perd du temps tous les deux.</p>
-      <div className="field"><span className="lbl">{(qT.have_title || '').trim() || 'Tu peux vraiment mobiliser ce budget maintenant ?'}</span><div className="chips col">
-        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, d]) => [v, haveLbl(v, d)]).map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }); if (NEW) go(afterHave(v, f.capital)) }}>{l}</button>)}</div></div>
+      <div className="field"><span className="lbl">Tu peux vraiment mobiliser ce budget maintenant ?</span><div className="chips col">
+        {[['yes', 'Oui, je l\'ai disponible maintenant'], ['soon', 'Pas encore, il me faut quelques semaines'], ['no', 'Non, je ne l\'ai pas']].map(([v, l]) => <button key={v} className={`chip ${f.have === v ? 'sel' : ''}`} onClick={() => { set('have', v); saveLead('budget', { have: v }); if (NEW) afterHave(v, f.capital).then(go) }}>{l}</button>)}</div></div>
       <p className="muted s13">Sois honnête, ça m'aide à te dire la vérité.</p>
       <div className="err">{err}</div>{!NEW && <button className="btn" onClick={next.budget}>Choisir mon créneau →</button>}</div>
       </section>}

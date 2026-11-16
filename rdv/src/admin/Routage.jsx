@@ -3,6 +3,8 @@ import { supabase, friendlyError } from './supabase'
 
 export const CAPS = [['lt500', 'Moins de 500 € (exception)'], ['500-1000', '500 – 1 000 €'], ['1000-3000', '1 000 – 3 000 €'], ['gt3000', 'Plus de 3 000 €']]
 export const SITS = ['Salarié', 'Étudiant', 'Entrepreneur', 'Sans activité']
+export const INVS = ['Non, jamais', 'Oui, une fois', 'Oui, plusieurs fois']
+export const HAVES = [['yes', 'Oui, disponible maintenant'], ['soon', 'Pas encore (quelques semaines)'], ['no', 'Non, il ne l’a pas']]
 const PRIOS = [['haute', 'Haute'], ['moyenne', 'Moyenne'], ['basse', 'Basse'], ['off', 'Désactivé']]
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 
@@ -14,7 +16,7 @@ export function useClosers() {
 }
 
 const poolOf = (ev, closers) => closers.map((c) => ({ closer: c.key, prio: (ev.pool || []).find((p) => p.closer === c.key)?.prio || 'off' }))
-const cleanRule = (r) => ({ closer: r.closer, capital: r.capital || [], situation: r.situation || [], source: (r.source || '').trim() })
+const cleanRule = (r) => ({ closer: r.closer, capital: r.capital || [], situation: r.situation || [], invest: r.invest || [], have: r.have || [], source: (r.source || '').trim() })
 
 /**
  * Répartition des appels : priorité des closers + règles par profil (arbre de décision).
@@ -22,7 +24,7 @@ const cleanRule = (r) => ({ closer: r.closer, capital: r.capital || [], situatio
  */
 export function Routing({ event, closers, toast, onSaved }) {
   const [pool, setPool] = useState(() => poolOf(event, closers)); const [rules, setRules] = useState(() => (event.rules || []).map(cleanRule)); const [busy, setBusy] = useState(false)
-  const [sim, setSim] = useState({ capital: 'gt3000', situation: 'Salarié', src: '' }); const [res, setRes] = useState(null)
+  const [sim, setSim] = useState({ capital: 'gt3000', situation: 'Salarié', invest: '', have: 'yes', src: '' }); const [res, setRes] = useState(null)
   useEffect(() => { setPool(poolOf(event, closers)); setRules((event.rules || []).map(cleanRule)); setRes(null) }, [event.id, event.updated_at, closers.length])
   const saved = useMemo(() => ({ pool: poolOf(event, closers), rules: (event.rules || []).map(cleanRule) }), [event, closers])
   const dirty = !same(saved, { pool, rules })
@@ -31,7 +33,7 @@ export function Routing({ event, closers, toast, onSaved }) {
   const setRule = (i, patch) => setRules(rules.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   const toggle = (i, key, v) => { const cur = rules[i][key] || []; setRule(i, { [key]: cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v] }) }
   const move = (i, d) => { const j = i + d; if (j < 0 || j >= rules.length) return; const n = [...rules];[n[i], n[j]] = [n[j], n[i]]; setRules(n) }
-  const add = () => setRules([...rules, { closer: (closers.find((c) => c.key === 'clement') || closers[0])?.key, capital: [], situation: [], source: '' }])
+  const add = () => setRules([...rules, { closer: (closers.find((c) => c.key === 'clement') || closers[0])?.key, capital: [], situation: [], invest: [], have: [], source: '' }])
   const save = async () => {
     setBusy(true)
     const { data, error } = await supabase.from('cand_events').update({ pool, rules, updated_at: new Date().toISOString() }).eq('id', event.id).select().single()
@@ -41,7 +43,7 @@ export function Routing({ event, closers, toast, onSaved }) {
   }
   const test = async () => {
     if (dirty) return toast('Enregistre d’abord : le test utilise la répartition enregistrée.', true)
-    const { data, error } = await supabase.rpc('cand_route_test', { p_event: event.id, p_cap: sim.capital, p_sit: sim.situation, p_src: sim.src })
+    const { data, error } = await supabase.rpc('cand_route_test', { p_event: event.id, p_cap: sim.capital, p_sit: sim.situation, p_src: sim.src, p_inv: sim.invest || null, p_have: sim.have || null })
     if (error) return toast(friendlyError(error), true); setRes(data)
   }
   const noOne = !pool.some((p) => p.prio !== 'off')
@@ -67,8 +69,10 @@ export function Routing({ event, closers, toast, onSaved }) {
           <button type="button" onClick={() => setRules(rules.filter((_, j) => j !== i))} aria-label="Supprimer la règle">✕</button></span></div>
         <div className="rt-if"><span>SI le budget est</span><div className="chips">{CAPS.map(([v, l]) => <button type="button" key={v} className={`chip ${r.capital.includes(v) ? 'sel' : ''}`} onClick={() => toggle(i, 'capital', v)}>{l}</button>)}</div></div>
         <div className="rt-if"><span>ET la situation est</span><div className="chips">{SITS.map((v) => <button type="button" key={v} className={`chip ${r.situation.includes(v) ? 'sel' : ''}`} onClick={() => toggle(i, 'situation', v)}>{v}</button>)}</div></div>
+        <div className="rt-if"><span>ET « tu as déjà investi dans une formation ? »</span><div className="chips">{INVS.map((v) => <button type="button" key={v} className={`chip ${r.invest.includes(v) ? 'sel' : ''}`} onClick={() => toggle(i, 'invest', v)}>{v}</button>)}</div></div>
+        <div className="rt-if"><span>ET « tu peux mobiliser ce budget maintenant ? »</span><div className="chips">{HAVES.map(([v, l]) => <button type="button" key={v} className={`chip ${r.have.includes(v) ? 'sel' : ''}`} onClick={() => toggle(i, 'have', v)}>{l}</button>)}</div></div>
         <div className="rt-if"><span>ET l’origine contient</span><input className="ti" placeholder="ex. instagram, tiktok, nom de campagne…" value={r.source} onChange={(e) => setRule(i, { source: e.target.value })} autoCapitalize="none" autoComplete="off" /></div>
-        <p className="muted s12 rt-hint">{!r.capital.length && !r.situation.length && !r.source.trim() ? 'Aucune condition : cette règle s’applique à tout le monde.' : 'Rien de coché dans une ligne = « peu importe ».'}</p>
+        <p className="muted s12 rt-hint">{!r.capital.length && !r.situation.length && !r.invest.length && !r.have.length && !r.source.trim() ? 'Aucune condition : cette règle s’applique à tout le monde.' : 'Rien de coché dans une ligne = « peu importe ».'}{(r.have.includes('soon') || r.have.includes('no')) && ' Cocher « Pas encore » ou « Non » ouvre le calendrier à ces personnes (au lieu de les renvoyer vers une page d’attente) : leur appel va au closer choisi.'}</p>
         <div className="rt-then"><span>ALORS l’appel va à</span>
           <select value={r.closer} onChange={(e) => setRule(i, { closer: e.target.value })} className="rt-sel">{closers.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}{!closers.some((c) => c.key === r.closer) && <option value={r.closer}>{r.closer} (retiré)</option>}</select></div>
       </div>)}
@@ -86,6 +90,8 @@ export function Routing({ event, closers, toast, onSaved }) {
       <div className="rt-sim">
         <select value={sim.capital} onChange={(e) => setSim({ ...sim, capital: e.target.value })}>{CAPS.map(([v, l]) => <option key={v} value={v}>Budget : {l}</option>)}</select>
         <select value={sim.situation} onChange={(e) => setSim({ ...sim, situation: e.target.value })}>{SITS.map((v) => <option key={v} value={v}>{v}</option>)}</select>
+        <select value={sim.invest} onChange={(e) => setSim({ ...sim, invest: e.target.value })}><option value="">Formation : peu importe</option>{INVS.map((v) => <option key={v} value={v}>Formation : {v}</option>)}</select>
+        <select value={sim.have} onChange={(e) => setSim({ ...sim, have: e.target.value })}>{HAVES.map(([v, l]) => <option key={v} value={v}>Budget dispo : {l}</option>)}</select>
         <input className="ti" placeholder="Origine (ex. TikTok)" value={sim.src} onChange={(e) => setSim({ ...sim, src: e.target.value })} autoCapitalize="none" />
         <button type="button" className="btn ghost sm" onClick={test}>Tester</button>
       </div>
