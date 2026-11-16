@@ -38,9 +38,10 @@ const rpcW = (n, a) => (TEST ? Promise.resolve(null) : rpc(n, a))
 const GO_KEY = 'cand_wa_go'
 const readGo = () => { try { return JSON.parse(localStorage.getItem(GO_KEY) || 'null') } catch { return null } }
 const goDecouvrir = () => { const o = readGo(); try { localStorage.removeItem(GO_KEY) } catch { /* */ } if (!o || Date.now() - o.t > 3 * 3600000) return; location.replace('/decouvrir?ok=1' + (o.tk ? '&t=' + encodeURIComponent(o.tk) : '')) }
+import { MORE_COUNTRIES } from './countries'
 const COUNTRIES = [['+33', '🇫🇷', 'France'], ['+32', '🇧🇪', 'Belgique'], ['+41', '🇨🇭', 'Suisse'], ['+352', '🇱🇺', 'Luxembourg'], ['+1', '🇨🇦', 'Canada / États-Unis'], ['+212', '🇲🇦', 'Maroc'], ['+213', '🇩🇿', 'Algérie'], ['+216', '🇹🇳', 'Tunisie'], ['+351', '🇵🇹', 'Portugal'], ['+40', '🇷🇴', 'Roumanie'],
   ['+229', '🇧🇯', 'Bénin'], ['+221', '🇸🇳', 'Sénégal'], ['+223', '🇲🇱', 'Mali'], ['+225', '🇨🇮', "Côte d'Ivoire"], ['+226', '🇧🇫', 'Burkina Faso'], ['+237', '🇨🇲', 'Cameroun'], ['+228', '🇹🇬', 'Togo'], ['+224', '🇬🇳', 'Guinée'], ['+241', '🇬🇦', 'Gabon'], ['+242', '🇨🇬', 'Congo'], ['+243', '🇨🇩', 'RD Congo'], ['+261', '🇲🇬', 'Madagascar'], ['+230', '🇲🇺', 'Maurice'], ['+262', '🇷🇪', 'La Réunion'], ['+590', '🇬🇵', 'Guadeloupe'], ['+596', '🇲🇶', 'Martinique'], ['+594', '🇬🇫', 'Guyane'], ['+509', '🇭🇹', 'Haïti'],
-  ['+34', '🇪🇸', 'Espagne'], ['+39', '🇮🇹', 'Italie'], ['+49', '🇩🇪', 'Allemagne'], ['+44', '🇬🇧', 'Royaume-Uni'], ['+31', '🇳🇱', 'Pays-Bas'], ['+90', '🇹🇷', 'Turquie'], ['+20', '🇪🇬', 'Égypte']]
+  ['+34', '🇪🇸', 'Espagne'], ['+39', '🇮🇹', 'Italie'], ['+49', '🇩🇪', 'Allemagne'], ['+44', '🇬🇧', 'Royaume-Uni'], ['+31', '🇳🇱', 'Pays-Bas'], ['+90', '🇹🇷', 'Turquie'], ['+20', '🇪🇬', 'Égypte'], ...MORE_COUNTRIES]
 const PREFIX = COUNTRIES.map((c) => c[0])
 const PFX_OPTS = COUNTRIES.map(([c, fl, n]) => <option key={c} value={c} title={n}>{fl} {c}</option>)
 const matchPrefix = (v) => { const raw = String(v || '').replace(/[^\d+]/g, ''); if (!(raw.startsWith('+') || raw.startsWith('00'))) return null; const pd = raw.replace(/^(\+|00)/, ''); const m = PREFIX.map((x) => x.slice(1)).sort((a, b) => b.length - a.length).find((x) => pd.startsWith(x)); return m ? ['+' + m, pd.slice(m.length).replace(/^0+/, '')] : null }
