@@ -72,6 +72,9 @@ export default function Candidatures({ toast, tab: main , closer, only, focusCal
   const upd = async (c, patch) => { const { error } = await supabase.from('candidatures').update(patch).eq('id', c.id); if (error) return toast(friendlyError(error), true); load() }
 
   const now = Date.now()
+  // Appel d'une autre personne que moi (ex. Amandine) : on le repère d'un coup d'œil (équipe seulement)
+  const other = (c) => !closer && c.closer && c.closer !== 'clement'
+  const OwnerChip = ({ c }) => other(c) ? <span className="ownchip"><i>{closerName(c.closer).slice(0, 1)}</i>{closerName(c.closer)}</span> : null
   const live = (c) => ['reserve', 'confirme'].includes(c.status)
   // Arrivée depuis une notification : on ouvre l'appel concerné et on le montre à l'écran.
   const doneFocus = useRef(0)
@@ -99,7 +102,7 @@ export default function Candidatures({ toast, tab: main , closer, only, focusCal
           <div className="hk">Prochain appel · {countdown(next.starts_at)}</div>
           <div className="hrow">
             <div className="htime">{timeOf(next.starts_at)}</div>
-            <div className="hwho"><b>{next.first_name}</b><small>{[next.situation, CAPL[next.capital] || next.capital].filter(Boolean).join(' · ')}{qs[next.id] ? ' · 💬 questions' : ''}</small></div>
+            <div className="hwho"><b>{next.first_name} <OwnerChip c={next} /></b><small>{[next.situation, CAPL[next.capital] || next.capital].filter(Boolean).join(' · ')}{qs[next.id] ? ' · 💬 questions' : ''}</small></div>
             <a className="wabtn" href={waWeb(next.phone, fillMsg(tpl, next))} target="_blank" rel="noreferrer" onClick={(e) => openWA(e, next.phone, fillMsg(tpl, next))}>WhatsApp</a>
           </div>
           <PrepTrack ev={ev[next.id]} compact />
@@ -116,10 +119,10 @@ export default function Candidatures({ toast, tab: main , closer, only, focusCal
       {tab === 'avenir' && <ToSend rows={rows} toast={toast} reload={load} />}
       {!groups.length && !lerr && <div className="sys">Aucun appel ici pour l'instant</div>}
       {groups.map(g => <div key={g.k} className="dgroup"><div className="dlabel">{g.label}</div>
-        {g.items.map(c => <div key={c.id} id={`call-${c.id}`} className={`call ${open === c.id ? 'open' : ''}`}>
+        {g.items.map(c => <div key={c.id} id={`call-${c.id}`} className={`call ${open === c.id ? 'open' : ''} ${other(c) ? 'other' : ''}`}>
           <div className="crow" onClick={() => setOpen(open === c.id ? null : c.id)}>
             <div className="ctime">{timeOf(c.starts_at)}</div>
-            <div className="cmain"><b>{c.first_name}</b><small>{[c.situation, CAPL[c.capital] || c.capital].filter(Boolean).join(' · ')}</small></div>
+            <div className="cmain"><b>{c.first_name} <OwnerChip c={c} /></b><small>{[c.situation, CAPL[c.capital] || c.capital].filter(Boolean).join(' · ')}</small></div>
             <span className={`badge ${c.status === 'fait' && c.outcome === 'signe' ? 'ok' : c.status === 'fait' && c.outcome === 'reflechit' ? 'wait' : (ST[c.status] || [c.status, 'done'])[1]}`}>{c.status === 'fait' && c.outcome ? (c.outcome === 'signe' ? (c.signed_amount != null ? 'Signé · ' + eur(c.signed_amount) : 'Signé · montant ?') : c.outcome === 'reflechit' ? 'Il réfléchit' : 'Pas signé') : (ST[c.status] || [c.status, 'done'])[0]}</span>
           </div>
           {open === c.id && <div className="cdet">

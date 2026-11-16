@@ -618,3 +618,9 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 
 .adm .mc i s{text-decoration:none;margin:0 2px}.adm .mc.sel i s{color:#fff!important}
 .adm .slotchips .sc[style]{border:1px solid}
+
+/* Appels d'une autre personne (Amandine) : trait noir, fond gris et pastille avec son nom */
+.adm .call.other{background:#EDEFF2;box-shadow:inset 5px 0 0 #12151C}
+.adm .ownchip{display:inline-flex;align-items:center;gap:5px;background:#12151C;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px 2px 3px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.adm .ownchip i{width:16px;height:16px;border-radius:50%;background:#fff;color:#12151C;font-style:normal;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.adm .hero .ownchip{background:#fff;color:#12151C}.adm .hero .ownchip i{background:#12151C;color:#fff}
