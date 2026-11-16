@@ -92,5 +92,6 @@
   "0091_pays_afrique_acceptes.sql",
   "0092_fuseau_horaire_prospect.sql",
   "0093_agenda_closer_invitations.sql",
-  "0094_agenda_clement_seulement.sql"
+  "0094_agenda_clement_seulement.sql",
+  "0095_questions_formulaire.sql"
 ]

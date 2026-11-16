@@ -3,6 +3,7 @@ import { usePS } from './persist'
 import { supabase, friendlyError } from './supabase'
 import { copyText } from './copy'
 import { Routing, useClosers } from './Routage'
+import Questions from './Questions'
 
 const BASE = 'https://rdv.theambitiousman.fr'
 const linkOf = (e) => (e.main ? BASE : `${BASE}/e/${e.slug}`)
@@ -101,6 +102,7 @@ function Editor({ ev, rows, closers, toast, stats, onChange, onDeleted }) {
       <div className="acts">{!ev.main && <button type="button" className="btn danger sm" onClick={del}>Supprimer</button>}<span style={{ flex: 1 }} /><button type="button" className="btn" disabled={!dirty || busy} onClick={save}>{busy ? '…' : 'Enregistrer'}</button></div>
     </section>
     <div className="ev-stats">{[['Réservations', stats.total], ['À venir', stats.avenir], ['Appels faits', stats.done], ['Signés', stats.sig], ['Taux de closing', stats.rate]].map(([l, v]) => <div key={l}><b>{v}</b><span>{l}</span></div>)}</div>
+    <Questions event={ev} closers={closers} toast={toast} onSaved={onChange} />
     <Routing event={ev} closers={closers} toast={toast} onSaved={onChange} />
   </div>
 }
