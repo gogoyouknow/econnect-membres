@@ -24,7 +24,7 @@ end $$;
 -- Envoie (ou met à jour / annule) l'invitation d'agenda d'un appel au closer concerné. Retourne true si un email est parti.
 create or replace function private.cand_closer_invite(c public.candidatures) returns boolean
 language plpgsql security definer set search_path = public, private as $$
-declare cl public.cand_closers; sig text; meth text; seq bigint; t2 timestamptz; nm text; whenfr text; ics text; glink text; sj text; ph text; em text;
+declare cl public.cand_closers; v_sig text; meth text; seq bigint; t2 timestamptz; nm text; whenfr text; ics text; glink text; sj text; ph text; em text;
 begin
   if c.closer is null or c.closer = 'clement' then return false; end if;
   select * into cl from public.cand_closers where key = c.closer;
@@ -32,8 +32,8 @@ begin
   if c.status in ('reserve', 'confirme') and c.starts_at > now() then meth := 'REQUEST';
   elsif c.status = 'annule' and exists (select 1 from private.cand_closer_ics_sent s where s.cand_id = c.id and s.sig <> 'cancel') then meth := 'CANCEL';
   else return false; end if;
-  sig := case when meth = 'CANCEL' then 'cancel' else md5(concat_ws('|', c.starts_at, c.minutes, c.first_name, c.phone, c.status, c.closer)) end;
-  if exists (select 1 from private.cand_closer_ics_sent s where s.cand_id = c.id and s.sig = sig) then return false; end if;
+  v_sig := case when meth = 'CANCEL' then 'cancel' else md5(concat_ws('|', c.starts_at, c.minutes, c.first_name, c.phone, c.status, c.closer)) end;
+  if exists (select 1 from private.cand_closer_ics_sent s where s.cand_id = c.id and s.sig = v_sig) then return false; end if;
   seq := extract(epoch from now())::bigint;
   t2 := c.starts_at + make_interval(mins => coalesce(c.minutes, 45));
   nm := coalesce(nullif(trim(c.first_name), ''), 'Candidat'); ph := coalesce(c.phone, '—'); em := coalesce(c.email, '');
@@ -54,7 +54,7 @@ begin
     || '<p>📅 ' || whenfr || ' (heure de Paris)<br>📱 WhatsApp ' || ph || '</p>'
     || case when meth = 'CANCEL' then '' else '<p>Il s''ajoute tout seul à ton Google Agenda (si ce n''est pas le cas, clique sur « Oui » dans l''invitation, ou <a href="' || glink || '">ajoute-le ici</a>). Tous tes appels sont aussi dans Calio.</p>' end,
     ics, meth);
-  insert into private.cand_closer_ics_sent (cand_id, sig) values (c.id, sig) on conflict (cand_id) do update set sig = excluded.sig, sent_at = now();
+  insert into private.cand_closer_ics_sent (cand_id, sig) values (c.id, v_sig) on conflict (cand_id) do update set sig = excluded.sig, sent_at = now();
   return true;
 end $$;
 
