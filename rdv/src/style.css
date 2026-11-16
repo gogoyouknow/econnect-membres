@@ -171,3 +171,12 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;text-align:
 .m97 b{font-family:var(--display);font-size:16px}.m97 span{color:var(--muted);font-size:13px}.m97 ul{margin:0;padding-left:18px;font-size:13px}.m97 strong{color:var(--gold);font-family:var(--display);font-size:18px}
 .okbar{display:flex;flex-direction:column;gap:4px;border-color:#25D366;background:rgba(37,211,102,.08)}
 .okbar span{color:var(--muted,#a8a8a8);font-size:14px;line-height:1.45}
+
+/* Fuseau horaire du prospect */
+.tzbar{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;border:1px solid var(--line);background:var(--surface-2);border-radius:14px;padding:10px 12px}
+.tzbar .tzico{font-size:22px;line-height:1}
+.tzbar b{display:block;font:700 14px var(--display)}
+.tzbar small{display:block;color:var(--muted);font-size:12px;line-height:1.35}
+.tzbar select{grid-column:1 / -1;width:100%;min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:500 13px var(--body);padding:0 10px}
+.tznote{display:block;margin-top:2px;color:var(--muted);font-size:12px;font-weight:500}
+.tzpick{margin:0;font-size:13px;color:var(--fg);border-left:3px solid var(--gold);padding:6px 10px;background:var(--gold-soft);border-radius:0 10px 10px 0}

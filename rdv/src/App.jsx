@@ -69,8 +69,20 @@ const AF_BLOCK = /(?!)/ // plus aucun pays écarté (Sénégal, Mali, Côte d'Iv
 const intlOf = (prefix, tel) => { const raw = String(tel || '').replace(/[^\d+]/g, ''); const d = raw.startsWith('00') ? '+' + raw.slice(2) : raw; const p = String(prefix || ''); return d.startsWith('+') ? d : p + (AF_BLOCK.test(p + '000') ? d : d.replace(/^0+/, '')) }
 const geoBlocked = (g) => AF_BLOCK.test(intlOf(g.prefix, g.tel)) || (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)))
 const telOk = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); if (d.length < 6) return false; if (isFixe(prefix, tel)) return String(d).length === 9; if (PV) { try { return PV.isValidPhoneNumber(pf + d) } catch { /* */ } } return d.length >= 8 && d.length <= 12 }
-const dayKey = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(iso))
-const fmtT = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+// ── Fuseau horaire : mes disponibilités sont à l'heure de Paris, c'est au prospect de s'y adapter (on affiche tout dans SON fuseau, détecté tout seul) ──
+const PARIS = 'Europe/Paris'
+const detectTz = () => { try { const z = Intl.DateTimeFormat().resolvedOptions().timeZone; if (z) { new Intl.DateTimeFormat('fr-FR', { timeZone: z }); return z } } catch { /* */ } return PARIS }
+const TZ_LIST = [['Europe/Paris', 'Paris'], ['Europe/Brussels', 'Bruxelles'], ['Europe/Zurich', 'Genève'], ['Europe/London', 'Londres'], ['Europe/Lisbon', 'Lisbonne'], ['Atlantic/Reykjavik', 'Reykjavik'], ['Europe/Athens', 'Athènes'], ['Europe/Istanbul', 'Istanbul'], ['Europe/Moscow', 'Moscou'],
+  ['Africa/Casablanca', 'Casablanca'], ['Africa/Algiers', 'Alger'], ['Africa/Tunis', 'Tunis'], ['Africa/Cairo', 'Le Caire'], ['Africa/Abidjan', 'Abidjan'], ['Africa/Dakar', 'Dakar'], ['Africa/Bamako', 'Bamako'], ['Africa/Lagos', 'Lagos'], ['Africa/Douala', 'Douala'], ['Africa/Libreville', 'Libreville'], ['Africa/Kinshasa', 'Kinshasa'], ['Africa/Lubumbashi', 'Lubumbashi'], ['Africa/Nairobi', 'Nairobi'], ['Africa/Johannesburg', 'Johannesburg'], ['Indian/Antananarivo', 'Madagascar'], ['Indian/Mauritius', 'Maurice'], ['Indian/Reunion', 'La Réunion'], ['Indian/Mayotte', 'Mayotte'],
+  ['America/Toronto', 'Montréal'], ['America/New_York', 'New York'], ['America/Chicago', 'Chicago'], ['America/Denver', 'Denver'], ['America/Los_Angeles', 'Los Angeles'], ['America/Martinique', 'Martinique'], ['America/Guadeloupe', 'Guadeloupe'], ['America/Cayenne', 'Guyane'], ['America/Port-au-Prince', 'Haïti'], ['America/Sao_Paulo', 'São Paulo'], ['America/Mexico_City', 'Mexico'],
+  ['Asia/Dubai', 'Dubaï'], ['Asia/Riyadh', 'Riyad'], ['Asia/Beirut', 'Beyrouth'], ['Asia/Kolkata', 'Inde'], ['Asia/Bangkok', 'Bangkok'], ['Asia/Singapore', 'Singapour'], ['Asia/Shanghai', 'Chine'], ['Asia/Tokyo', 'Tokyo'], ['Australia/Sydney', 'Sydney'], ['Pacific/Noumea', 'Nouméa'], ['Pacific/Tahiti', 'Tahiti']]
+const tzCity = (id) => (TZ_LIST.find((x) => x[0] === id) || [])[1] || String(id).split('/').pop().replace(/_/g, ' ')
+const tzOff = (id, iso) => { try { return new Intl.DateTimeFormat('fr-FR', { timeZone: id, timeZoneName: 'shortOffset' }).formatToParts(new Date(iso || Date.now())).find((x) => x.type === 'timeZoneName')?.value.replace('GMT', 'UTC').replace('−', '-') || '' } catch { return '' } }
+const offMin = (id, iso) => { const d = new Date(iso || Date.now()); const g = (z) => { const q = new Intl.DateTimeFormat('en-US', { timeZone: z, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }).formatToParts(d).reduce((a, x) => (a[x.type] = +x.value, a), {}); return Date.UTC(q.year, q.month - 1, q.day, q.hour, q.minute) }; return Math.round((g(id) - d.getTime() + d.getSeconds() * 1000 + d.getMilliseconds()) / 60000) }
+const sameAsParis = (id, iso) => id === PARIS || offMin(id, iso) === offMin(PARIS, iso)
+const dayKey = (iso, tz = PARIS) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(iso))
+const fmtT = (iso, tz = PARIS) => new Intl.DateTimeFormat('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+const fmtLong = (iso, tz = PARIS) => new Intl.DateTimeFormat('fr-FR', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso))
 const fmtDay = (k) => { const d = new Date(k + 'T12:00:00Z'); return { w: new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'short' }).format(d), n: d.getUTCDate() } }
 
 // D'où vient la personne (TikTok, Instagram…) : on le mémorise à la 1ère visite et on l'envoie avec la fiche.
@@ -137,6 +149,11 @@ export default function App() {
   const [cfg, setCfg] = useState({ slot_min: 45, wa: '33756849421', release_hours: 4 })
   const [slots, setSlots] = useState(null)
   const [day, setDay] = useState('')
+  const [vtz, setVtz] = useState(() => { try { const k = localStorage.getItem('cand_tz'); if (k) { new Intl.DateTimeFormat('fr-FR', { timeZone: k }); return k } } catch { /* */ } return detectTz() })
+  const chTz = (z) => { setVtz(z); setPick(''); try { localStorage.setItem('cand_tz', z) } catch { /* */ } }
+  const frAt = (iso) => sameAsParis(vtz, iso)
+  const whenV = (b) => (b?.starts_at && !frAt(b.starts_at) ? `${fmtLong(b.starts_at, vtz)} · ${fmtT(b.starts_at, vtz).replace(':', 'h')}` : String(b?.when || '').replace(' à ', ' · '))
+  const Tz2 = ({ iso }) => (iso && !frAt(iso) ? <small className="tznote">Heure de {tzCity(vtz)} · soit {fmtT(iso).replace(':', 'h')} en France</small> : null)
   const [pick, setPick] = useState('')
   const [busy, setBusy] = useState(false); const [mailBad, setMailBad] = useState(false)
   const [done, setDone] = useState(null)
@@ -205,7 +222,7 @@ export default function App() {
   useEffect(() => { if (configured) rpc('cand_event_info', { p_slug: EVENT || '' }).then((e) => { if (EVENT && e?.source) setEvSrc(e.source); setEvLt(Boolean(e?.lt500)) }).catch(() => {}) }, [])
   const loadSlots = () => (INV && FORCED ? rpc('cand_slots_for', { p_closer: FORCED, ...(DELAI ? { p_delai: DELAI } : {}) }) : rpc('cand_slots', DELAI ? { p_delai: DELAI } : {})).then((s) => setSlots(s || [])).catch(() => setSlots([]))
   useEffect(() => { if (step === 'slot') { loadSlots(); if (!resched) saveLead('slot') } }, [step])
-  const days = useMemo(() => { const m = new Map(); (slots || []).forEach((s) => { const k = dayKey(s); if (!m.has(k)) m.set(k, []); m.get(k).push(s) }); return [...m.entries()] }, [slots])
+  const days = useMemo(() => { const m = new Map(); (slots || []).forEach((s) => { const k = dayKey(s, vtz); if (!m.has(k)) m.set(k, []); m.get(k).push(s) }); return [...m.entries()] }, [slots, vtz])
   useEffect(() => { if (days.length && !days.find((d) => d[0] === day)) setDay(days[0][0]) }, [days])
 
   const next = {
@@ -240,7 +257,7 @@ export default function App() {
       setBusy(false); go('later')
     },
   }
-  const fakeBook = () => { const d = new Date(pick); const w = new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' }).format(d); return { ok: true, when: w + ' à ' + fmtT(pick).replace(':', 'h'), closer_name: CLOSER_NAME || 'Clément', wa: CLOSER === 'amandine' ? WA_DEF : cfg.wa, first_name: f.first_name, release_hours: cfg.release_hours, status: 'reserve' } }
+  const fakeBook = () => { const d = new Date(pick); const w = new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' }).format(d); return { ok: true, id: 0, starts_at: new Date(pick).toISOString(), when: w + ' à ' + fmtT(pick).replace(':', 'h'), closer_name: CLOSER_NAME || 'Clément', wa: CLOSER === 'amandine' ? WA_DEF : cfg.wa, first_name: f.first_name, release_hours: cfg.release_hours, status: 'reserve' } }
   async function book() {
     setBusy(true); setErr('')
     try {
@@ -251,6 +268,7 @@ export default function App() {
       }
       const r = TEST ? fakeBook() : await rpc('cand_book', { p: { delai: DELAI, closer: FORCED, event: EVENT, src: [SRC.source, SRC.utm?.source, SRC.utm?.campaign, SRC.utm?.content, evSrc, EVENT].filter(Boolean).join(' '), first_name: f.first_name.trim(), phone: invd ? invd.phone : (() => { const [pf, d] = effTel(f); return pf + d })(), email: f.email.trim(), situation: f.situation, capital: f.capital, budget_confirmed: f.have, starts_at: pick, invite: invd ? INV : undefined } })
       if (r?.blocked) { setBlockWhy(r.reason || 'autre'); setBusy(false); return go('blocked') }
+      if (r?.id && !TEST) rpc('cand_set_tz', { p_id: r.id, p_tz: vtz }).catch(() => {})
       setDone(r); setWaOpened(false); setRelEnd(Date.now() + (r.release_hours || cfg.release_hours || 4) * 3600000); go(ATT && r.status !== 'confirme' ? 'attention' : 'done')
     } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
     setBusy(false)
@@ -259,7 +277,8 @@ export default function App() {
   const bk = done || mine
   const cn = bk?.closer_name || CLOSER_NAME
   const waNum = bk?.wa || (CLOSER === 'amandine' ? WA_DEF : cfg.wa)
-  const waMsg = bk ? `Salut ${cn}, c’est ${(bk.first_name || f.first_name).trim()}. ${ATT && !done?.moved ? `Je confirme mon appel du ${bk.when}.` : `Je viens de ${done?.moved ? 'déplacer' : 'réserver'} mon appel pour ${bk.when}.`}` : ''
+  const bkWhen = bk ? (bk.starts_at && !frAt(bk.starts_at) ? `${fmtLong(bk.starts_at)} à ${fmtT(bk.starts_at).replace(':', 'h')} (heure de France)` : bk.when) : ''
+  const waMsg = bk ? `Salut ${cn}, c’est ${(bk.first_name || f.first_name).trim()}. ${ATT && !done?.moved ? `Je confirme mon appel du ${bkWhen}.` : `Je viens de ${done?.moved ? 'déplacer' : 'réserver'} mon appel pour ${bkWhen}.`}` : ''
   const waHref = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`
   const copy = () => { setCanGo(true); try { navigator.clipboard.writeText('+' + waNum) } catch {} }
   const waClick = (e) => { setWaOpened(true); setCanGo(true); openChat(e, waNum, waMsg, waHref); try { localStorage.setItem(GO_KEY, JSON.stringify({ t: Date.now(), tk: '' })) } catch { /* */ }
@@ -404,18 +423,21 @@ export default function App() {
       </section>}
 
     {step === 'slot' && <section className="screen"><h2>{resched ? 'Choisis ton nouveau créneau' : 'Choisis ton créneau'}</h2><div className="card">
+      <div className="tzbar"><span className="tzico">🌍</span><div><b>Heure de {tzCity(vtz)}</b><small>{tzOff(vtz)}{!frAt(Date.now()) ? ` · il est ${fmtT(Date.now(), vtz).replace(':', 'h')} chez toi, ${fmtT(Date.now()).replace(':', 'h')} en France` : ' · fuseau de la France'}</small></div>
+        <select aria-label="Changer de fuseau horaire" value={vtz} onChange={(e) => chTz(e.target.value)}>{(TZ_LIST.some((x) => x[0] === vtz) ? TZ_LIST : [[vtz, tzCity(vtz)], ...TZ_LIST]).map(([id, n]) => <option key={id} value={id}>{n} ({tzOff(id)})</option>)}</select></div>
       {slots === null && <p className="muted">Je regarde mes disponibilités…</p>}
       {slots && !days.length && <p className="muted">Aucun créneau libre pour le moment. Reviens bientôt.</p>}
       {!!days.length && <><div className="days">{days.map(([k]) => { const d = fmtDay(k); return <button key={k} className={`day ${k === day ? 'sel' : ''}`} onClick={() => { setDay(k); setPick('') }}>{d.w}<b>{d.n}</b></button> })}</div>
-        <div className="slots">{(cur?.[1] || []).map((s) => <button key={s} className={`slot ${pick === s ? 'sel' : ''}`} onClick={() => setPick(s)}>{fmtT(s)}</button>)}</div></>}
-      <p className="note">Heure de Paris · appel de {cfg.slot_min} minutes</p>
+        <div className="slots">{(cur?.[1] || []).map((s) => <button key={s} className={`slot ${pick === s ? 'sel' : ''}`} onClick={() => setPick(s)}>{fmtT(s, vtz)}</button>)}</div></>}
+      {pick && !frAt(pick) && <p className="tzpick">{fmtLong(pick, vtz)} à <b>{fmtT(pick, vtz).replace(':', 'h')}</b> chez toi = {fmtT(pick).replace(':', 'h')} en France</p>}
+      <p className="note">Appel de {cfg.slot_min} minutes{frAt(Date.now()) ? ' · heure de Paris' : ''}</p>
       <div className="err">{err}</div>
       <button className="btn" disabled={!pick || busy} onClick={book}>{busy ? (resched ? 'Un instant…' : 'Réservation…') : resched ? 'Déplacer mon rendez-vous' : 'Confirmer ce créneau'}</button></div>
       {resched && <button className="link" onClick={() => { setResched(false); go('mine') }}>← Retour</button>}</section>}
 
     {step === 'mine' && mine && <section className="screen">
       <div className="col"><span className="eyebrow">Tu as déjà réservé</span><h2>{mine.status === 'confirme' ? 'Ton rendez-vous est confirmé ✓' : "Tu as déjà un rendez-vous, il n'est pas encore confirmé"}</h2></div>
-      <div className="recap"><span className="muted s12">Ton appel</span><b>{mine.when.replace(' à ', ' · ')}</b></div>
+      <div className="recap"><span className="muted s12">Ton appel</span><b>{whenV(mine)}</b><Tz2 iso={mine.starts_at} /></div>
       {mine.status !== 'confirme' && confirmCard()}
       <div className="card"><p><b>Tu veux changer l'horaire ?</b></p><p className="muted s13">Pas besoin d'en réserver un deuxième : je déplace celui-ci.</p>
         <button className="btn ghost" onClick={() => { setPick(''); setResched(true); go('slot') }}>Modifier mon rendez-vous</button></div>
@@ -428,7 +450,7 @@ export default function App() {
       return <section className="screen last att">
         <div className="col"><span className="eyebrow">{A ? 'Étape 1 sur 2 faite ✓' : 'Plus qu\u2019un message'}</span>
           <h2>{A ? 'Attention. Ton appel n\u2019est pas encore confirmé' : 'Ton appel sera confirmé quand tu m\u2019auras écrit'}</h2></div>
-        <div className="recap"><span className="muted s12">Créneau réservé</span><b>{done.when.replace(' à ', ' · ')}</b></div>
+        <div className="recap"><span className="muted s12">Créneau réservé</span><b>{whenV(done)}</b><Tz2 iso={done.starts_at} /></div>
         {A ? <div className="attbox">Pour confirmer ton appel, tu dois m’envoyer un message. <em>Sans message, ton appel est annulé.</em></div>
           : <div className="tri"><div className="hot"><i>1</i><span>Appuie sur le bouton vert</span></div><div className="hot"><i>2</i><span><b>Appuie sur la flèche d’envoi ➤</b> dans WhatsApp</span></div><div><i>3</i><span>Je te réponds : ton appel est confirmé</span></div></div>}
         {A && <div className="bubble">{waMsg}<small>Message prêt ✓</small></div>}
@@ -442,16 +464,16 @@ export default function App() {
       {ATT && waOpened && <div className="attban">✅ WhatsApp s’est ouvert. <b>Vérifie que ton message est bien parti</b> (une coche à côté du message).</div>}
       <div className="col"><span className="eyebrow">Étape 1 sur 2 faite ✓</span>
         <h2>Dernière étape. Écris-moi sur WhatsApp</h2></div>
-      <div className="recap"><span className="muted s12">Créneau réservé</span><b>{done.when.replace(' à ', ' · ')}</b></div>
+      <div className="recap"><span className="muted s12">Créneau réservé</span><b>{whenV(done)}</b><Tz2 iso={done.starts_at} /></div>
       <Vidalytics />
-      <div className="consigne">👉 Pour confirmer ton appel du {done.when.replace(' à ', ' à ')}, envoie-moi un message sur WhatsApp avec le bouton vert.</div>
+      <div className="consigne">👉 Pour confirmer ton appel du {frAt(done.starts_at) ? done.when : `${fmtLong(done.starts_at, vtz)} à ${fmtT(done.starts_at, vtz).replace(':', 'h')} (heure de ${tzCity(vtz)})`}, envoie-moi un message sur WhatsApp avec le bouton vert.</div>
       <a className="btn wa" href={waHref} target="_blank" rel="noopener noreferrer" onClick={waClick}>CONFIRMER SUR WHATSAPP</a>
       <p className="note">Sans message, je libère ton créneau dans {relH} heures.</p>
       <div className="copyrow">Le bouton ne s'ouvre pas ? Écris-moi au <code>+{waNum}</code> <button className="ghost" onClick={copy}>Copier</button></div></section> :
     <section className="screen">
       <div className="col"><span className="eyebrow">{done.status === 'confirme' ? 'Rendez-vous déplacé' : 'Étape 1 sur 2 faite'}</span>
         <h2>{done.status === 'confirme' ? 'Ton rendez-vous est déplacé ✓' : "Ton appel n'est pas encore confirmé"}</h2></div>
-      <div className="recap"><span className="muted s12">{done.moved ? 'Nouveau créneau' : 'Créneau réservé'}</span><b>{done.when.replace(' à ', ' · ')}</b></div>
+      <div className="recap"><span className="muted s12">{done.moved ? 'Nouveau créneau' : 'Créneau réservé'}</span><b>{whenV(done)}</b><Tz2 iso={done.starts_at} /></div>
       {done.status !== 'confirme' && confirmCard()}
       {prepVideo()}
       {done.status !== 'confirme' && confirmBtn()}</section>)}
