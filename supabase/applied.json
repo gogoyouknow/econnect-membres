@@ -95,5 +95,6 @@
   "0094_agenda_clement_seulement.sql",
   "0095_questions_formulaire.sql",
   "0096_coach_appels.sql",
-  "0097_regles_questions_budget.sql"
+  "0097_regles_questions_budget.sql",
+  "0098_regle_disqualifier.sql"
 ]

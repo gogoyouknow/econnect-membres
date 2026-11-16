@@ -225,9 +225,12 @@ export default function App() {
     const legacy = evLt || (cap !== 'lt500' && v === 'yes') ? 'slot' : cap === 'lt500' ? 'block' : v === 'soon' ? 'when' : 'block2'
     if (!configured) return legacy
     try {
-      const ok = await rpc('cand_can_book', { p: { event: EVENT || '', capital: cap, have: v, situation: f.situation, invest: f.invest, src: srcStr() } })
-      if (typeof ok !== 'boolean') return legacy
-      return ok ? 'slot' : cap === 'lt500' ? 'block' : v === 'soon' ? 'when' : 'block2'
+      const r = await rpc('cand_can_book2', { p: { event: EVENT || '', capital: cap, have: v, situation: f.situation, invest: f.invest, src: srcStr() } })
+      if (typeof r?.ok !== 'boolean') return legacy
+      if (r.ok) return 'slot'
+      if (r.page === 'methode') return 'block'      // disqualifié par une règle de l'événement
+      if (r.page === 'plus_tard') return 'block2'
+      return cap === 'lt500' ? 'block' : v === 'soon' ? 'when' : 'block2'
     } catch { return legacy }
   }
   const loadSlots = () => (INV && FORCED ? rpc('cand_slots_for', { p_closer: FORCED, ...(DELAI ? { p_delai: DELAI } : {}) }) : rpc('cand_slots', DELAI ? { p_delai: DELAI } : {})).then((s) => setSlots(s || [])).catch(() => setSlots([]))

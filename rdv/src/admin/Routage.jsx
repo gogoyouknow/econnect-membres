@@ -5,6 +5,7 @@ export const CAPS = [['lt500', 'Moins de 500 € (exception)'], ['500-1000', '50
 export const SITS = ['Salarié', 'Étudiant', 'Entrepreneur', 'Sans activité']
 export const INVS = ['Non, jamais', 'Oui, une fois', 'Oui, plusieurs fois']
 export const HAVES = [['yes', 'Oui, disponible maintenant'], ['soon', 'Pas encore (quelques semaines)'], ['no', 'Non, il ne l’a pas']]
+const DQ = '__dq'
 const PRIOS = [['haute', 'Haute'], ['moyenne', 'Moyenne'], ['basse', 'Basse'], ['off', 'Désactivé']]
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 
@@ -16,7 +17,7 @@ export function useClosers() {
 }
 
 const poolOf = (ev, closers) => closers.map((c) => ({ closer: c.key, prio: (ev.pool || []).find((p) => p.closer === c.key)?.prio || 'off' }))
-const cleanRule = (r) => ({ closer: r.closer, capital: r.capital || [], situation: r.situation || [], invest: r.invest || [], have: r.have || [], source: (r.source || '').trim() })
+const cleanRule = (r) => ({ closer: r.closer, capital: r.capital || [], situation: r.situation || [], invest: r.invest || [], have: r.have || [], source: (r.source || '').trim(), ...(r.closer === DQ ? { dq_page: r.dq_page === 'plus_tard' ? 'plus_tard' : 'methode' } : {}) })
 
 /**
  * Répartition des appels : priorité des closers + règles par profil (arbre de décision).
@@ -73,8 +74,9 @@ export function Routing({ event, closers, toast, onSaved }) {
         <div className="rt-if"><span>ET « tu peux mobiliser ce budget maintenant ? »</span><div className="chips">{HAVES.map(([v, l]) => <button type="button" key={v} className={`chip ${r.have.includes(v) ? 'sel' : ''}`} onClick={() => toggle(i, 'have', v)}>{l}</button>)}</div></div>
         <div className="rt-if"><span>ET l’origine contient</span><input className="ti" placeholder="ex. instagram, tiktok, nom de campagne…" value={r.source} onChange={(e) => setRule(i, { source: e.target.value })} autoCapitalize="none" autoComplete="off" /></div>
         <p className="muted s12 rt-hint">{!r.capital.length && !r.situation.length && !r.invest.length && !r.have.length && !r.source.trim() ? 'Aucune condition : cette règle s’applique à tout le monde.' : 'Rien de coché dans une ligne = « peu importe ».'}{(r.have.includes('soon') || r.have.includes('no')) && ' Cocher « Pas encore » ou « Non » ouvre le calendrier à ces personnes (au lieu de les renvoyer vers une page d’attente) : leur appel va au closer choisi.'}</p>
-        <div className="rt-then"><span>ALORS l’appel va à</span>
-          <select value={r.closer} onChange={(e) => setRule(i, { closer: e.target.value })} className="rt-sel">{closers.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}{!closers.some((c) => c.key === r.closer) && <option value={r.closer}>{r.closer} (retiré)</option>}</select></div>
+        <div className="rt-then"><span>ALORS</span>
+          <select value={r.closer} onChange={(e) => setRule(i, { closer: e.target.value, ...(e.target.value === DQ ? { dq_page: r.dq_page || 'methode' } : {}) })} className={`rt-sel ${r.closer === DQ ? 'rt-dq' : ''}`}>{closers.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}{r.closer !== DQ && !closers.some((c) => c.key === r.closer) && <option value={r.closer}>{r.closer} (retiré)</option>}<option value={DQ}>Disqualifier (pas d’appel)</option></select>
+          {r.closer === DQ && <><span className="rt-then-s">Elle voit</span><select value={r.dq_page || 'methode'} onChange={(e) => setRule(i, { dq_page: e.target.value })} className="rt-sel"><option value="methode">La page Méthode (97 €)</option><option value="plus_tard">« Reviens quand ce sera le bon moment »</option></select></>}</div>
       </div>)}
       <button type="button" className="btn ghost sm" onClick={add}>+ Ajouter une règle</button>
       <p className="rt-else">Sinon → selon la priorité (1)</p>

@@ -681,3 +681,5 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .cc-l input[type=file]{width:100%;box-sizing:border-box;font:inherit;font-size:13px;font-weight:400;padding:8px 10px;border:1px dashed #C9CEDA;border-radius:12px;background:#FAFBFC}
 .adm .cc-left .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .adm .cc-left .acts .btn{width:auto;flex:0 0 auto}
+.adm .rt-sel.rt-dq{border-color:#E57373;background:#FDF2F2;color:#9B1C1C}
+.adm .rt-then-s{font-size:13px;color:#5B6270}
