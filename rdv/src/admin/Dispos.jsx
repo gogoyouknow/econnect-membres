@@ -6,6 +6,7 @@ import Repartition from './Routage'
 import Blocages from './Blocages'
 import MesHoraires from './MesHoraires'
 
+const fmtDelay = (mins) => { const h = Math.floor(mins / 60), m = mins % 60; return h && m ? `${h} h ${String(m).padStart(2, '0')}` : h ? `${h} h` : `${m} min` }
 const TZ = 'Europe/Paris'
 const DOW = [[1, 'Lundi'], [2, 'Mardi'], [3, 'Mercredi'], [4, 'Jeudi'], [5, 'Vendredi'], [6, 'Samedi'], [0, 'Dimanche']]
 const DNAME = { 0: 'dimanche', 1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi' }
@@ -110,6 +111,16 @@ export default function Dispos({ toast, admin }) {
     if (error) { setCfg((c) => ({ ...c, horizon_days: prev })); return toast(friendlyError(error), true) }
     toast(`Réservable jusqu'à ${n} jour${n > 1 ? 's' : ''} à l'avance`); load()
   }
+  const [nh, setNh] = useState('')
+  useEffect(() => { if (cfg && !cfg.from_tomorrow) setNh(String(+(cfg.notice_min / 60).toFixed(2))); else setNh('') }, [cfg?.notice_min, cfg?.from_tomorrow])
+  const setNotice = async (h, tomorrow) => {
+    const mins = tomorrow ? (cfg.notice_min || 0) : Math.round(Math.min(336, Math.max(0, +h || 0)) * 60)
+    const prev = { notice_min: cfg.notice_min, from_tomorrow: cfg.from_tomorrow }
+    setCfg((c) => ({ ...c, notice_min: mins, from_tomorrow: !!tomorrow }))
+    const { error } = await supabase.from('cand_settings').update({ notice_min: mins, from_tomorrow: !!tomorrow }).eq('id', 1)
+    if (error) { setCfg((c) => ({ ...c, ...prev })); return toast(friendlyError(error), true) }
+    toast(tomorrow ? 'Aucun appel le jour même : dès demain' : mins ? `Aucun appel avant ${fmtDelay(mins)} d'attente` : 'Réservable tout de suite'); load()
+  }
   const waDigits = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.startsWith('00') ? d.slice(2) : d.startsWith('0') ? '33' + d.slice(1) : d }
   const saveCfg = async () => {
     if (!/^\d{10,15}$/.test(waDigits(cfg.wa_number))) return toast('Numéro WhatsApp invalide', true)
@@ -161,6 +172,13 @@ export default function Dispos({ toast, admin }) {
 
     {sub === 'horaires' && <>
       {cfg && <div className="settings hz">
+        <b>Délai minimum avant un appel : combien d'heures ?</b>
+        <p className="muted small" style={{ margin: '4px 0 0' }}>{cfg.from_tomorrow ? 'Aucun appel le jour même : le premier créneau est demain.' : +cfg.notice_min > 0 ? <>Il faut réserver au moins <b>{fmtDelay(+cfg.notice_min)}</b> avant l'appel. Là, le premier créneau possible est à partir de {new Date(Date.now() + +cfg.notice_min * 60000).toLocaleString('fr-FR', { timeZone: TZ, weekday: 'long', hour: '2-digit', minute: '2-digit' })} (heure de Paris).</> : 'Les candidats peuvent réserver un appel tout de suite.'}</p>
+        <div className="chips">{[[0, 'Tout de suite'], [2, '2 h'], [4, '4 h'], [8, '8 h'], [12, '12 h'], [24, '24 h'], [48, '48 h']].map(([h, l]) => <button key={h} type="button" className={`chip ${!cfg.from_tomorrow && +cfg.notice_min === h * 60 ? 'sel' : ''}`} onClick={() => setNotice(h, false)}>{l}</button>)}
+          <button type="button" className={`chip ${cfg.from_tomorrow ? 'sel' : ''}`} onClick={() => setNotice(0, true)}>Dès demain</button></div>
+        <div className="hz-c"><label className="lq" htmlFor="nh">Autre délai (en heures)</label><input id="nh" type="number" inputMode="decimal" min="0" max="336" step="0.5" value={nh} placeholder={cfg.from_tomorrow ? 'ex. 8' : ''} onChange={(e) => setNh(e.target.value)} onBlur={(e) => { if (e.target.value === '') return; const mins = Math.round(Math.min(336, Math.max(0, +e.target.value || 0)) * 60); if (cfg.from_tomorrow || mins !== +cfg.notice_min) setNotice(e.target.value, false) }} /></div>
+      </div>}
+      {cfg && <div className="settings hz">
         <b>Jusqu'à combien de jours à l'avance peut-on réserver ?</b>
         <p className="muted small" style={{ margin: '4px 0 0' }}>Aujourd'hui + {+cfg.horizon_days} jour{+cfg.horizon_days > 1 ? 's' : ''} : les candidats ne voient aucun créneau au-delà du {new Date(Date.now() + +cfg.horizon_days * 864e5).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long' })}.</p>
         <div className="chips">{[1, 2, 3, 5, 7, 14, 21, 30].map((n) => <button key={n} type="button" className={`chip ${+cfg.horizon_days === n ? 'sel' : ''}`} onClick={() => setHorizon(n)}>{n} jour{n > 1 ? 's' : ''}</button>)}</div>
@@ -184,11 +202,7 @@ export default function Dispos({ toast, admin }) {
           <div><label className="lq">Durée de l'appel (min)</label><input type="number" min="15" max="120" value={cfg.slot_min} onChange={e => setCfg({ ...cfg, slot_min: e.target.value })} /></div>
           <div><label className="lq">Un créneau toutes les (min)</label><input type="number" min="5" max="120" value={cfg.step_min} onChange={e => setCfg({ ...cfg, step_min: e.target.value })} /></div>
           <div style={{ gridColumn: '1 / -1' }}><label className="lq">Délai minimum avant un appel</label>
-            <select value={cfg.from_tomorrow ? 'demain' : String(cfg.notice_h ?? Math.round(cfg.notice_min / 60))} onChange={e => setCfg(e.target.value === 'demain' ? { ...cfg, from_tomorrow: true } : { ...cfg, from_tomorrow: false, notice_h: e.target.value })}>
-              {[...new Set(['2', '4', '7', '12', '24', '48', String(cfg.from_tomorrow ? 4 : (cfg.notice_h ?? Math.round(cfg.notice_min / 60)))])].sort((a, b) => a - b).map(h => <option key={h} value={h}>{h} h minimum</option>)}
-              <option value="demain">Dès demain (aucun appel le jour même)</option>
-            </select>
-            <p className="muted small" style={{ margin: '6px 0 0' }}>Pour un lien précis, ajoute à la fin de l'adresse <b>?delai=demain</b>, <b>?delai=24</b> (heures) ou <b>?delai=0</b> (tout de suite). Sans rien, c'est ce réglage qui s'applique.</p></div>
+            <p className="muted small" style={{ margin: '6px 0 0' }}>Ce délai se règle tout en haut de cet onglet (« Dans combien de temps au plus tôt… »). Pour un lien précis, ajoute à la fin de l'adresse <b>?delai=demain</b>, <b>?delai=24</b> (heures) ou <b>?delai=0</b> (tout de suite). Sans rien, c'est ce réglage qui s'applique.</p></div>
           <div><label className="lq">Réservable jusqu'à (jours à l'avance)</label><input type="number" min="1" max="60" value={cfg.horizon_days} onChange={e => setCfg({ ...cfg, horizon_days: e.target.value })} /></div>
           <div style={{ gridColumn: '1 / -1' }}><label className="lq">Ton numéro WhatsApp (celui où les candidats t'écrivent)</label><input type="tel" inputMode="tel" value={cfg.wa_number || ''} onChange={e => setCfg({ ...cfg, wa_number: e.target.value })} placeholder="07 56 84 94 21" />
             <a className="muted small" href={`https://wa.me/${waDigits(cfg.wa_number)}`} target="_blank" rel="noopener noreferrer">Tester : ouvrir WhatsApp sur ce numéro (+{waDigits(cfg.wa_number)})</a></div>
