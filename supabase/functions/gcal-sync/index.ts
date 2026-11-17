@@ -9,10 +9,28 @@ const rpc = async (fn: string, args: Record<string, unknown> = {}) => {
   const t = await r.text(); return t ? JSON.parse(t) : null
 }
 
+// Allège le fichier AVANT de l'analyser (la lecture complète d'un gros agenda dépassait la limite de calcul de la fonction : « CPU Time exceeded »).
+// On garde l'en-tête (fuseaux), les événements récurrents encore actifs et les événements dont la date tombe dans la fenêtre.
+const slim = (txt: string) => {
+  const day = (ms: number) => new Date(ms).toISOString().slice(0, 10).replaceAll('-', '')
+  const A = day(Date.now() - 2 * 86400000), B = day(Date.now() + 33 * 86400000)
+  const i = txt.indexOf('BEGIN:VEVENT'); if (i < 0) return txt
+  const out: string[] = [txt.slice(0, i)]
+  for (const part of txt.slice(i).split('BEGIN:VEVENT').slice(1)) {
+    const ev = part.split('END:VEVENT')[0]
+    let keep: boolean
+    if (ev.includes('RRULE')) { const u = /UNTIL=(\d{8})/.exec(ev); keep = !u || u[1] >= A }
+    else { const s0 = /DTSTART[^:\r\n]*:(\d{8})/.exec(ev)?.[1], e0 = /DTEND[^:\r\n]*:(\d{8})/.exec(ev)?.[1] ?? s0; keep = !!s0 && s0 <= B && (e0 as string) >= A }
+    if (keep) out.push('BEGIN:VEVENT' + ev + 'END:VEVENT\r\n')
+  }
+  out.push('END:VCALENDAR\r\n')
+  return out.join('')
+}
+
 // Lit une adresse iCal secrète Google → créneaux occupés (14 prochains jours).
 const icsBusy = async (ics: string) => {
   const txt = await fetch(ics, { headers: { 'User-Agent': 'laccelerateur-rdv/1.0' } }).then(r => { if (!r.ok) throw new Error(`iCal ${r.status}`); return r.text() })
-  const comp = new ICAL.Component(ICAL.parse(txt))
+  const comp = new ICAL.Component(ICAL.parse(slim(txt)))
   // fuseaux déclarés dans le fichier
   for (const tz of comp.getAllSubcomponents('vtimezone')) { const id = tz.getFirstPropertyValue('tzid'); if (id && !ICAL.TimezoneService.has(id)) ICAL.TimezoneService.register(id, new ICAL.Timezone({ component: tz, tzid: id })) }
   const from = ICAL.Time.fromJSDate(new Date(Date.now() - 86400000), true), to = ICAL.Time.fromJSDate(new Date(Date.now() + 30 * 86400000), true)

@@ -49,11 +49,63 @@ function AgendaGoogle({ closer, toast, who }) {
   </>
 }
 
+const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+const pk = (iso) => { const f = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso)).map((x) => [x.type, x.value])); return [`${f.year}-${f.month}-${f.day}`, `${f.hour}:${f.minute}`] }
+const dowOf = (k) => new Date(k + 'T12:00:00Z').getUTCDay()
+
+/** Vue « Dates » : le mois, et pour chaque jour les créneaux libres, réservés et bloqués par l'agenda, comme sur la vue de Clément. */
+function DatesView({ ck, week, over, off, staff }) {
+  const t0 = todayK(); const [ty, tm] = t0.split('-').map(Number)
+  const [ym, setYm] = useState({ y: ty, m: tm - 1 }); const [sel, setSel] = useState(t0)
+  const [free, setFree] = useState({}); const [booked, setBooked] = useState({}); const [busyD, setBusyD] = useState({}); const [ready, setReady] = useState(false)
+  useEffect(() => {
+    let live = true; setReady(false)
+    Promise.all([
+      supabase.rpc('cand_slots_for', { p_closer: ck, p_delai: '0' }),
+      supabase.from('candidatures').select('starts_at,first_name,status').eq('closer', ck).in('status', ['reserve', 'confirme']).gte('starts_at', new Date(Date.now() - 864e5).toISOString()),
+      supabase.from('cand_closer_busy').select('starts_at,ends_at,title').eq('closer', ck).gte('ends_at', new Date().toISOString())])
+      .then(([a, b, c]) => {
+        if (!live) return
+        const f = {}; (Array.isArray(a.data) ? a.data : []).forEach((i) => { const [d, h] = pk(i); (f[d] = f[d] || []).push(h) })
+        const bk = {}; (b.data || []).forEach((i) => { const [d, h] = pk(i.starts_at); (bk[d] = bk[d] || []).push({ h, n: i.first_name, st: i.status }) })
+        const by = {}; (c.data || []).forEach((i) => { const [d, h] = pk(i.starts_at); const [d2, h2] = pk(i.ends_at); (by[d] = by[d] || []).push({ a: h, b: d2 === d ? h2 : '24:00', t: i.title }) })
+        setFree(f); setBooked(bk); setBusyD(by); setReady(true)
+      })
+    return () => { live = false }
+  }, [ck])
+  const rangesFor = (k) => (off.includes(k) ? [] : over[k] || week[dowOf(k)] || [])
+  const nav = (n) => setYm(({ y, m }) => { const t = new Date(Date.UTC(y, m + n, 1)); return { y: t.getUTCFullYear(), m: t.getUTCMonth() } })
+  const lead = (new Date(Date.UTC(ym.y, ym.m, 1)).getUTCDay() + 6) % 7
+  const cells = Array.from({ length: 42 }, (_, i) => { const d = new Date(Date.UTC(ym.y, ym.m, 1 - lead + i)); const k = d.toISOString().slice(0, 10); const rg = rangesFor(k); const n = (free[k] || []).length
+    return { k, d: d.getUTCDate(), inMonth: d.getUTCMonth() === ym.m, st: k < t0 ? 'past' : off.includes(k) ? 'closed' : rg.length ? 'open' : 'off', n, ovr: !!over[k] } })
+  const inRanges = (k, h) => rangesFor(k).some((r) => h >= r[0] && h < r[1])
+  const items = [...(free[sel] || []).map((h) => ({ h, c: 'ok', l: h })), ...(booked[sel] || []).map((b) => ({ h: b.h, c: 'res', l: `${b.h} · réservé${b.n ? ' · ' + b.n : ''}`, warn: !inRanges(sel, b.h) })),
+    ...(busyD[sel] || []).map((e) => ({ h: e.a, c: 'off', l: `${e.a}–${e.b} · Agenda${!staff && e.t ? ' · ' + e.t : ''}` }))].sort((x, y) => (x.h < y.h ? -1 : x.h > y.h ? 1 : 0))
+  const rg = rangesFor(sel); const past = sel < t0
+  if (!ready) return <p className="muted">Chargement…</p>
+  return <>
+    <div className="mhead"><h2 className="sh">{MONTHS[ym.m]} {ym.y}</h2><div className="mnav"><button onClick={() => nav(-1)} aria-label="Mois précédent">‹</button><button onClick={() => nav(1)} aria-label="Mois suivant">›</button></div></div>
+    <div className="mcal">
+      {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((w, i) => <div key={i} className="mw">{w}</div>)}
+      {cells.map((c) => <button key={c.k} className={`mc ${c.st} ${c.inMonth ? '' : 'out'} ${c.k === sel ? 'sel' : ''} ${c.k === t0 ? 'today' : ''} ${c.ovr ? 'ovr' : ''}`} onClick={() => { setSel(c.k); if (!c.inMonth) setYm({ y: +c.k.slice(0, 4), m: +c.k.slice(5, 7) - 1 }) }}>
+        <b>{c.d}</b><i>{c.st === 'open' ? c.n : c.st === 'closed' ? 'fermé' : ''}</i></button>)}
+    </div>
+    <div className="mleg"><span><u className="g" /> Jour avec créneaux libres</span><span><u className="r" /> Jour off</span><span><u className="d" /> Horaires particuliers</span></div>
+    <div className="daycard">
+      <div className="dchead"><b>{longDay(sel)}</b><span>{past ? 'Passé' : off.includes(sel) ? 'Jour off' : rg.length ? `${(free[sel] || []).length} libre${(free[sel] || []).length > 1 ? 's' : ''}` : 'Aucun horaire'}</span></div>
+      {rg.length > 0 && <p className="muted small" style={{ margin: '6px 0 0' }}>Horaires : {rg.map((r) => `${r[0]}–${r[1]}`).join(' · ')}</p>}
+      {items.length > 0 && <div className="slotchips">{items.map((x, i) => <span key={i} className={`sc ${x.c}`} style={x.warn ? { outline: '2px solid #E5484D' } : undefined}>{x.l}{x.warn ? ' · hors horaires' : ''}</span>)}</div>}
+      {!off.includes(sel) && !rg.length && !items.length && <p className="muted small" style={{ margin: '8px 0 0' }}>Pas d'horaire ce jour-là.</p>}
+      {off.includes(sel) && <p className="muted small" style={{ margin: '8px 0 0' }}>Jour off : personne ne peut réserver.</p>}
+    </div>
+  </>
+}
+
 /** Horaires d'un closer : semaine type, jours off, dates particulières. Pour le closer lui-même, ou pour Clément (avec un choix du closer). */
 export default function MesHoraires({ toast, staff }) {
   const [list, setList] = useState([]); const [key, setKey] = useState(null); const [err, setErr] = useState('')
   const [week, setWeek] = useState(null); const [over, setOver] = useState({}); const [off, setOff] = useState([]); const [busy, setBusy] = useState(false)
-  const [nd, setNd] = useState(''); const [dayK, setDayK] = useState(''); const [dayR, setDayR] = useState([['10:00', '11:00']])
+  const [view, setView] = useState('semaine'); const [nd, setNd] = useState(''); const [dayK, setDayK] = useState(''); const [dayR, setDayR] = useState([['10:00', '11:00']])
 
   useEffect(() => {
     if (staff) {
@@ -113,6 +165,8 @@ export default function MesHoraires({ toast, staff }) {
   if (!key || !week) return <div className="sheet-body"><p className="muted">Chargement…</p></div>
   return <div className="sheet-body">
     {staff && list.length > 1 && <div className="pills" style={{ marginBottom: 12 }}>{list.map((c) => <button key={c.key} className={`pill ${key === c.key ? 'on' : ''}`} onClick={() => setKey(c.key)}>{c.name}</button>)}</div>}
+    <div className="pills" style={{ marginBottom: 12 }}>{[['semaine', 'Semaine'], ['dates', 'Dates']].map(([k, l]) => <button key={k} className={`pill ${view === k ? 'on' : ''}`} onClick={() => setView(k)}>{l}</button>)}</div>
+    {view === 'dates' ? <DatesView ck={key} week={week} over={over} off={off} staff={staff} /> : <>
     <h2 className="sh">{staff ? `Horaires de ${list.find((c) => c.key === key)?.name || ''}` : 'Mes horaires'}</h2>
     <p className="muted" style={{ margin: '2px 0 10px' }}>Heure de Paris. Ces créneaux s’ajoutent à ceux de Clément : quand quelqu’un réserve un de {staff ? 'ses' : 'tes'} créneaux, l’appel {staff ? 'lui' : 'te'} revient. Un créneau déjà réservé disparaît tout seul.</p>
     <h3 className="cl-h">Semaine type</h3>
@@ -138,5 +192,6 @@ export default function MesHoraires({ toast, staff }) {
       <button type="button" className="btn ghost sm" aria-label="Supprimer cette date" onClick={() => rmDay(d)}>✕</button></div></div>)}
 
     <AgendaGoogle closer={key} toast={toast} who={staff ? 'Son' : 'Mon'} />
+    </>}
   </div>
 }

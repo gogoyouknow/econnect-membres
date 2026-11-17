@@ -233,7 +233,11 @@ export default function App() {
       return cap === 'lt500' ? 'block' : v === 'soon' ? 'when' : 'block2'
     } catch { return legacy }
   }
-  const loadSlots = () => (INV && FORCED ? rpc('cand_slots_for', { p_closer: FORCED, ...(DELAI ? { p_delai: DELAI } : {}) }) : rpc('cand_slots', DELAI ? { p_delai: DELAI } : {})).then((s) => setSlots(s || [])).catch(() => setSlots([]))
+  const loadSlots = () => (INV && FORCED ? rpc('cand_slots_for', { p_closer: FORCED, ...(DELAI ? { p_delai: DELAI } : {}) })
+    : resched ? rpc('cand_slots', DELAI ? { p_delai: DELAI } : {})
+    // créneaux du closer à qui cette personne sera confiée (ses horaires + son agenda) ; si la fonction manque, tous les créneaux comme avant
+    : rpc('cand_slots_routed', { p: { delai: DELAI, closer: FORCED, event: EVENT || '', src: srcStr(), capital: f.capital, situation: f.situation, invest: f.invest, have: f.have } }).catch(() => rpc('cand_slots', DELAI ? { p_delai: DELAI } : {})))
+    .then((s) => setSlots(s || [])).catch(() => setSlots([]))
   useEffect(() => { if (step === 'slot') { loadSlots(); if (!resched) saveLead('slot') } }, [step])
   const days = useMemo(() => { const m = new Map(); (slots || []).forEach((s) => { const k = dayKey(s, vtz); if (!m.has(k)) m.set(k, []); m.get(k).push(s) }); return [...m.entries()] }, [slots, vtz])
   useEffect(() => { if (days.length && !days.find((d) => d[0] === day)) setDay(days[0][0]) }, [days])
