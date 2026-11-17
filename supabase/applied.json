@@ -98,5 +98,6 @@
   "0097_regles_questions_budget.sql",
   "0098_regle_disqualifier.sql",
   "0099_rdv_selon_dispos_closer.sql",
-  "0100_horizon_jours_entiers.sql"
+  "0100_horizon_jours_entiers.sql",
+  "0101_notifs_reservation.sql"
 ]
