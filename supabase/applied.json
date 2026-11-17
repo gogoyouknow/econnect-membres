@@ -101,5 +101,6 @@
   "0100_horizon_jours_entiers.sql",
   "0101_notifs_reservation.sql",
   "0102_emails_par_petits_lots.sql",
-  "0103_vue_co_response_times_securisee.sql"
+  "0103_vue_co_response_times_securisee.sql",
+  "0104_synchro_agenda_3min.sql"
 ]
