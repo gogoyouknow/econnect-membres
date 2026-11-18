@@ -15,7 +15,7 @@ jobs:
           PAT: ${{ secrets.SUPABASE_PAT }}
         run: |
           if [ -z "$PAT" ]; then echo "Secret SUPABASE_PAT absent (GitHub → Settings → Secrets → Actions)"; exit 1; fi
-          REF=$(jq -r .supabase_ref videos/keys.json)
+          REF=$(jq -r .supabase_ref videos/project.json)
           for f in $(ls supabase/migrations/*.sql | sort); do
             b=$(basename "$f")
             if jq -e --arg b "$b" 'index($b)' supabase/applied.json > /dev/null; then continue; fi

@@ -14,7 +14,7 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_PAT }}
         run: |
-          REF=$(jq -r .supabase_ref videos/keys.json)
+          REF=$(jq -r .supabase_ref videos/project.json)
           for d in supabase/functions/*/; do
             n=$(basename "$d"); echo "=== $n"
             supabase functions deploy "$n" --project-ref "$REF" --no-verify-jwt --yes
@@ -24,7 +24,7 @@ jobs:
         env:
           PAT: ${{ secrets.SUPABASE_PAT }}
         run: |
-          REF=$(jq -r .supabase_ref videos/keys.json)
+          REF=$(jq -r .supabase_ref videos/project.json)
           cat > /tmp/init.sql <<'SQL'
           select net.http_post(
             url := 'https://jfournnrqewntnfyptic.supabase.co/functions/v1/send-push',

@@ -4,3 +4,6 @@ dev-dist
 .env
 .env.local
 .DS_Store
+
+# clés privées (Bunny, import) : jamais dans le dépôt
+videos/keys.json
