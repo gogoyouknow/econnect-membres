@@ -28,7 +28,7 @@ async function titleOf(id) {
 
 /** YouTube : un lien de réservation par vidéo, avec les prospects, rendez-vous et signatures qu'elle a apportés. Ordinateur uniquement. */
 export default function Youtube({ toast }) {
-  const [vids, setVids] = useState(null); const [stats, setStats] = useState([]); const [evOk, setEvOk] = useState(true)
+  const [vids, setVids] = useState(null); const [stats, setStats] = useState([]); const [evOk, setEvOk] = useState(true); const [err, setErr] = useState('')
   const [q, setQ] = usePS('yt_q', ''); const [sort, setSort] = usePS('yt_sort', 'recent'); const [shown, setShown] = useState(PAGE)
   const [text, setText] = useState(''); const [busy, setBusy] = useState(false)
   const load = async () => {
@@ -37,8 +37,8 @@ export default function Youtube({ toast }) {
       supabase.rpc('yt_stats'),
       supabase.from('cand_events').select('id').eq('slug', 'youtube').maybeSingle(),
     ])
-    if (a.error) return toast(friendlyError(a.error), true)
-    setVids(a.data || []); setStats(b.data || []); setEvOk(!!c.data)
+    if (a.error) { setErr(friendlyError(a.error)); return toast(friendlyError(a.error), true) }
+    setErr(''); setVids(a.data || []); setStats(b.data || []); setEvOk(!!c.data)
     if (b.error) toast(friendlyError(b.error), true)
   }
   useEffect(() => { load() }, [])
@@ -82,7 +82,7 @@ export default function Youtube({ toast }) {
   }
   const exportAll = () => copyText(list.map((v) => `${v.title || v.video_id}\t${linkOf(v.video_id)}`).join('\n'), toast, `${list.length} lien${list.length > 1 ? 's' : ''} copié${list.length > 1 ? 's' : ''} (titre + lien, à coller dans un tableur)`)
 
-  if (!vids) return <p className="muted">Chargement…</p>
+  if (!vids) return err ? <div><p className="muted">Impossible de charger les vidéos : {err}</p><button className="btn ghost sm" onClick={load}>Réessayer</button></div> : <p className="muted">Chargement…</p>
   const rows = list.slice(0, shown)
   return <div className="ev yt">
     <div className="ev-head"><div><h2 className="sh">YouTube</h2><p className="muted">Un lien par vidéo : tu le mets en description, et tu vois combien de prospects, de rendez-vous et de signatures chaque vidéo t'apporte.</p></div></div>
