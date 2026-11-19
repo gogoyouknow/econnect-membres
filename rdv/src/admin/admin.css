@@ -683,3 +683,22 @@ html:has(body.admbody),body.admbody{overflow-x:hidden;overscroll-behavior-x:none
 .adm .cc-left .acts .btn{width:auto;flex:0 0 auto}
 .adm .rt-sel.rt-dq{border-color:#E57373;background:#FDF2F2;color:#9B1C1C}
 .adm .rt-then-s{font-size:13px;color:#5B6270}
+
+/* YouTube : un lien par vidéo (ordinateur) */
+.adm .yt{display:flex;flex-direction:column;gap:14px}
+.adm .yt textarea.ti{width:100%;resize:vertical;font:inherit;box-sizing:border-box}
+.adm .yt-kpi{grid-template-columns:repeat(6,1fr)}
+.adm .yt-tools{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.adm .yt-tools .ti{min-width:240px}
+.adm .yt-wrap{overflow-x:auto}
+.adm .yt-tbl{width:100%;border-collapse:collapse;color:var(--ink)}
+.adm .yt-tbl th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:#6B7280;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.adm .yt-tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:14px}
+.adm .yt-tbl .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.adm .yt-v{display:flex;gap:12px;align-items:center;min-width:320px}
+.adm .yt-v img{width:96px;height:54px;object-fit:cover;border-radius:8px;display:block;background:#E5E7EB}
+.adm .yt-v>div{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.adm .yt-t{width:100%;box-sizing:border-box;font-size:14px;padding:6px 8px}
+.adm .yt-a{display:flex;gap:6px;align-items:center;justify-content:flex-end;white-space:nowrap}
+.adm .yt .btn{width:auto;flex:none}
+.adm .yt-other td{background:#F6F8F7}
