@@ -64,10 +64,19 @@ let PV = null // validateur de numéros de mobile (chargé à la demande, ne ral
 const loadPV = () => PV ? Promise.resolve(PV) : import('libphonenumber-js/mobile').then((m) => (PV = m)).catch(() => null)
 // Numéro fixe français (01 à 05) : pas de WhatsApp possible.
 const isFixe = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); return pf === '+33' && /^[1-5]/.test(String(d)) }
-// Côte d'Ivoire, Burkina Faso, Mali, Sénégal : paiement impossible depuis ces pays, on le dit honnêtement.
-const AF_BLOCK = /(?!)/ // plus aucun pays écarté (Sénégal, Mali, Côte d'Ivoire et Burkina Faso sont de nouveau acceptés)
+// Numéros d'Afrique (Maghreb, Égypte et Afrique du Sud compris) : pas d'appel, la personne voit la page Méthode à 97 €.
+// +262 (La Réunion, Mayotte) n'en fait PAS partie : ce sont des départements français. Même liste côté base : private.geo_blocked (migration 0106).
+const AF_BLOCK = /^\+(20|21[1-3]|216|218|22\d|23\d|24[0-57-9]|25[0-8]|26[013-9]|27|29[01])/
 const intlOf = (prefix, tel) => { const raw = String(tel || '').replace(/[^\d+]/g, ''); const d = raw.startsWith('00') ? '+' + raw.slice(2) : raw; const p = String(prefix || ''); return d.startsWith('+') ? d : p + (AF_BLOCK.test(p + '000') ? d : d.replace(/^0+/, '')) }
 const geoBlocked = (g) => AF_BLOCK.test(intlOf(g.prefix, g.tel)) || (g.wa_ok === false && AF_BLOCK.test(intlOf(g.wprefix, g.wtel)))
+// Encart de la Méthode à 97 € (écran « moins de 500 € » et écran « pays non ouvert »), avec son suivi de provenance.
+const Methode97 = ({ medium, campaign }) => <>
+  <div className="m97"><b>La Méthode E-Connect</b>
+    <span>Créer ta boutique, trouver un produit et lancer tes premières publicités avec un petit budget.</span>
+    <ul><li>Ta boutique en moins de 30 minutes</li><li>Le testing, pas à pas</li><li>3 bonus inclus</li></ul>
+    <strong>97 € · accès à vie</strong></div>
+  <a className="btn" href={`https://econnect-membres.vercel.app/methode/?utm_source=calio&utm_medium=${medium}&utm_campaign=${campaign}`}>Découvrir la Méthode →</a>
+</>
 const telOk = (prefix, tel) => { const [pf, d] = splitTel(prefix, tel); if (d.length < 6) return false; if (isFixe(prefix, tel)) return String(d).length === 9; if (PV) { try { return PV.isValidPhoneNumber(pf + d) } catch { /* */ } } return d.length >= 8 && d.length <= 12 }
 // ── Fuseau horaire : mes disponibilités sont à l'heure de Paris, c'est au prospect de s'y adapter (on affiche tout dans SON fuseau, détecté tout seul) ──
 const PARIS = 'Europe/Paris'
@@ -287,7 +296,7 @@ export default function App() {
       if (r?.blocked) { setBlockWhy(r.reason || 'autre'); setBusy(false); return go('blocked') }
       if (r?.id && !TEST) rpc('cand_set_tz', { p_id: r.id, p_tz: vtz }).catch(() => {})
       setDone(r); setWaOpened(false); setRelEnd(Date.now() + (r.release_hours || cfg.release_hours || 4) * 3600000); go(ATT && r.status !== 'confirme' ? 'attention' : 'done')
-    } catch (e) { setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
+    } catch (e) { if (/depuis ton pays/.test(e.message || '')) { setBusy(false); return go('geo') } setErr(e.message || 'La réservation a échoué.'); setPick(''); loadSlots() }
     setBusy(false)
   }
   const jour = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, weekday: 'long' }).format(new Date(iso))
@@ -394,9 +403,10 @@ export default function App() {
       <div className="chips col">{CAPS.map(([v, l]) => <button key={v} className={`chip ${f.capital === v ? 'sel' : ''}`} onClick={() => { set('capital', v); saveLead('budget', { capital: v }); go('budget') }}>{l}</button>)}</div></div>
       <button className="link" onClick={() => go(NEW ? 'inv' : 'txt')}>← Retour</button></section>}
 
-    {step === 'geo' && <section className="screen"><div className="col"><span className="eyebrow">Merci pour ton message</span><h2>Je ne peux pas encore t'accompagner depuis ton pays</h2></div><div className="card">
-      <p>Mon accompagnement se règle par carte bancaire, et je ne peux pas l'ouvrir pour l'instant depuis ton pays. Ce n'est pas un jugement sur toi ni sur ton projet.</p>
-      <p className="muted">En attendant, continue de suivre mes contenus.</p></div>
+    {step === 'geo' && <section className="screen"><h2>Ce n'est pas possible pour un appel depuis ton pays</h2><div className="card">
+      <p>Pour l'instant, je ne peux pas t'accompagner personnellement depuis ton pays, et je ne veux pas te faire perdre ton temps.</p>
+      <p>Mais tu peux avancer dès maintenant, à ton rythme, avec ma méthode pas à pas.</p>
+      <Methode97 medium="pays" campaign="ecran_pays" /></div>
       <button className="link" onClick={() => go('who')}>← Modifier mon numéro</button></section>}
 
     {step === 'blocked' && <section className="screen"><div className="col"><span className="eyebrow">Accès fermé</span><h2>Je ne peux pas te proposer d'appel</h2></div><div className="card">
@@ -407,11 +417,7 @@ export default function App() {
     {step === 'block' && <section className="screen"><h2>Ce n'est pas le bon moment pour un appel</h2><div className="card">
       <p>{f.capital === 'lt500' ? 'Avec moins de 500 € disponibles, je ne peux pas t\'accompagner personnellement' : 'Pour l\'instant, je ne peux pas t\'accompagner personnellement'} et je ne veux pas te faire perdre ton temps.</p>
       <p>Mais tu peux avancer dès maintenant, à ton rythme, avec ma méthode pas à pas.</p>
-      <div className="m97"><b>La Méthode E-Connect</b>
-        <span>Créer ta boutique, trouver un produit et lancer tes premières publicités avec un petit budget.</span>
-        <ul><li>Ta boutique en moins de 30 minutes</li><li>Le testing, pas à pas</li><li>3 bonus inclus</li></ul>
-        <strong>97 € · accès à vie</strong></div>
-      <a className="btn" href="https://econnect-membres.vercel.app/methode/?utm_source=calio&utm_medium=moins500&utm_campaign=ecran_budget">Découvrir la Méthode →</a></div>
+      <Methode97 medium="moins500" campaign="ecran_budget" /></div>
       </section>}
 
     {step === 'budget' && <section className="screen"><h2>Une dernière question, franche</h2><div className="card">

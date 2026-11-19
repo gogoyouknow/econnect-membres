@@ -103,5 +103,6 @@
   "0102_emails_par_petits_lots.sql",
   "0103_vue_co_response_times_securisee.sql",
   "0104_synchro_agenda_3min.sql",
-  "0105_fonctions_internes_pas_anon.sql"
+  "0105_fonctions_internes_pas_anon.sql",
+  "0106_afrique_pas_d_appel.sql"
 ]
