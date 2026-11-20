@@ -106,5 +106,6 @@
   "0105_fonctions_internes_pas_anon.sql",
   "0106_afrique_pas_d_appel.sql",
   "0107_rappel_resultat_appel.sql",
-  "0108_youtube_liens_par_video.sql"
+  "0108_youtube_liens_par_video.sql",
+  "0109_newsletter_video_suivi.sql"
 ]
