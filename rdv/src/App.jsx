@@ -15,7 +15,9 @@ const FORCED = (() => { const c = gq('closer_id'); if (c === '9512') return 'ama
 const INV = (() => { const t = (new URLSearchParams(typeof location !== 'undefined' ? location.search : '').get('inv') || '').trim(); return /^[0-9a-fA-F-]{36}$/.test(t) ? t : '' })() // lien d'invitation personnel : directement le choix du créneau
 const CLOSER = FORCED || 'clement'
 // Événement personnalisé : rdv.theambitiousman.fr/e/mon-lien
-const EVENT = (() => { try { const m = location.pathname.toLowerCase().match(/^\/e\/([a-z0-9-]{2,60})\/?$/); return m ? m[1] : '' } catch { return '' } })()
+// Lien court YouTube : rdv.theambitiousman.fr/y/<identifiant de la vidéo> = événement « youtube » + suivi utm_campaign = identifiant (sans UTM visibles dans l'adresse).
+const YT = (() => { try { const m = location.pathname.match(/^\/y\/([A-Za-z0-9_-]{11})\/?$/); return m ? m[1] : '' } catch { return '' } })()
+const EVENT = YT ? 'youtube' : (() => { try { const m = location.pathname.toLowerCase().match(/^\/e\/([a-z0-9-]{2,60})\/?$/); return m ? m[1] : '' } catch { return '' } })()
 const CLOSER_NAME = { clement: 'Clément', amandine: 'Amandine' }[CLOSER]
 const WA_DEF = { clement: '33756849421', amandine: '33763850319' }[CLOSER]
 const CAPS = [['lt500', 'Moins de 500 €'], ['500-1000', 'Entre 500 € et 1 000 €'], ['1000-3000', 'Entre 1 000 € et 3 000 €'], ['gt3000', 'Plus de 3 000 €']]
@@ -99,6 +101,7 @@ const SRC = (() => {
   try {
     const k = 'cand_src'; const old = localStorage.getItem(k)
     const q = new URLSearchParams(location.search); const utm = {}
+    if (YT) { if (!q.get('utm_source')) q.set('utm_source', 'youtube'); if (!q.get('utm_medium')) q.set('utm_medium', 'video'); if (!q.get('utm_campaign')) q.set('utm_campaign', YT) }
     // Une visite qui arrive avec des paramètres de pub (utm_…, ttclid, fbclid) remplace toujours l'origine gardée d'une visite précédente : la dernière pub cliquée est celle qui compte.
     if (old && !['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'ttclid', 'fbclid', 'src'].some((x) => q.get(x))) return JSON.parse(old)
     ;['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'ttclid', 'fbclid', 'src'].forEach((x) => { const v = q.get(x); if (v) utm[x.replace('utm_', '')] = v.slice(0, 100) })

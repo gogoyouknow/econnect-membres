@@ -6,7 +6,7 @@ import { copyText } from './copy'
 const BASE = 'https://rdv.theambitiousman.fr'
 const EVENT_LINK = `${BASE}/e/youtube`
 // Un lien par vidéo : la vidéo est reconnue grâce à son identifiant, mis dans utm_campaign (le suivi de provenance de Calio le garde sur la fiche du prospect).
-const linkOf = (id) => `${EVENT_LINK}?utm_source=youtube&utm_medium=video&utm_campaign=${encodeURIComponent(id)}`
+const linkOf = (id) => `https://rdv.theambitiousman.fr/y/${id}`
 // Identifiant (11 caractères) d'un lien YouTube normal, court, Shorts, live ou intégré — ou d'un identifiant collé tel quel.
 const idOf = (s) => { const t = String(s || '').trim(); const m = t.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})/) || t.match(/^([A-Za-z0-9_-]{11})$/); return m ? m[1] : null }
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) + ' %' : '–')
@@ -94,7 +94,7 @@ export default function Youtube({ toast }) {
         <textarea className="ti" rows={3} placeholder={'Colle un ou plusieurs liens YouTube (un par ligne)\nex. https://www.youtube.com/watch?v=…  ou  https://youtu.be/…'} value={text} onChange={(e) => setText(e.target.value)} />
         <div className="acts"><button className="btn" disabled={busy || !text.trim()}>{busy ? 'Ajout…' : 'Ajouter'}</button><span className="muted s12">Le titre se remplit tout seul (tu peux le corriger). Les doublons sont ignorés.</span></div>
       </form>
-      <p className="muted s12" style={{ marginTop: 10 }}>Page de réservation pour YouTube : <code>{EVENT_LINK}</code> · mêmes questions et même répartition que le lien en bio TikTok (réglables dans Événements).</p>
+      <p className="muted s12" style={{ marginTop: 10 }}>Les liens courts (<code>rdv.theambitiousman.fr/y/…</code>) ouvrent la page de réservation YouTube <code>{EVENT_LINK}</code> : mêmes questions et même répartition que le lien en bio TikTok (réglables dans Événements).</p>
     </section>
     <section className="rt-card yt-list">
       <div className="yt-tools"><input className="ti" type="search" placeholder="Rechercher une vidéo…" value={q} onChange={(e) => { setQ(e.target.value); setShown(PAGE) }} />
